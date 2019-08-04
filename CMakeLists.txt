@@ -1,13 +1,42 @@
 project(VULKAN_EXPERIMENTS)
-
 cmake_minimum_required(VERSION 3.7.2)
 
-set (CMAKE_CXX_STANDARD 11)
+set (CMAKE_CXX_STANDARD 17)
 
-set(ENV{VK_INSTANCE_LAYERS} "VK_LAYER_LUNARG_standard_validation;VK_LAYER_LUNARG_swapchain;VK_LAYER_LUNARG_api_dump")
+set(ENV{VK_INSTANCE_LAYERS} 
+    "VK_LAYER_LUNARG_standard_validation;VK_LAYER_LUNARG_swapchain;VK_LAYER_LUNARG_api_dump")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_executable(hello_vulkan src/hello_vulkan.cpp src/vulkan_functions.cpp src/vulkan_library.cpp)
-target_include_directories(hello_vulkan PUBLIC "C:/VulkanSDK/1.1.82.1/Include")
-target_link_libraries(hello_vulkan "C:/VulkanSDK/1.1.82.1/Lib/vulkan-1.lib")
+if(APPLE)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "Minimum OS X deployment version")
+    LINK_DIRECTORIES(/usr/local/lib)
+    set(VULKAN_LIBRARIES 
+        "/Users/filipecn/Documents/vulkansdk-macos-1.1.114.0/macOS/lib/libvulkan.1.dylib"
+        "/Users/filipecn/Documents/vulkansdk-macos-1.1.114.0/macOS/lib/libvulkan.1.1.114.dylib"
+    )
+    set(VULKAN_INCLUDES "/Users/filipecn/Documents/vulkansdk-macos-1.1.114.0/macOS/include")
+elseif(WIN32)
+    set(VULKAN_LIBRARIES "C:/VulkanSDK/1.1.82.1/Lib/vulkan-1.lib")
+    set(VULKAN_INCLUDES "C:/VulkanSDK/1.1.82.1/Include")
+endif()
+
+set(SOURCES
+    src/hello_vulkan.cpp 
+    src/vulkan_api.cpp 
+    src/vulkan_library.cpp
+)
+set(HEADERS 
+    src/vulkan_api.h
+    src/vulkan_api.inl
+    src/vulkan_library.h
+)
+
+add_executable(hello_vulkan ${SOURCES} ${HEADERS})
+target_include_directories(hello_vulkan PUBLIC ${VULKAN_INCLUDES})
+target_link_libraries(hello_vulkan ${VULKAN_LIBRARIES})
+
+add_custom_command(TARGET hello_vulkan POST_BUILD        
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different  
+        "/Users/filipecn/Documents/vulkansdk-macos-1.1.114.0/macOS/lib/libvulkan.1.1.114.dylib"
+        $<TARGET_FILE_DIR:hello_vulkan>)                 

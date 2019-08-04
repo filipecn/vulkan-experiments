@@ -1,11 +1,15 @@
-#include <iostream>
 #include "vulkan_library.h"
+#include <iostream>
 
-int main(int argc, char const* argv[]) {
-#if defined _WIN32
+#include <dlfcn.h>
+
+int main(int argc, char const *argv[]) {
+#if defined __WIN32__
   HMODULE vulkanLibrary = LoadLibrary("vulkan-1.dll");
 #elif __linux
-  void* vulkanLibrary = dlopen("libvulkan.so.1", RTLD_NOW);
+  void *vulkanLibrary = dlopen("libvulkan.so.1", RTLD_NOW);
+#elif __APPLE__
+  void *vulkanLibrary = dlopen("libvulkan.1.1.114.dylib", RTLD_NOW);
 #endif
 
   if (vulkanLibrary == nullptr) {
@@ -13,11 +17,12 @@ int main(int argc, char const* argv[]) {
     return -1;
   }
 
-  aergia::VulkanLibrary::loadFunctionFromVulkan(vulkanLibrary);
-  aergia::VulkanLibrary::loadGlobalLevelFunctions();
-  std::vector<const char*> extensions;
+  circe::VulkanLibraryInterface::loadLoaderFunctionFromVulkan(vulkanLibrary);
+  circe::VulkanLibraryInterface::loadGlobalLevelFunctions();
+  std::vector<const char *> extensions;
   VkInstance instance;
-  aergia::VulkanLibrary::createInstance(extensions, "hello vulkan", instance);
+  circe::VulkanLibraryInterface::createInstance(extensions, "hello vulkan",
+                                                instance);
 
   return 0;
 }
