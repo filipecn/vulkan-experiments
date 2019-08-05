@@ -31,6 +31,8 @@
 
 namespace circe {
 
+namespace vk {
+
 #define EXPORTED_VULKAN_FUNCTION(name) PFN_##name name;
 #define GLOBAL_LEVEL_VULKAN_FUNCTION(name) PFN_##name name;
 #define INSTANCE_LEVEL_VULKAN_FUNCTION(name) PFN_##name name;
@@ -41,5 +43,7 @@ namespace circe {
   PFN_##name name;
 
 #include "vulkan_api.inl"
+
+} // namespace vk
 
 } // namespace circe

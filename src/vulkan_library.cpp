@@ -36,144 +36,7 @@
 
 namespace circe {
 
-std::string vulkanResultString(VkResult err) {
-  switch (err) {
-  case VK_SUCCESS:
-    return "VK_SUCCESS Command successfully completed";
-  case VK_NOT_READY:
-    return "VK_NOT_READY A fence or query has not yet completed";
-  case VK_TIMEOUT:
-    return "VK_TIMEOUT A wait operation has not completed in the specified "
-           "time";
-  case VK_EVENT_SET:
-    return "VK_EVENT_SET An event is signaled";
-  case VK_EVENT_RESET:
-    return "VK_EVENT_RESET An event is unsignaled";
-  case VK_INCOMPLETE:
-    return "VK_INCOMPLETE A return array was too small for the result";
-  case VK_SUBOPTIMAL_KHR:
-    return "VK_SUBOPTIMAL_KHR A swapchain no longer matches the surface "
-           "properties exactly, but can still be used to present to the "
-           "surface successfully.";
-  case VK_ERROR_OUT_OF_HOST_MEMORY:
-    return "VK_ERROR_OUT_OF_HOST_MEMORY A host memory allocation has failed.";
-  case VK_ERROR_OUT_OF_DEVICE_MEMORY:
-    return "VK_ERROR_OUT_OF_DEVICE_MEMORY A device memory allocation has "
-           "failed.";
-  case VK_ERROR_INITIALIZATION_FAILED:
-    return "VK_ERROR_INITIALIZATION_FAILED Initialization of an object could "
-           "not be completed for implementation-specific reasons.";
-  case VK_ERROR_DEVICE_LOST:
-    return "VK_ERROR_DEVICE_LOST The logical or physical device has been lost. "
-           "See Lost Device";
-  case VK_ERROR_MEMORY_MAP_FAILED:
-    return "VK_ERROR_MEMORY_MAP_FAILED Mapping of a memory object has failed.";
-  case VK_ERROR_LAYER_NOT_PRESENT:
-    return "VK_ERROR_LAYER_NOT_PRESENT A requested layer is not present or "
-           "could not be loaded.";
-  case VK_ERROR_EXTENSION_NOT_PRESENT:
-    return "VK_ERROR_EXTENSION_NOT_PRESENT A requested extension is not "
-           "supported.";
-  case VK_ERROR_FEATURE_NOT_PRESENT:
-    return "VK_ERROR_FEATURE_NOT_PRESENT A requested feature is not supported.";
-  case VK_ERROR_INCOMPATIBLE_DRIVER:
-    return "VK_ERROR_INCOMPATIBLE_DRIVER The requested version of Vulkan is "
-           "not supported by the driver or is otherwise incompatible for "
-           "implementation-specific reasons.";
-  case VK_ERROR_TOO_MANY_OBJECTS:
-    return "VK_ERROR_TOO_MANY_OBJECTS Too many objects of the type have "
-           "already been created.";
-  case VK_ERROR_FORMAT_NOT_SUPPORTED:
-    return "VK_ERROR_FORMAT_NOT_SUPPORTED A requested format is not supported "
-           "on this device.";
-  case VK_ERROR_FRAGMENTED_POOL:
-    return "VK_ERROR_FRAGMENTED_POOL A pool allocation has failed due to "
-           "fragmentation of the pool’s memory. This must only be returned if "
-           "no attempt to allocate host or device memory was made to "
-           "accommodate the new allocation. This should be returned in "
-           "preference to VK_ERROR_OUT_OF_POOL_MEMORY, but only if the "
-           "implementation is certain that the pool allocation failure was due "
-           "to fragmentation.";
-  case VK_ERROR_SURFACE_LOST_KHR:
-    return "VK_ERROR_SURFACE_LOST_KHR A surface is no longer available.";
-  case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
-    return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR The requested window is already "
-           "in use by Vulkan or another API in a manner which prevents it from "
-           "being used again.";
-  case VK_ERROR_OUT_OF_DATE_KHR:
-    return "VK_ERROR_OUT_OF_DATE_KHR A surface has changed in such a way that "
-           "it is no longer compatible with the swapchain, and further "
-           "presentation requests using the swapchain will fail. Applications "
-           "must query the new surface properties and recreate their swapchain "
-           "if they wish to continue presenting to the surface.";
-  case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:
-    return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR The display used by a swapchain "
-           "does not use the same presentable image layout, or is incompatible "
-           "in a way that prevents sharing an image.";
-  case VK_ERROR_INVALID_SHADER_NV:
-    return "VK_ERROR_INVALID_SHADER_NV One or more shaders failed to compile "
-           "or link. More details are reported back to the application via "
-           "https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/"
-           "vkspec.html#VK_EXT_debug_report if enabled.";
-  case VK_ERROR_OUT_OF_POOL_MEMORY:
-    return "VK_ERROR_OUT_OF_POOL_MEMORY A pool memory allocation has failed. "
-           "This must only be returned if no attempt to allocate host or "
-           "device memory was made to accommodate the new allocation. If the "
-           "failure was definitely due to fragmentation of the pool, "
-           "VK_ERROR_FRAGMENTED_POOL should be returned instead.";
-  case VK_ERROR_INVALID_EXTERNAL_HANDLE:
-    return "VK_ERROR_INVALID_EXTERNAL_HANDLE An external handle is not a valid "
-           "handle of the specified type.";
-  case VK_ERROR_FRAGMENTATION_EXT:
-    return "VK_ERROR_FRAGMENTATION_EXT A descriptor pool creation has failed "
-           "due to fragmentation.";
-  case VK_ERROR_INVALID_DEVICE_ADDRESS_EXT:
-    return "VK_ERROR_INVALID_DEVICE_ADDRESS_EXT A buffer creation failed "
-           "because the requested address is not available.";
-  case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:
-    return "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT An operation on a "
-           "swapchain created with "
-           "VK_FULL_SCREEN_EXCLUSIVE_APPLICATION_CONTROLLED_EXT failed as it "
-           "did not have exlusive full-screen access. This may occur due to "
-           "implementation-dependent reasons, outside of the application’s "
-           "control.";
-  // case VK_ERROR_OUT_OF_POOL_MEMORY_KHR:
-  //   return "VK_ERROR_OUT_OF_POOL_MEMORY_KHR";
-  case VK_ERROR_VALIDATION_FAILED_EXT:
-    return "VK_ERROR_VALIDATION_FAILED_EXT";
-  case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT:
-    return "VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT";
-  case VK_ERROR_NOT_PERMITTED_EXT:
-    return "VK_ERROR_NOT_PERMITTED_EXT";
-  // case VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR:
-  //   return "VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR";
-  default:
-    return "UNDEFINED";
-  }
-  return "UNDEFINED";
-}
-
-bool handleVulkanError(VkResult err, const char *file, int line) {
-  if (err != VK_SUCCESS) {
-    std::cerr << "[VULKAN_ERROR] in [" << file << "][" << line
-              << "]: " << vulkanResultString(err) << std::endl;
-    return false;
-  }
-  return true;
-}
-
-#define CHECK_VULKAN(err, M)                                                   \
-  if (!handleVulkanError(err, __FILE__, __LINE__)) {                           \
-    std::cerr << (M) << std::endl;                                             \
-    return false;                                                              \
-  }
-
-#define CHECK(A, M)                                                            \
-  if (!(A)) {                                                                  \
-    std::cerr << "[ERROR] in [" << __FILE__ << "][" << __LINE__                \
-              << "]: " << (M) << std::endl;                                    \
-    return false;                                                              \
-  }
+namespace vk {
 
 // VULKAN API FUNCTION LOADING /////////////////////////////////////////////////
 
@@ -296,18 +159,16 @@ bool VulkanLibraryInterface::checkAvailableDeviceExtensions(
     VkPhysicalDevice physicalDevice,
     std::vector<VkExtensionProperties> &extensions) {
   uint32_t extensionsCount = 0;
-  VkResult result = VK_SUCCESS;
-  result = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr,
-                                                &extensionsCount, nullptr);
-  CHECK(result == VK_SUCCESS && extensionsCount == 0,
-        "Could not get the number of device extensions.");
-
+  CHECK_VULKAN(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr,
+                                                    &extensionsCount, nullptr),
+               "Could not count device extensions.");
+  if(extensionsCount == 0)
+    return true;
   extensions.resize(extensionsCount);
-  result = vkEnumerateDeviceExtensionProperties(
-      physicalDevice, nullptr, &extensionsCount, extensions.data());
-  CHECK(result == VK_SUCCESS && extensionsCount == 0,
-        "Could not enumerate device extensions.");
-
+  CHECK_VULKAN(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr,
+                                                    &extensionsCount,
+                                                    extensions.data()),
+               "Could not enumerate device extensions properties.");
   return true;
 }
 
@@ -315,7 +176,7 @@ bool VulkanLibraryInterface::isExtensionSupported(
     const std::vector<VkExtensionProperties> &extensions,
     const char *extensionName) {
   for (auto &extension : extensions)
-    if (extension.extensionName == extensionName)
+    if (std::string(extension.extensionName) == std::string(extensionName))
       return true;
   return false;
 }
@@ -366,17 +227,15 @@ void VulkanLibraryInterface::destroyVulkanInstance(VkInstance &instance) {
 bool VulkanLibraryInterface::enumerateAvailablePhysicalDevices(
     VkInstance instance, std::vector<VkPhysicalDevice> &devices) {
   uint32_t devicesCount = 0;
-  VkResult result = VK_SUCCESS;
-
-  result = vkEnumeratePhysicalDevices(instance, &devicesCount, nullptr);
-  CHECK(result == VK_SUCCESS && devicesCount != 0,
+  CHECK_VULKAN(vkEnumeratePhysicalDevices(instance, &devicesCount, nullptr),
+               "Could not get the number of available physical devices.");
+  CHECK(devicesCount != 0,
         "Could not get the number of available physical devices.");
-
   devices.resize(devicesCount);
-  result = vkEnumeratePhysicalDevices(instance, &devicesCount, devices.data());
-  CHECK(result == VK_SUCCESS && devicesCount != 0,
-        "Could not enumerate physical devices.");
-
+  CHECK_VULKAN(
+      vkEnumeratePhysicalDevices(instance, &devicesCount, devices.data()),
+      "Could not enumerate physical devices.");
+  CHECK(devicesCount != 0, "Could not enumerate physical devices.");
   return true;
 }
 
@@ -384,7 +243,6 @@ void VulkanLibraryInterface::getFeaturesAndPropertiesOfPhysicalDevice(
     VkPhysicalDevice physical_device, VkPhysicalDeviceFeatures &device_features,
     VkPhysicalDeviceProperties &device_properties) {
   vkGetPhysicalDeviceFeatures(physical_device, &device_features);
-
   vkGetPhysicalDeviceProperties(physical_device, &device_properties);
 }
 
@@ -394,18 +252,15 @@ bool VulkanLibraryInterface::checkAvailableQueueFamiliesAndTheirProperties(
     VkPhysicalDevice physical_device,
     std::vector<VkQueueFamilyProperties> &queue_families) {
   uint32_t queue_families_count = 0;
-
   vkGetPhysicalDeviceQueueFamilyProperties(physical_device,
                                            &queue_families_count, nullptr);
   CHECK(queue_families_count != 0,
         "Could not get the number of queue families.\n");
-
   queue_families.resize(queue_families_count);
   vkGetPhysicalDeviceQueueFamilyProperties(
       physical_device, &queue_families_count, queue_families.data());
   CHECK(queue_families_count != 0,
         "Could not acquire properties of queue families.\n");
-
   return true;
 }
 
@@ -416,7 +271,6 @@ bool VulkanLibraryInterface::selectIndexOfQueueFamilyWithDesiredCapabilities(
   CHECK(checkAvailableQueueFamiliesAndTheirProperties(physical_device,
                                                       queue_families),
         "");
-
   for (uint32_t index = 0; index < static_cast<uint32_t>(queue_families.size());
        ++index) {
     if ((queue_families[index].queueCount > 0) &&
@@ -429,10 +283,33 @@ bool VulkanLibraryInterface::selectIndexOfQueueFamilyWithDesiredCapabilities(
   return false;
 }
 
+bool VulkanLibraryInterface::
+    selectQueueFamilyThatSupportsPresentationToGivenSurface(
+        VkPhysicalDevice physical_device, VkSurfaceKHR presentation_surface,
+        uint32_t &queue_family_index) {
+  std::vector<VkQueueFamilyProperties> queue_families;
+  if (!checkAvailableQueueFamiliesAndTheirProperties(physical_device,
+                                                     queue_families)) {
+    return false;
+  }
+
+  for (uint32_t index = 0; index < static_cast<uint32_t>(queue_families.size());
+       ++index) {
+    VkBool32 presentation_supported = VK_FALSE;
+    VkResult result = vkGetPhysicalDeviceSurfaceSupportKHR(
+        physical_device, index, presentation_surface, &presentation_supported);
+    if ((VK_SUCCESS == result) && (VK_TRUE == presentation_supported)) {
+      queue_family_index = index;
+      return true;
+    }
+  }
+  return false;
+}
+
 // VULKAN LOGICAL DEVICE /////////////////////////////////////////////////////
 
 bool VulkanLibraryInterface::createLogicalDevice(
-    VkPhysicalDevice physical_device, std::vector<QueueInfo> queue_infos,
+    VkPhysicalDevice physical_device, std::vector<QueueFamilyInfo> queue_infos,
     std::vector<char const *> const &desired_extensions,
     VkPhysicalDeviceFeatures *desired_features, VkDevice &logical_device) {
   std::vector<VkExtensionProperties> available_extensions;
@@ -449,9 +326,9 @@ bool VulkanLibraryInterface::createLogicalDevice(
   for (auto &info : queue_infos) {
     queue_create_infos.push_back({
         VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, // VkStructureType sType
-        nullptr,           // const void                     * pNext
-        0,                 // VkDeviceQueueCreateFlags         flags
-        info.family_index, // uint32_t                         queueFamilyIndex
+        nullptr,                   // const void                     * pNext
+        0,                         // VkDeviceQueueCreateFlags         flags
+        info.family_index.value(), // uint32_t queueFamilyIndex
         static_cast<uint32_t>(info.priorities.size()), // uint32_t queueCount
         info.priorities
             .data() // const float                    * pQueuePriorities
@@ -474,11 +351,10 @@ bool VulkanLibraryInterface::createLogicalDevice(
           .data(), // const char * const             * ppEnabledExtensionNames
       desired_features // const VkPhysicalDeviceFeatures * pEnabledFeatures
   };
-
-  VkResult result = vkCreateDevice(physical_device, &device_create_info,
-                                   nullptr, &logical_device);
-  CHECK((result == VK_SUCCESS) && (logical_device != VK_NULL_HANDLE),
-        "Could not create logical device.");
+  CHECK_VULKAN(vkCreateDevice(physical_device, &device_create_info, nullptr,
+                              &logical_device),
+               "Could not create logical device.");
+  CHECK((logical_device != VK_NULL_HANDLE), "Could not create logical device.");
   return true;
 }
 
@@ -496,80 +372,7 @@ void VulkanLibraryInterface::getDeviceQueue(VkDevice logical_device,
   vkGetDeviceQueue(logical_device, queue_family_index, queue_index, &queue);
 }
 
-bool VulkanLibraryInterface::
-    createLogicalDeviceWithGeometryShadersAndGraphicsAndComputeQueues(
-        VkInstance instance, VkDevice &logical_device, VkQueue &graphics_queue,
-        VkQueue &compute_queue) {
-  std::vector<VkPhysicalDevice> physical_devices;
-  enumerateAvailablePhysicalDevices(instance, physical_devices);
-  for (auto &physical_device : physical_devices) {
-    VkPhysicalDeviceFeatures device_features;
-    VkPhysicalDeviceProperties device_properties;
-    getFeaturesAndPropertiesOfPhysicalDevice(physical_device, device_features,
-                                             device_properties);
-
-    if (!device_features.geometryShader) {
-      continue;
-    } else {
-      device_features = {};
-      device_features.geometryShader = VK_TRUE;
-    }
-
-    uint32_t graphics_queue_family_index;
-    if (!selectIndexOfQueueFamilyWithDesiredCapabilities(
-            physical_device, VK_QUEUE_GRAPHICS_BIT,
-            graphics_queue_family_index)) {
-      continue;
-    }
-
-    uint32_t compute_queue_family_index;
-    if (!selectIndexOfQueueFamilyWithDesiredCapabilities(
-            physical_device, VK_QUEUE_COMPUTE_BIT,
-            compute_queue_family_index)) {
-      continue;
-    }
-
-    std::vector<QueueInfo> requested_queues = {
-        {graphics_queue_family_index, {1.0f}}};
-    if (graphics_queue_family_index != compute_queue_family_index) {
-      requested_queues.push_back({compute_queue_family_index, {1.0f}});
-    }
-
-    if (!createLogicalDevice(physical_device, requested_queues, {},
-                             &device_features, logical_device)) {
-      continue;
-    } else {
-      if (!loadDeviceLevelFunctions(logical_device, {})) {
-        return false;
-      }
-      getDeviceQueue(logical_device, graphics_queue_family_index, 0,
-                     graphics_queue);
-      getDeviceQueue(logical_device, compute_queue_family_index, 0,
-                     compute_queue);
-      return true;
-    }
-  }
-  return false;
-}
-
-bool VulkanLibraryInterface::createVulkanInstanceWithWsiExtensionsEnabled(
-    std::vector<char const *> &desired_extensions,
-    char const *const application_name, VkInstance &instance) {
-  desired_extensions.emplace_back(VK_KHR_SURFACE_EXTENSION_NAME);
-  desired_extensions.emplace_back(
-#ifdef VK_USE_PLATFORM_WIN32_KHR
-      VK_KHR_WIN32_SURFACE_EXTENSION_NAME
-
-#elif defined VK_USE_PLATFORM_XCB_KHR
-      VK_KHR_XCB_SURFACE_EXTENSION_NAME
-
-#elif defined VK_USE_PLATFORM_XLIB_KHR
-      VK_KHR_XLIB_SURFACE_EXTENSION_NAME
-#endif
-  );
-
-  return createInstance(desired_extensions, application_name, instance);
-}
+// VULKAN SURFACE ////////////////////////////////////////////////////////////
 
 bool VulkanLibraryInterface::createPresentationSurface(
     VkInstance instance, WindowParameters window_parameters,
@@ -624,32 +427,84 @@ bool VulkanLibraryInterface::createPresentationSurface(
   }
   return true;
 }
-
+// UTILS /////////////////////////////////////////////////////////////////////
 bool VulkanLibraryInterface::
-    selectQueueFamilyThatSupportsPresentationToGivenSurface(
-        VkPhysicalDevice physical_device, VkSurfaceKHR presentation_surface,
-        uint32_t &queue_family_index) {
-  std::vector<VkQueueFamilyProperties> queue_families;
-  if (!checkAvailableQueueFamiliesAndTheirProperties(physical_device,
-                                                     queue_families)) {
-    return false;
-  }
+    createLogicalDeviceWithGeometryShadersAndGraphicsAndComputeQueues(
+        VkInstance instance, VkDevice &logical_device, VkQueue &graphics_queue,
+        VkQueue &compute_queue) {
+  std::vector<VkPhysicalDevice> physical_devices;
+  enumerateAvailablePhysicalDevices(instance, physical_devices);
+  for (auto &physical_device : physical_devices) {
+    VkPhysicalDeviceFeatures device_features;
+    VkPhysicalDeviceProperties device_properties;
+    getFeaturesAndPropertiesOfPhysicalDevice(physical_device, device_features,
+                                             device_properties);
 
-  for (uint32_t index = 0; index < static_cast<uint32_t>(queue_families.size());
-       ++index) {
-    VkBool32 presentation_supported = VK_FALSE;
-    VkResult result = vkGetPhysicalDeviceSurfaceSupportKHR(
-        physical_device, index, presentation_surface, &presentation_supported);
-    if ((VK_SUCCESS == result) && (VK_TRUE == presentation_supported)) {
-      queue_family_index = index;
+    if (!device_features.geometryShader) {
+      continue;
+    } else {
+      device_features = {};
+      device_features.geometryShader = VK_TRUE;
+    }
+
+    uint32_t graphics_queue_family_index;
+    if (!selectIndexOfQueueFamilyWithDesiredCapabilities(
+            physical_device, VK_QUEUE_GRAPHICS_BIT,
+            graphics_queue_family_index)) {
+      continue;
+    }
+
+    uint32_t compute_queue_family_index;
+    if (!selectIndexOfQueueFamilyWithDesiredCapabilities(
+            physical_device, VK_QUEUE_COMPUTE_BIT,
+            compute_queue_family_index)) {
+      continue;
+    }
+
+    std::vector<QueueFamilyInfo> requested_queues = {
+        {graphics_queue_family_index, {1.0f}}};
+    if (graphics_queue_family_index != compute_queue_family_index) {
+      requested_queues.push_back({compute_queue_family_index, {1.0f}});
+    }
+
+    if (!createLogicalDevice(physical_device, requested_queues, {},
+                             &device_features, logical_device)) {
+      continue;
+    } else {
+      if (!loadDeviceLevelFunctions(logical_device, {})) {
+        return false;
+      }
+      getDeviceQueue(logical_device, graphics_queue_family_index, 0,
+                     graphics_queue);
+      getDeviceQueue(logical_device, compute_queue_family_index, 0,
+                     compute_queue);
       return true;
     }
   }
   return false;
 }
 
+bool VulkanLibraryInterface::createVulkanInstanceWithWsiExtensionsEnabled(
+    std::vector<char const *> &desired_extensions,
+    char const *const application_name, VkInstance &instance) {
+  desired_extensions.emplace_back(VK_KHR_SURFACE_EXTENSION_NAME);
+  desired_extensions.emplace_back(
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+      VK_KHR_WIN32_SURFACE_EXTENSION_NAME
+
+#elif defined VK_USE_PLATFORM_XCB_KHR
+      VK_KHR_XCB_SURFACE_EXTENSION_NAME
+
+#elif defined VK_USE_PLATFORM_XLIB_KHR
+      VK_KHR_XLIB_SURFACE_EXTENSION_NAME
+#endif
+  );
+
+  return createInstance(desired_extensions, application_name, instance);
+}
+
 bool VulkanLibraryInterface::createLogicalDeviceWithWsiExtensionsEnabled(
-    VkPhysicalDevice physical_device, std::vector<QueueInfo> queue_infos,
+    VkPhysicalDevice physical_device, std::vector<QueueFamilyInfo> queue_infos,
     std::vector<char const *> &desired_extensions,
     VkPhysicalDeviceFeatures *desired_features, VkDevice &logical_device) {
   desired_extensions.emplace_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
@@ -1334,5 +1189,7 @@ void VulkanLibraryInterface::destroyCommandPool(VkDevice logical_device,
     command_pool = VK_NULL_HANDLE;
   }
 }
+
+} // namespace vk
 
 } // namespace circe

@@ -31,6 +31,7 @@
 #define CIRCE_VULKAN_LIBRARY
 
 #include "vulkan_api.h"
+#include <optional>
 #include <sstream>
 #include <vector>
 
@@ -44,6 +45,8 @@
 #endif
 
 namespace circe {
+
+namespace vk {
 
 inline void concatenate(std::ostringstream &s) {}
 
@@ -65,9 +68,15 @@ class VulkanLibraryInterface {
 public:
   /// Stores information about queues requested to a logical device and the list
   /// of priorities assifned to each queue
-  struct QueueInfo {
-    uint32_t family_index;         //!< queue family index
+  struct QueueFamilyInfo {
+    std::optional<uint32_t> family_index; //!< queue family index
     std::vector<float> priorities; //!< list of queue priorities, [0.0,1.0]
+  };
+  struct PhysicalDevice {
+    VkPhysicalDevice handle;
+    VkPhysicalDeviceFeatures &features;
+    VkPhysicalDeviceProperties &properties;
+    std::vector<VkQueueFamilyProperties> queue_families;
   };
   struct WindowParameters {
 #ifdef VK_USE_PLATFORM_WIN32_KHR
@@ -244,6 +253,15 @@ public:
   static bool selectIndexOfQueueFamilyWithDesiredCapabilities(
       VkPhysicalDevice physical_device, VkQueueFlags desired_capabilities,
       uint32_t &queue_family_index);
+  /// \brief
+  ///
+  /// \param physical_device **[in]**
+  /// \param presentation_surface **[in]**
+  /// \param queue_family_index **[in]**
+  /// \return bool
+  static bool selectQueueFamilyThatSupportsPresentationToGivenSurface(
+      VkPhysicalDevice physical_device, VkSurfaceKHR presentation_surface,
+      uint32_t &queue_family_index);
 
   // VULKAN LOGICAL DEVICE
   // ---------------------
@@ -263,10 +281,12 @@ public:
   /// \param desired_features **[in]** desired features
   /// \param logical_device **[out]** logical device handle
   /// \return bool true if success
-  static bool createLogicalDevice(
-      VkPhysicalDevice physical_device, std::vector<QueueInfo> queue_infos,
-      std::vector<char const *> const &desired_extensions,
-      VkPhysicalDeviceFeatures *desired_features, VkDevice &logical_device);
+  static bool
+  createLogicalDevice(VkPhysicalDevice physical_device,
+                      std::vector<QueueFamilyInfo> queue_infos,
+                      std::vector<char const *> const &desired_extensions,
+                      VkPhysicalDeviceFeatures *desired_features,
+                      VkDevice &logical_device);
   /// Clean up the resources used by the logical device and destroys its handle.
   /// Must be destroyed before destroy the Vulkan Instance.
   /// \param logical_device **[in/out]** logical device handle
@@ -279,6 +299,24 @@ public:
                              uint32_t queue_family_index, uint32_t queue_index,
                              VkQueue &queue);
 
+  // VULKAN SURFACE
+  // --------------
+  // Vulkan does not provide a way to display images in the application's
+  // window by default. We need extensions to do so. These extensions are
+  // commonly referred as Windowing System Integration (WSI) and each operating
+  // system has its own set of extensions.
+  // The presentation surface is the Vulkan representation of an application's
+  // window. Instance-level extensions are responsable for managing, creating,
+  // and destroying a presentation surface.
+
+  /// \brief Create a Presentation Surface handle
+  /// \param instance **[in]** vulkan instance handle
+  /// \param window_parameters **[in]** window parameters
+  /// \param presentation_surface **[out]** presentation surface handle
+  /// \return bool true if success
+  static bool createPresentationSurface(VkInstance instance,
+                                        WindowParameters window_parameters,
+                                        VkSurfaceKHR &presentation_surface);
   // UTILS
 
   static bool createLogicalDeviceWithGeometryShadersAndGraphicsAndComputeQueues(
@@ -287,14 +325,9 @@ public:
   static bool createVulkanInstanceWithWsiExtensionsEnabled(
       std::vector<char const *> &desired_extensions,
       char const *const application_name, VkInstance &instance);
-  static bool createPresentationSurface(VkInstance instance,
-                                        WindowParameters window_parameters,
-                                        VkSurfaceKHR &presentation_surface);
-  static bool selectQueueFamilyThatSupportsPresentationToGivenSurface(
-      VkPhysicalDevice physical_device, VkSurfaceKHR presentation_surface,
-      uint32_t &queue_family_index);
   static bool createLogicalDeviceWithWsiExtensionsEnabled(
-      VkPhysicalDevice physical_device, std::vector<QueueInfo> queue_infos,
+      VkPhysicalDevice physical_device,
+      std::vector<QueueFamilyInfo> queue_infos,
       std::vector<char const *> &desired_extensions,
       VkPhysicalDeviceFeatures *desired_features, VkDevice &logical_device);
   static bool selectDesiredPresentationMode(
@@ -403,6 +436,8 @@ public:
 private:
   VulkanLibraryType vulkanLibrary_;
 };
+
+} // namespace vk
 
 } // namespace circe
 
