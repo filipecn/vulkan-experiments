@@ -31,10 +31,12 @@ namespace circe {
 
 namespace vk {
 
-GraphicsDisplay::GraphicsDisplay(size_t w, size_t h, const std::string &title) {
-  glfwInit();
+GraphicsDisplay::GraphicsDisplay(uint32_t w, uint32_t h,
+                                 const std::string &title) {
+  ASSERT(glfwInit());
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+  ASSERT(glfwVulkanSupported());
   window_ = glfwCreateWindow(w, h, title.c_str(), nullptr, nullptr);
 }
 
@@ -42,6 +44,10 @@ GraphicsDisplay::~GraphicsDisplay() {
   glfwDestroyWindow(window_);
   glfwTerminate();
 }
+
+uint32_t GraphicsDisplay::width() const { return width_; }
+
+uint32_t GraphicsDisplay::height() const { return height_; }
 
 void GraphicsDisplay::open() {
   while (!glfwWindowShouldClose(window_)) {
@@ -63,8 +69,7 @@ std::vector<const char *> GraphicsDisplay::requiredVkExtensions() const {
 
 bool GraphicsDisplay::createWindowSurface(VkInstance instance,
                                           VkSurfaceKHR &surface) const {
-  CHECK_VULKAN(glfwCreateWindowSurface(instance, window_, nullptr, &surface),
-               "failed to create window surface!");
+  CHECK_VULKAN(glfwCreateWindowSurface(instance, window_, nullptr, &surface));
   return true;
 }
 

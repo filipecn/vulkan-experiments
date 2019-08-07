@@ -96,9 +96,66 @@ bool App::createLogicalDevice(
     const std::vector<VulkanLibraryInterface::QueueFamilyInfo> &queue_infos,
     const std::vector<const char *> &desired_extensions,
     VkPhysicalDeviceFeatures *desired_features) {
-  VulkanLibraryInterface::createLogicalDevice(physical_device_, queue_infos,
-                                              desired_extensions,
-                                              desired_features, device_);
+  return VulkanLibraryInterface::createLogicalDevice(
+      physical_device_, queue_infos, desired_extensions, desired_features,
+      device_);
+}
+
+bool App::setupSwapChain(VkFormat desired_format,
+                         VkColorSpaceKHR desired_color_space) {
+  // PRESENTATION MODE
+  VkPresentModeKHR desired_present_mode;
+  if (!VulkanLibraryInterface::selectDesiredPresentationMode(
+          physical_device_, surface_, VK_PRESENT_MODE_MAILBOX_KHR,
+          desired_present_mode))
+    return false;
+  // CHECK SURFACE CAPABILITIES
+  VkSurfaceCapabilitiesKHR surface_capabilities;
+  if (!VulkanLibraryInterface::getCapabilitiesOfPresentationSurface(
+          physical_device_, surface_, surface_capabilities))
+    return false;
+  // GET NUMBER OF IMAGES
+  uint32_t number_of_images;
+  if (!VulkanLibraryInterface::selectNumberOfSwapchainImages(
+          surface_capabilities, number_of_images))
+    return false;
+  // QUERY IMAGE SIZE
+  VkExtent2D image_size = {graphics_display_->width(),
+                           graphics_display_->height()};
+  if (!VulkanLibraryInterface::chooseSizeOfSwapchainImages(surface_capabilities,
+                                                           image_size))
+    return false;
+  if ((0 == image_size.width) || (0 == image_size.height))
+    return false;
+  // USAGE
+  VkImageUsageFlags image_usage;
+  if (!VulkanLibraryInterface::selectDesiredUsageScenariosOfSwapchainImages(
+          surface_capabilities, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+          image_usage))
+    return false;
+  // IMAGE TRANSFORM
+  VkSurfaceTransformFlagBitsKHR surface_transform;
+  if (!VulkanLibraryInterface::selectTransformationOfSwapchainImages(
+          surface_capabilities, VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR,
+          surface_transform))
+    return false;
+  // COLOR SPACE
+  VkFormat image_format;
+  VkColorSpaceKHR image_color_space;
+  if (!VulkanLibraryInterface::selectFormatOfSwapchainImages(
+          physical_device_, surface_, {desired_format, desired_color_space},
+          image_format, image_color_space))
+    return false;
+  // SWAP CHAIN
+  if (!VulkanLibraryInterface::createSwapchain(
+          device_, surface_, number_of_images,
+          {image_format, image_color_space}, image_size, image_usage,
+          surface_transform, desired_present_mode, old_swap_chain_,
+          swap_chain_))
+    return false;
+  if (!VulkanLibraryInterface::getHandlesOfSwapchainImages(device_, swap_chain_,
+                                                           swap_chain_images_))
+    return false;
   return true;
 }
 

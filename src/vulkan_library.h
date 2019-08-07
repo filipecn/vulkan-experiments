@@ -30,10 +30,173 @@
 #ifndef CIRCE_VULKAN_LIBRARY
 #define CIRCE_VULKAN_LIBRARY
 
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+
+#ifndef GLFW_INCLUDE_VULKAN
 #include "vulkan_api.h"
+#endif
+
+#include <iostream>
 #include <optional>
 #include <sstream>
 #include <vector>
+
+/// Retrieves the description of VkResult values
+/// \param err **[in]** error code
+/// \return std::string error description
+inline std::string vulkanResultString(VkResult err) {
+  switch (err) {
+  case VK_SUCCESS:
+    return "VK_SUCCESS Command successfully completed";
+  case VK_NOT_READY:
+    return "VK_NOT_READY A fence or query has not yet completed";
+  case VK_TIMEOUT:
+    return "VK_TIMEOUT A wait operation has not completed in the specified "
+           "time";
+  case VK_EVENT_SET:
+    return "VK_EVENT_SET An event is signaled";
+  case VK_EVENT_RESET:
+    return "VK_EVENT_RESET An event is unsignaled";
+  case VK_INCOMPLETE:
+    return "VK_INCOMPLETE A return array was too small for the result";
+  case VK_SUBOPTIMAL_KHR:
+    return "VK_SUBOPTIMAL_KHR A swapchain no longer matches the surface "
+           "properties exactly, but can still be used to present to the "
+           "surface successfully.";
+  case VK_ERROR_OUT_OF_HOST_MEMORY:
+    return "VK_ERROR_OUT_OF_HOST_MEMORY A host memory allocation has failed.";
+  case VK_ERROR_OUT_OF_DEVICE_MEMORY:
+    return "VK_ERROR_OUT_OF_DEVICE_MEMORY A device memory allocation has "
+           "failed.";
+  case VK_ERROR_INITIALIZATION_FAILED:
+    return "VK_ERROR_INITIALIZATION_FAILED Initialization of an object could "
+           "not be completed for implementation-specific reasons.";
+  case VK_ERROR_DEVICE_LOST:
+    return "VK_ERROR_DEVICE_LOST The logical or physical device has been lost. "
+           "See Lost Device";
+  case VK_ERROR_MEMORY_MAP_FAILED:
+    return "VK_ERROR_MEMORY_MAP_FAILED Mapping of a memory object has failed.";
+  case VK_ERROR_LAYER_NOT_PRESENT:
+    return "VK_ERROR_LAYER_NOT_PRESENT A requested layer is not present or "
+           "could not be loaded.";
+  case VK_ERROR_EXTENSION_NOT_PRESENT:
+    return "VK_ERROR_EXTENSION_NOT_PRESENT A requested extension is not "
+           "supported.";
+  case VK_ERROR_FEATURE_NOT_PRESENT:
+    return "VK_ERROR_FEATURE_NOT_PRESENT A requested feature is not supported.";
+  case VK_ERROR_INCOMPATIBLE_DRIVER:
+    return "VK_ERROR_INCOMPATIBLE_DRIVER The requested version of Vulkan is "
+           "not supported by the driver or is otherwise incompatible for "
+           "implementation-specific reasons.";
+  case VK_ERROR_TOO_MANY_OBJECTS:
+    return "VK_ERROR_TOO_MANY_OBJECTS Too many objects of the type have "
+           "already been created.";
+  case VK_ERROR_FORMAT_NOT_SUPPORTED:
+    return "VK_ERROR_FORMAT_NOT_SUPPORTED A requested format is not supported "
+           "on this device.";
+  case VK_ERROR_FRAGMENTED_POOL:
+    return "VK_ERROR_FRAGMENTED_POOL A pool allocation has failed due to "
+           "fragmentation of the pool’s memory. This must only be returned if "
+           "no attempt to allocate host or device memory was made to "
+           "accommodate the new allocation. This should be returned in "
+           "preference to VK_ERROR_OUT_OF_POOL_MEMORY, but only if the "
+           "implementation is certain that the pool allocation failure was due "
+           "to fragmentation.";
+  case VK_ERROR_SURFACE_LOST_KHR:
+    return "VK_ERROR_SURFACE_LOST_KHR A surface is no longer available.";
+  case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
+    return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR The requested window is already "
+           "in use by Vulkan or another API in a manner which prevents it from "
+           "being used again.";
+  case VK_ERROR_OUT_OF_DATE_KHR:
+    return "VK_ERROR_OUT_OF_DATE_KHR A surface has changed in such a way that "
+           "it is no longer compatible with the swapchain, and further "
+           "presentation requests using the swapchain will fail. Applications "
+           "must query the new surface properties and recreate their swapchain "
+           "if they wish to continue presenting to the surface.";
+  case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:
+    return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR The display used by a swapchain "
+           "does not use the same presentable image layout, or is incompatible "
+           "in a way that prevents sharing an image.";
+  case VK_ERROR_INVALID_SHADER_NV:
+    return "VK_ERROR_INVALID_SHADER_NV One or more shaders failed to compile "
+           "or link. More details are reported back to the application via "
+           "https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/"
+           "vkspec.html#VK_EXT_debug_report if enabled.";
+  case VK_ERROR_OUT_OF_POOL_MEMORY:
+    return "VK_ERROR_OUT_OF_POOL_MEMORY A pool memory allocation has failed. "
+           "This must only be returned if no attempt to allocate host or "
+           "device memory was made to accommodate the new allocation. If the "
+           "failure was definitely due to fragmentation of the pool, "
+           "VK_ERROR_FRAGMENTED_POOL should be returned instead.";
+  case VK_ERROR_INVALID_EXTERNAL_HANDLE:
+    return "VK_ERROR_INVALID_EXTERNAL_HANDLE An external handle is not a valid "
+           "handle of the specified type.";
+  case VK_ERROR_FRAGMENTATION_EXT:
+    return "VK_ERROR_FRAGMENTATION_EXT A descriptor pool creation has failed "
+           "due to fragmentation.";
+  case VK_ERROR_INVALID_DEVICE_ADDRESS_EXT:
+    return "VK_ERROR_INVALID_DEVICE_ADDRESS_EXT A buffer creation failed "
+           "because the requested address is not available.";
+  case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:
+    return "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT An operation on a "
+           "swapchain created with "
+           "VK_FULL_SCREEN_EXCLUSIVE_APPLICATION_CONTROLLED_EXT failed as it "
+           "did not have exlusive full-screen access. This may occur due to "
+           "implementation-dependent reasons, outside of the application’s "
+           "control.";
+  // case VK_ERROR_OUT_OF_POOL_MEMORY_KHR:
+  //   return "VK_ERROR_OUT_OF_POOL_MEMORY_KHR";
+  case VK_ERROR_VALIDATION_FAILED_EXT:
+    return "VK_ERROR_VALIDATION_FAILED_EXT";
+  case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT:
+    return "VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT";
+  case VK_ERROR_NOT_PERMITTED_EXT:
+    return "VK_ERROR_NOT_PERMITTED_EXT";
+  // case VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR:
+  //   return "VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR";
+  default:
+    return "UNDEFINED";
+  }
+  return "UNDEFINED";
+}
+///
+#define DEBUG_INFO(M)                                                          \
+  std::cerr << "[INFO] in [" << __FILE__ << "][" << __LINE__ << "]: " << (M)   \
+            << std::endl;
+///
+#define CHECK_INFO(A, M)                                                       \
+  if (!(A)) {                                                                  \
+    std::cerr << "[INFO] in [" << __FILE__ << "][" << __LINE__ << "]: " << (M) \
+              << std::endl;                                                    \
+    return false;                                                              \
+  }
+///
+#define ASSERT(A)                                                              \
+  if (!(A)) {                                                                  \
+    std::cerr << "[ASSERTION_ERROR] in [" << __FILE__ << "][" << __LINE__      \
+              << "]: " << #A << std::endl;                                     \
+    exit(-1);                                                                  \
+  }
+///
+#define CHECK_VULKAN(A)                                                        \
+  {                                                                            \
+    VkResult err = (A);                                                        \
+    if (err != VK_SUCCESS) {                                                   \
+      std::cerr << "[VULKAN_ERROR] in [" << __FILE__ << "][" << __LINE__       \
+                << "]: call " << #A << std::endl;                              \
+      std::cerr << ".............. " << vulkanResultString(err) << std::endl;  \
+      return false;                                                            \
+    }                                                                          \
+  }
+///
+#define CHECK(A, M)                                                            \
+  if (!(A)) {                                                                  \
+    std::cerr << "[CHECK_ERROR] in [" << __FILE__ << "][" << __LINE__          \
+              << "]: " << (M) << std::endl;                                    \
+    return false;                                                              \
+  }
 
 #if defined _WIN32
 #include <windows.h>
@@ -72,6 +235,17 @@ public:
     std::optional<uint32_t> family_index; //!< queue family index
     std::vector<float> priorities; //!< list of queue priorities, [0.0,1.0]
   };
+  /// Stores swap chain support information:
+  /// - Basic surface capabilities (min/max number of images in swap chain,
+  /// min/max width and height of images)
+  /// - Surface formats (pixel format, color space)
+  /// - Available presentation modes
+  struct SwapChainSupportDetails {
+    VkSurfaceCapabilitiesKHR capabilities;
+    std::vector<VkSurfaceFormatKHR> formats;
+    std::vector<VkPresentModeKHR> present_modes;
+  };
+  ///
   struct PhysicalDevice {
     VkPhysicalDevice handle;
     VkPhysicalDeviceFeatures &features;
@@ -253,12 +427,12 @@ public:
   static bool selectIndexOfQueueFamilyWithDesiredCapabilities(
       VkPhysicalDevice physical_device, VkQueueFlags desired_capabilities,
       uint32_t &queue_family_index);
-  /// \brief
-  ///
-  /// \param physical_device **[in]**
-  /// \param presentation_surface **[in]**
-  /// \param queue_family_index **[in]**
-  /// \return bool
+  /// Finds a queue family of a physical device that can accept commands for a
+  /// given surface
+  /// \param physical_device **[in]** physical device handle
+  /// \param presentation_surface **[in]** surface handle
+  /// \param queue_family_index **[out]** queue family index
+  /// \return bool true if success
   static bool selectQueueFamilyThatSupportsPresentationToGivenSurface(
       VkPhysicalDevice physical_device, VkSurfaceKHR presentation_surface,
       uint32_t &queue_family_index);
@@ -317,42 +491,132 @@ public:
   static bool createPresentationSurface(VkInstance instance,
                                         WindowParameters window_parameters,
                                         VkSurfaceKHR &presentation_surface);
-  // UTILS
-
-  static bool createLogicalDeviceWithGeometryShadersAndGraphicsAndComputeQueues(
-      VkInstance instance, VkDevice &logical_device, VkQueue &graphics_queue,
-      VkQueue &compute_queue);
-  static bool createVulkanInstanceWithWsiExtensionsEnabled(
-      std::vector<char const *> &desired_extensions,
-      char const *const application_name, VkInstance &instance);
-  static bool createLogicalDeviceWithWsiExtensionsEnabled(
-      VkPhysicalDevice physical_device,
-      std::vector<QueueFamilyInfo> queue_infos,
-      std::vector<char const *> &desired_extensions,
-      VkPhysicalDeviceFeatures *desired_features, VkDevice &logical_device);
-  static bool selectDesiredPresentationMode(
-      VkPhysicalDevice physical_device, VkSurfaceKHR presentation_surface,
-      VkPresentModeKHR desired_present_mode, VkPresentModeKHR &present_mode);
+  /// \brief Retrieve the capabilities of the surface
+  /// \param physical_device **[in]** physical device handle
+  /// \param presentation_surface **[in]** surface handle
+  /// \param surface_capabilities **[out]** surface capabilities
+  /// \return bool true if success
   static bool getCapabilitiesOfPresentationSurface(
       VkPhysicalDevice physical_device, VkSurfaceKHR presentation_surface,
       VkSurfaceCapabilitiesKHR &surface_capabilities);
+
+  // VULKAN SWAP CHAIN
+  // -----------------
+  // Different from other high level libraries, such as OpenGL, Vulkan does not
+  // have a system of framebuffers. In order to control the buffers that are
+  // rendered and presented on the display, Vulkan provides a mechanism called
+  // swap chain. The Vulkan swapchain is a queue of images that are presented to
+  // the screen in a synchronized manner, following the rules and properties
+  // defined on its setup.
+  // The swapchain is owned by the presentation engine, and not by the
+  // application. We can't create the images or destroy them, all the
+  // application does is to request images, do work and give it back to the
+  // presentation engine.
+  // In order to use the swapchain, the device has to support the
+  // VK_KHR_swapchain extension.
+  // The swapchain works following a presentation mode. The presentation mode
+  // defines the format of an image, the number of images (double/triple
+  // buffering), v-sync and etc. In other words, it defines how images are
+  // displayed on screen. Vulkan provides 4 presentation modes:
+  // 1. IMMEDIATE mode
+  //    The image to be presented immediately replaces the image that is being
+  //    displayed. Screen tearing may happen when using this mode.
+  // 2. FIFO mode
+  //    When a image is presented, it is added to the queue. Images are
+  //    displayed on screen in sync with blanking periods (v-sync). This mode is
+  //    similar to OpenGL's buffer swap.
+  // 3. (FIFO) RELAXED mode
+  //    Images are displayed with blanking periods only when are faster than the
+  //    refresh rate.
+  // 4. MAILBOX mode (triple buffering)
+  //    There is a queue with just one element. An image waiting in this queue
+  //    is displayed in sync with blanking periods. When the application
+  //    presents an image, the new image replaces the one waiting in the queue.
+  //    So the displayed image is always the most recent available.
+
+  /// Checks if the desired presentation mode is supported by the device, if so,
+  /// it is returned in **present_mode**. If not, VK_PRESENT_MODE_FIFO_KHR is
+  /// chosen.
+  /// \param physical_device **[in]** physical device handle
+  /// \param presentation_surface **[in]** surface handle
+  /// \param desired_present_mode **[in]** described presentation mode
+  /// \param present_mode **[out]** available presentation mode
+  /// \return bool true if success
+  static bool selectDesiredPresentationMode(
+      VkPhysicalDevice physical_device, VkSurfaceKHR presentation_surface,
+      VkPresentModeKHR desired_present_mode, VkPresentModeKHR &present_mode);
+  /// \brief Gets swap chain support information for a surface in a given
+  /// physical device.
+  /// \param physical_device **[in]** physical device handle
+  /// \param presentation_surface **[in]** surface handle
+  /// \param details **[out]** support information
+  /// \return bool true if success
+  static bool querySwapChainSupport(VkPhysicalDevice physical_device,
+                                    VkSurfaceKHR surface,
+                                    SwapChainSupportDetails &details);
+  /// Computes the minimal value + 1, of images required for the presentation
+  /// engine to work properly.
+  /// \param surface_capabilities **[in]** surface capabilities
+  /// \param number_of_images **[out]** available number of images
+  /// \return bool true if success
   static bool selectNumberOfSwapchainImages(
-      VkSurfaceCapabilitiesKHR const &surface_capabilities,
+      const VkSurfaceCapabilitiesKHR &surface_capabilities,
       uint32_t &number_of_images);
+  /// Clamps the **size_of_images** to the maximum supported by the surface
+  /// capabilities.
+  /// \param surface_capabilities **[in]** surface capabilities
+  /// \param size_of_images **[in/out]** desired/available size of images
+  /// \return bool true if success
   static bool chooseSizeOfSwapchainImages(
       VkSurfaceCapabilitiesKHR const &surface_capabilities,
       VkExtent2D &size_of_images);
+  /// \brief Clamps the usage flag to the surface capabilities
+  /// Images can also be used for purposes other than as color attachments. For
+  /// example, we can sample from them and use them in copy operations.
+  /// \param surface_capabilities **[in]** surface capabilities
+  /// \param desired_usages **[in]** desired usages
+  /// \param image_usage **[in/out]** available usages
+  /// \return bool true if success
   static bool selectDesiredUsageScenariosOfSwapchainImages(
       VkSurfaceCapabilitiesKHR const &surface_capabilities,
       VkImageUsageFlags desired_usages, VkImageUsageFlags &image_usage);
+  /// \brief Clamps the desired image orientation to the supported image
+  /// orientation.
+  /// On some devices, images can be displayed in different orientations.
+  /// \param surface_capabilities **[in]** surface capabilities
+  /// \param desired_transform **[in]** desired image orientation
+  /// \param surface_transform **[in]** available image orientation
+  /// \return bool true if success
   static bool selectTransformationOfSwapchainImages(
       VkSurfaceCapabilitiesKHR const &surface_capabilities,
       VkSurfaceTransformFlagBitsKHR desired_transform,
       VkSurfaceTransformFlagBitsKHR &surface_transform);
+  /// Clamps the desired image format to the supported format by the
+  /// device. The format defines the number of color components, the number of
+  /// bits for each component and data type. Also, we must specify the color
+  /// space to be used for encoding color.
+  /// \param physical_device **[in]** physical device handle
+  /// \param presentation_surface **[in]** surface handle
+  /// \param desired_surface_format **[in]** desired image format
+  /// \param image_format **[out]** available image format
+  /// \param image_color_space **[out]** available color space
+  /// \return bool true if success
   static bool selectFormatOfSwapchainImages(
       VkPhysicalDevice physical_device, VkSurfaceKHR presentation_surface,
       VkSurfaceFormatKHR desired_surface_format, VkFormat &image_format,
       VkColorSpaceKHR &image_color_space);
+  /// \brief Create a Swapchain object
+  /// \param logical_device **[in]** logical device handle
+  /// \param presentation_surface **[in]** surface handle
+  /// \param image_count **[in]** swapchain image count
+  /// \param surface_format **[in]** surface format
+  /// \param image_size **[in]** image size
+  /// \param image_usage **[in]** image usages
+  /// \param surface_transform **[in]** surface transform
+  /// \param present_mode **[in]** presentation mode
+  /// \param old_swapchain **[in | optional]** old swap chain handle
+  /// \param swapchain **[out]** new swap chain handle
+  /// \return bool true if success
   static bool
   createSwapchain(VkDevice logical_device, VkSurfaceKHR presentation_surface,
                   uint32_t image_count, VkSurfaceFormatKHR surface_format,
@@ -360,15 +624,52 @@ public:
                   VkSurfaceTransformFlagBitsKHR surface_transform,
                   VkPresentModeKHR present_mode, VkSwapchainKHR &old_swapchain,
                   VkSwapchainKHR &swapchain);
+  /// \brief Get the Handles Of Swapchain Images object
+  /// \param logical_device **[in]** logical device handle
+  /// \param swapchain **[in]** swapchain handle
+  /// \param swapchain_images **[out]** list of swapchain image handles
+  /// \return bool true if success
   static bool
   getHandlesOfSwapchainImages(VkDevice logical_device, VkSwapchainKHR swapchain,
                               std::vector<VkImage> &swapchain_images);
+
+  // UTILS
+  // -----
+  // Here follows some auxiliary methods for instance and device creation
+
+  /// Same as **createVulkanInstance**, but automatically appends the
+  /// VK_KHR_***_SURFACE_EXTANTION_NAME to the desired extensions list
+  /// \param desired_extensions **[in]** list of desired extensions
+  /// \param application_name **[in]** application name
+  /// \param instance **[out]** instance handle
+  /// \return bool true if success
+  static bool createVulkanInstanceWithWsiExtensionsEnabled(
+      std::vector<char const *> &desired_extensions,
+      char const *const application_name, VkInstance &instance);
+  /// Same as **createLogicalDevice**, but automatically appends the
+  /// VK_KHR_SWAPCHAIN_EXTENTSION_NAME to the desired extensions list
+  /// \param physical_device **[in]** physical device handle
+  /// \param queue_infos **[in]** queues description
+  /// \param desired_extensions **[in]** desired extensions
+  /// \param desired_features **[in]** desired features
+  /// \param logical_device **[out]** logical device handle
+  /// \return bool true if success
+  static bool createLogicalDeviceWithWsiExtensionsEnabled(
+      VkPhysicalDevice physical_device,
+      std::vector<QueueFamilyInfo> queue_infos,
+      std::vector<char const *> &desired_extensions,
+      VkPhysicalDeviceFeatures *desired_features, VkDevice &logical_device);
+  static bool createLogicalDeviceWithGeometryShadersAndGraphicsAndComputeQueues(
+      VkInstance instance, VkDevice &logical_device, VkQueue &graphics_queue,
+      VkQueue &compute_queue);
+
   static bool createSwapchainWithR8G8B8A8FormatAndMailboxPresentMode(
       VkPhysicalDevice physical_device, VkSurfaceKHR presentation_surface,
       VkDevice logical_device, VkImageUsageFlags swapchain_image_usage,
       VkExtent2D &image_size, VkFormat &image_format,
       VkSwapchainKHR &old_swapchain, VkSwapchainKHR &swapchain,
       std::vector<VkImage> &swapchain_images);
+
   static bool acquireSwapchainImage(VkDevice logical_device,
                                     VkSwapchainKHR swapchain,
                                     VkSemaphore semaphore, VkFence fence,

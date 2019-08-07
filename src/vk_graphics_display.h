@@ -29,8 +29,8 @@
 #define CIRCE_VK_GRAPHICS_DISPLAY_H
 
 #include "vulkan_library.h"
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
+// #define GLFW_INCLUDE_VULKAN
+// #include <GLFW/glfw3.h>
 
 namespace circe {
 
@@ -45,10 +45,12 @@ public:
   /// \param h **[in]** window height (in pixels)
   /// \param title **[in]** window title text
   GraphicsDisplay(
-      size_t w, size_t h,
+      uint32_t w, uint32_t h,
       const std::string &title = std::string("Vulkan Display Window"));
   /// \brief Destroy the Graphics Display object
   ~GraphicsDisplay();
+  uint32_t width() const;
+  uint32_t height() const;
   /// Runs window loop
   void open();
   /// Stops window loop
@@ -66,6 +68,8 @@ public:
   bool createWindowSurface(VkInstance instance, VkSurfaceKHR &surface) const;
 
 private:
+  uint32_t width_;
+  uint32_t height_;
   GLFWwindow *window_ = nullptr;
 };
 

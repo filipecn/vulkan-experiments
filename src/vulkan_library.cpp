@@ -49,13 +49,15 @@ bool VulkanLibraryInterface::loadLoaderFunctionFromVulkan(
 #elif defined __APPLE__
 #define LoadFunction dlsym
 #endif
-
+#ifndef GLFW_INCLUDE_VULKAN
 #define EXPORTED_VULKAN_FUNCTION(name)                                         \
   name = (PFN_##name)LoadFunction(vulkanLibrary, #name);                       \
-  CHECK(name != nullptr,                                                       \
-        concat("Could not load exported Vulkan function named: ", #name))
-#include "vulkan_api.inl"
-  return true;
+    CHECK(name != nullptr, \ concat("Could not load exported Vulkan function
+named:
+  ", #name)) #include " vulkan_api.inl "
+
+#endif
+      return true;
 }
 
 void VulkanLibraryInterface::releaseVulkanLoaderLibrary(
@@ -73,24 +75,26 @@ void VulkanLibraryInterface::releaseVulkanLoaderLibrary(
 }
 
 bool VulkanLibraryInterface::loadGlobalLevelFunctions() {
+#ifndef GLFW_INCLUDE_VULKAN
 #define GLOBAL_LEVEL_VULKAN_FUNCTION(name)                                     \
   name = (PFN_##name)vkGetInstanceProcAddr(nullptr, #name);                    \
   CHECK(name != nullptr,                                                       \
         concat("Could not load global-level function named: ", #name))
 #include "vulkan_api.inl"
+#endif
   return true;
 }
 
 bool VulkanLibraryInterface::loadInstanceLevelFunctions(
     VkInstance instance, const std::vector<const char *> &extensions) {
-// Load core Vulkan API instance-level functions
+#ifndef GLFW_INCLUDE_VULKAN
 #define INSTANCE_LEVEL_VULKAN_FUNCTION(name)                                   \
   name = (PFN_##name)vkGetInstanceProcAddr(instance, #name);                   \
   CHECK(                                                                       \
       name != nullptr,                                                         \
       concat("Could not load instance-level Vulkan function named: ", #name))
 
-  // Load instance-level functions from enabled extensions
+// Load instance-level functions from enabled extensions
 #define INSTANCE_LEVEL_VULKAN_FUNCTION_FROM_EXTENSION(name, extension)         \
   for (auto &ext : extensions) {                                               \
     if (std::string(ext) == std::string(extension)) {                          \
@@ -100,16 +104,15 @@ bool VulkanLibraryInterface::loadInstanceLevelFunctions(
                    #name))                                                     \
     }                                                                          \
   }
-
 #include "vulkan_api.inl"
-
+#endif
   return true;
 }
 
 bool VulkanLibraryInterface::loadDeviceLevelFunctions(
     VkDevice logical_device,
     std::vector<char const *> const &enabled_extensions) {
-  // Load core Vulkan API device-level functions
+#ifndef GLFW_INCLUDE_VULKAN
 #define DEVICE_LEVEL_VULKAN_FUNCTION(name)                                     \
   name = (PFN_##name)vkGetDeviceProcAddr(logical_device, #name);               \
   if (name == nullptr) {                                                       \
@@ -118,7 +121,7 @@ bool VulkanLibraryInterface::loadDeviceLevelFunctions(
     return false;                                                              \
   }
 
-  // Load device-level functions from enabled extensions
+// Load device-level functions from enabled extensions
 #define DEVICE_LEVEL_VULKAN_FUNCTION_FROM_EXTENSION(name, extension)           \
   for (auto &enabled_extension : enabled_extensions) {                         \
     if (std::string(enabled_extension) == std::string(extension)) {            \
@@ -133,7 +136,7 @@ bool VulkanLibraryInterface::loadDeviceLevelFunctions(
   }
 
 #include "vulkan_api.inl"
-
+#endif
   return true;
 }
 
@@ -142,16 +145,13 @@ bool VulkanLibraryInterface::loadDeviceLevelFunctions(
 bool VulkanLibraryInterface::checkAvaliableInstanceExtensions(
     std::vector<VkExtensionProperties> &extensions) {
   uint32_t extensionsCount = 0;
-  VkResult result = VK_SUCCESS;
-  result = vkEnumerateInstanceExtensionProperties(nullptr, &extensionsCount,
-                                                  nullptr);
-  CHECK(result == VK_SUCCESS && extensionsCount != 0,
-        "Could not get the number of Instance extensions.");
+  CHECK_VULKAN(vkEnumerateInstanceExtensionProperties(nullptr, &extensionsCount,
+                                                      nullptr));
+  ASSERT(extensionsCount != 0);
   extensions.resize(extensionsCount);
-  result = vkEnumerateInstanceExtensionProperties(nullptr, &extensionsCount,
-                                                  &extensions[0]);
-  CHECK(result == VK_SUCCESS && extensionsCount != 0,
-        "Could enumerate Instance extensisons.");
+  CHECK_VULKAN(vkEnumerateInstanceExtensionProperties(nullptr, &extensionsCount,
+                                                      &extensions[0]));
+  ASSERT(extensionsCount != 0);
   return true;
 }
 
@@ -160,15 +160,12 @@ bool VulkanLibraryInterface::checkAvailableDeviceExtensions(
     std::vector<VkExtensionProperties> &extensions) {
   uint32_t extensionsCount = 0;
   CHECK_VULKAN(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr,
-                                                    &extensionsCount, nullptr),
-               "Could not count device extensions.");
-  if(extensionsCount == 0)
+                                                    &extensionsCount, nullptr));
+  if (extensionsCount == 0)
     return true;
   extensions.resize(extensionsCount);
-  CHECK_VULKAN(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr,
-                                                    &extensionsCount,
-                                                    extensions.data()),
-               "Could not enumerate device extensions properties.");
+  CHECK_VULKAN(vkEnumerateDeviceExtensionProperties(
+      physicalDevice, nullptr, &extensionsCount, extensions.data()));
   return true;
 }
 
@@ -210,8 +207,7 @@ bool VulkanLibraryInterface::createInstance(
   createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
   createInfo.ppEnabledExtensionNames =
       (extensions.size()) ? extensions.data() : nullptr;
-  CHECK_VULKAN(vkCreateInstance(&createInfo, nullptr, &instance),
-               "Could not create Vulkan Instance.");
+  CHECK_VULKAN(vkCreateInstance(&createInfo, nullptr, &instance));
   CHECK(instance != VK_NULL_HANDLE, "Could not create Vulkan Instance.");
   return true;
 }
@@ -227,14 +223,12 @@ void VulkanLibraryInterface::destroyVulkanInstance(VkInstance &instance) {
 bool VulkanLibraryInterface::enumerateAvailablePhysicalDevices(
     VkInstance instance, std::vector<VkPhysicalDevice> &devices) {
   uint32_t devicesCount = 0;
-  CHECK_VULKAN(vkEnumeratePhysicalDevices(instance, &devicesCount, nullptr),
-               "Could not get the number of available physical devices.");
+  CHECK_VULKAN(vkEnumeratePhysicalDevices(instance, &devicesCount, nullptr));
   CHECK(devicesCount != 0,
         "Could not get the number of available physical devices.");
   devices.resize(devicesCount);
   CHECK_VULKAN(
-      vkEnumeratePhysicalDevices(instance, &devicesCount, devices.data()),
-      "Could not enumerate physical devices.");
+      vkEnumeratePhysicalDevices(instance, &devicesCount, devices.data()));
   CHECK(devicesCount != 0, "Could not enumerate physical devices.");
   return true;
 }
@@ -352,9 +346,8 @@ bool VulkanLibraryInterface::createLogicalDevice(
       desired_features // const VkPhysicalDeviceFeatures * pEnabledFeatures
   };
   CHECK_VULKAN(vkCreateDevice(physical_device, &device_create_info, nullptr,
-                              &logical_device),
-               "Could not create logical device.");
-  CHECK((logical_device != VK_NULL_HANDLE), "Could not create logical device.");
+                              &logical_device));
+  CHECK(logical_device != VK_NULL_HANDLE, "Could not create logical device.");
   return true;
 }
 
@@ -427,7 +420,269 @@ bool VulkanLibraryInterface::createPresentationSurface(
   }
   return true;
 }
+
+bool VulkanLibraryInterface::getCapabilitiesOfPresentationSurface(
+    VkPhysicalDevice physical_device, VkSurfaceKHR presentation_surface,
+    VkSurfaceCapabilitiesKHR &surface_capabilities) {
+  CHECK_VULKAN(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+      physical_device, presentation_surface, &surface_capabilities));
+  return true;
+}
+
+// VULKAN SWAPCHAIN //////////////////////////////////////////////////////////
+
+bool VulkanLibraryInterface::selectDesiredPresentationMode(
+    VkPhysicalDevice physical_device, VkSurfaceKHR presentation_surface,
+    VkPresentModeKHR desired_present_mode, VkPresentModeKHR &present_mode) {
+  // Enumerate supported present modes
+  uint32_t present_modes_count = 0;
+  VkResult result = VK_SUCCESS;
+  result = vkGetPhysicalDeviceSurfacePresentModesKHR(
+      physical_device, presentation_surface, &present_modes_count, nullptr);
+  CHECK_INFO(VK_SUCCESS == result && 0 != present_modes_count,
+             "Could not get the number of supported present modes.");
+  std::vector<VkPresentModeKHR> present_modes(present_modes_count);
+  result = vkGetPhysicalDeviceSurfacePresentModesKHR(
+      physical_device, presentation_surface, &present_modes_count,
+      present_modes.data());
+  CHECK_INFO(VK_SUCCESS != result && 0 != present_modes_count,
+             "Could not enumerate present modes.");
+  // Select present mode
+  for (auto &current_present_mode : present_modes) {
+    if (current_present_mode == desired_present_mode) {
+      present_mode = desired_present_mode;
+      return true;
+    }
+  }
+  DEBUG_INFO(
+      "Desired present mode is not supported. Selecting default FIFO mode.");
+  for (auto &current_present_mode : present_modes) {
+    if (current_present_mode == VK_PRESENT_MODE_FIFO_KHR) {
+      present_mode = VK_PRESENT_MODE_FIFO_KHR;
+      return true;
+    }
+  }
+  DEBUG_INFO("VK_PRESENT_MODE_FIFO_KHR is not supported though it's mandatory "
+             "for all drivers!");
+  return false;
+}
+
+bool VulkanLibraryInterface::querySwapChainSupport(
+    VkPhysicalDevice physical_device, VkSurfaceKHR surface,
+    SwapChainSupportDetails &details) {
+  CHECK_VULKAN(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+      physical_device, surface, &details.capabilities));
+  uint32_t format_count = 0;
+  CHECK_VULKAN(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface,
+                                                    &format_count, nullptr));
+  if (format_count != 0) {
+    details.formats.resize(format_count);
+    CHECK_VULKAN(vkGetPhysicalDeviceSurfaceFormatsKHR(
+        physical_device, surface, &format_count, details.formats.data()));
+  }
+  uint32_t present_mode_count = 0;
+  CHECK_VULKAN(vkGetPhysicalDeviceSurfacePresentModesKHR(
+      physical_device, surface, &present_mode_count, nullptr));
+  if (present_mode_count != 0) {
+    details.present_modes.resize(present_mode_count);
+    CHECK_VULKAN(vkGetPhysicalDeviceSurfacePresentModesKHR(
+        physical_device, surface, &present_mode_count,
+        details.present_modes.data()));
+  }
+  return true;
+}
+
+bool VulkanLibraryInterface::selectNumberOfSwapchainImages(
+    VkSurfaceCapabilitiesKHR const &surface_capabilities,
+    uint32_t &number_of_images) {
+  number_of_images = surface_capabilities.minImageCount + 1;
+  if ((surface_capabilities.maxImageCount > 0) &&
+      (number_of_images > surface_capabilities.maxImageCount)) {
+    number_of_images = surface_capabilities.maxImageCount;
+  }
+  return true;
+}
+
+bool VulkanLibraryInterface::chooseSizeOfSwapchainImages(
+    VkSurfaceCapabilitiesKHR const &surface_capabilities,
+    VkExtent2D &size_of_images) {
+  if (0xFFFFFFFF == surface_capabilities.currentExtent.width) {
+    size_of_images = {640, 480};
+
+    if (size_of_images.width < surface_capabilities.minImageExtent.width) {
+      size_of_images.width = surface_capabilities.minImageExtent.width;
+    } else if (size_of_images.width >
+               surface_capabilities.maxImageExtent.width) {
+      size_of_images.width = surface_capabilities.maxImageExtent.width;
+    }
+
+    if (size_of_images.height < surface_capabilities.minImageExtent.height) {
+      size_of_images.height = surface_capabilities.minImageExtent.height;
+    } else if (size_of_images.height >
+               surface_capabilities.maxImageExtent.height) {
+      size_of_images.height = surface_capabilities.maxImageExtent.height;
+    }
+  } else {
+    size_of_images = surface_capabilities.currentExtent;
+  }
+  return true;
+}
+
+bool VulkanLibraryInterface::selectDesiredUsageScenariosOfSwapchainImages(
+    VkSurfaceCapabilitiesKHR const &surface_capabilities,
+    VkImageUsageFlags desired_usages, VkImageUsageFlags &image_usage) {
+  image_usage = desired_usages & surface_capabilities.supportedUsageFlags;
+  return desired_usages == image_usage;
+}
+
+bool VulkanLibraryInterface::selectTransformationOfSwapchainImages(
+    VkSurfaceCapabilitiesKHR const &surface_capabilities,
+    VkSurfaceTransformFlagBitsKHR desired_transform,
+    VkSurfaceTransformFlagBitsKHR &surface_transform) {
+  if (surface_capabilities.supportedTransforms & desired_transform) {
+    surface_transform = desired_transform;
+  } else {
+    surface_transform = surface_capabilities.currentTransform;
+  }
+  return true;
+}
+
+bool VulkanLibraryInterface::selectFormatOfSwapchainImages(
+    VkPhysicalDevice physical_device, VkSurfaceKHR presentation_surface,
+    VkSurfaceFormatKHR desired_surface_format, VkFormat &image_format,
+    VkColorSpaceKHR &image_color_space) {
+  // Enumerate supported formats
+  uint32_t formats_count = 0;
+
+  CHECK_VULKAN(vkGetPhysicalDeviceSurfaceFormatsKHR(
+      physical_device, presentation_surface, &formats_count, nullptr));
+  CHECK(0 != formats_count,
+        "Could not get the number of supported surface formats.");
+
+  std::vector<VkSurfaceFormatKHR> surface_formats(formats_count);
+  CHECK_VULKAN(vkGetPhysicalDeviceSurfaceFormatsKHR(
+      physical_device, presentation_surface, &formats_count,
+      surface_formats.data()));
+  CHECK(0 != formats_count, "Could not enumerate supported surface formats.");
+
+  // Select surface format
+  if ((1 == surface_formats.size()) &&
+      (VK_FORMAT_UNDEFINED == surface_formats[0].format)) {
+    image_format = desired_surface_format.format;
+    image_color_space = desired_surface_format.colorSpace;
+    return true;
+  }
+
+  for (auto &surface_format : surface_formats) {
+    if (desired_surface_format.format == surface_format.format &&
+        desired_surface_format.colorSpace == surface_format.colorSpace) {
+      image_format = desired_surface_format.format;
+      image_color_space = desired_surface_format.colorSpace;
+      return true;
+    }
+  }
+
+  for (auto &surface_format : surface_formats) {
+    if (desired_surface_format.format == surface_format.format) {
+      image_format = desired_surface_format.format;
+      image_color_space = surface_format.colorSpace;
+      DEBUG_INFO("Desired combination of format and colorspace is not "
+                 "supported. Selecting other colorspace.");
+      return true;
+    }
+  }
+
+  image_format = surface_formats[0].format;
+  image_color_space = surface_formats[0].colorSpace;
+  DEBUG_INFO("Desired format is not supported. Selecting available format - "
+             "colorspace combination.");
+  return true;
+}
+
+bool VulkanLibraryInterface::createSwapchain(
+    VkDevice logical_device, VkSurfaceKHR presentation_surface,
+    uint32_t image_count, VkSurfaceFormatKHR surface_format,
+    VkExtent2D image_size, VkImageUsageFlags image_usage,
+    VkSurfaceTransformFlagBitsKHR surface_transform,
+    VkPresentModeKHR present_mode, VkSwapchainKHR &old_swapchain,
+    VkSwapchainKHR &swapchain) {
+  VkSwapchainCreateInfoKHR swapchain_create_info = {
+      VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR, // VkStructureType sType
+      nullptr,               // const void                     * pNext
+      0,                     // VkSwapchainCreateFlagsKHR        flags
+      presentation_surface,  // VkSurfaceKHR                     surface
+      image_count,           // uint32_t                         minImageCount
+      surface_format.format, // VkFormat                         imageFormat
+      surface_format.colorSpace, // VkColorSpaceKHR imageColorSpace
+      image_size,                // VkExtent2D                       imageExtent
+      1,           // uint32_t                         imageArrayLayers
+      image_usage, // VkImageUsageFlags                imageUsage
+      VK_SHARING_MODE_EXCLUSIVE, // VkSharingMode imageSharingMode
+      0,       // uint32_t                         queueFamilyIndexCount
+      nullptr, // const uint32_t                 * pQueueFamilyIndices
+      surface_transform, // VkSurfaceTransformFlagBitsKHR    preTransform
+      VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR, // VkCompositeAlphaFlagBitsKHR
+                                         // compositeAlpha
+      present_mode, // VkPresentModeKHR                 presentMode
+      VK_TRUE,      // VkBool32                         clipped
+      old_swapchain // VkSwapchainKHR                   oldSwapchain
+  };
+
+  CHECK_VULKAN(vkCreateSwapchainKHR(logical_device, &swapchain_create_info,
+                                    nullptr, &swapchain));
+  CHECK(VK_NULL_HANDLE != swapchain, "Could not create a swapchain.");
+  if (VK_NULL_HANDLE != old_swapchain) {
+    vkDestroySwapchainKHR(logical_device, old_swapchain, nullptr);
+    old_swapchain = VK_NULL_HANDLE;
+  }
+  return true;
+}
+
+bool VulkanLibraryInterface::getHandlesOfSwapchainImages(
+    VkDevice logical_device, VkSwapchainKHR swapchain,
+    std::vector<VkImage> &swapchain_images) {
+  uint32_t images_count = 0;
+  CHECK_VULKAN(vkGetSwapchainImagesKHR(logical_device, swapchain, &images_count,
+                                       nullptr));
+  CHECK(0 != images_count, "Could not get the number of swapchain images.");
+  swapchain_images.resize(images_count);
+  CHECK_VULKAN(vkGetSwapchainImagesKHR(logical_device, swapchain, &images_count,
+                                       swapchain_images.data()));
+  CHECK(0 != images_count, "Could not enumerate swapchain images.");
+  return true;
+}
+
 // UTILS /////////////////////////////////////////////////////////////////////
+
+bool VulkanLibraryInterface::createVulkanInstanceWithWsiExtensionsEnabled(
+    std::vector<char const *> &desired_extensions,
+    char const *const application_name, VkInstance &instance) {
+  desired_extensions.emplace_back(VK_KHR_SURFACE_EXTENSION_NAME);
+  desired_extensions.emplace_back(
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+      VK_KHR_WIN32_SURFACE_EXTENSION_NAME
+
+#elif defined VK_USE_PLATFORM_XCB_KHR
+      VK_KHR_XCB_SURFACE_EXTENSION_NAME
+
+#elif defined VK_USE_PLATFORM_XLIB_KHR
+      VK_KHR_XLIB_SURFACE_EXTENSION_NAME
+#endif
+  );
+
+  return createInstance(desired_extensions, application_name, instance);
+}
+
+bool VulkanLibraryInterface::createLogicalDeviceWithWsiExtensionsEnabled(
+    VkPhysicalDevice physical_device, std::vector<QueueFamilyInfo> queue_infos,
+    std::vector<char const *> &desired_extensions,
+    VkPhysicalDeviceFeatures *desired_features, VkDevice &logical_device) {
+  desired_extensions.emplace_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
+  return createLogicalDevice(physical_device, queue_infos, desired_extensions,
+                             desired_features, logical_device);
+}
+
 bool VulkanLibraryInterface::
     createLogicalDeviceWithGeometryShadersAndGraphicsAndComputeQueues(
         VkInstance instance, VkDevice &logical_device, VkQueue &graphics_queue,
@@ -482,282 +737,6 @@ bool VulkanLibraryInterface::
     }
   }
   return false;
-}
-
-bool VulkanLibraryInterface::createVulkanInstanceWithWsiExtensionsEnabled(
-    std::vector<char const *> &desired_extensions,
-    char const *const application_name, VkInstance &instance) {
-  desired_extensions.emplace_back(VK_KHR_SURFACE_EXTENSION_NAME);
-  desired_extensions.emplace_back(
-#ifdef VK_USE_PLATFORM_WIN32_KHR
-      VK_KHR_WIN32_SURFACE_EXTENSION_NAME
-
-#elif defined VK_USE_PLATFORM_XCB_KHR
-      VK_KHR_XCB_SURFACE_EXTENSION_NAME
-
-#elif defined VK_USE_PLATFORM_XLIB_KHR
-      VK_KHR_XLIB_SURFACE_EXTENSION_NAME
-#endif
-  );
-
-  return createInstance(desired_extensions, application_name, instance);
-}
-
-bool VulkanLibraryInterface::createLogicalDeviceWithWsiExtensionsEnabled(
-    VkPhysicalDevice physical_device, std::vector<QueueFamilyInfo> queue_infos,
-    std::vector<char const *> &desired_extensions,
-    VkPhysicalDeviceFeatures *desired_features, VkDevice &logical_device) {
-  desired_extensions.emplace_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-
-  return createLogicalDevice(physical_device, queue_infos, desired_extensions,
-                             desired_features, logical_device);
-}
-
-bool VulkanLibraryInterface::selectDesiredPresentationMode(
-    VkPhysicalDevice physical_device, VkSurfaceKHR presentation_surface,
-    VkPresentModeKHR desired_present_mode, VkPresentModeKHR &present_mode) {
-  // Enumerate supported present modes
-  uint32_t present_modes_count = 0;
-  VkResult result = VK_SUCCESS;
-
-  result = vkGetPhysicalDeviceSurfacePresentModesKHR(
-      physical_device, presentation_surface, &present_modes_count, nullptr);
-  if ((VK_SUCCESS != result) || (0 == present_modes_count)) {
-    std::cout << "Could not get the number of supported present modes."
-              << std::endl;
-    return false;
-  }
-
-  std::vector<VkPresentModeKHR> present_modes(present_modes_count);
-  result = vkGetPhysicalDeviceSurfacePresentModesKHR(
-      physical_device, presentation_surface, &present_modes_count,
-      present_modes.data());
-  if ((VK_SUCCESS != result) || (0 == present_modes_count)) {
-    std::cout << "Could not enumerate present modes." << std::endl;
-    return false;
-  }
-
-  // Select present mode
-  for (auto &current_present_mode : present_modes) {
-    if (current_present_mode == desired_present_mode) {
-      present_mode = desired_present_mode;
-      return true;
-    }
-  }
-
-  std::cout
-      << "Desired present mode is not supported. Selecting default FIFO mode."
-      << std::endl;
-  for (auto &current_present_mode : present_modes) {
-    if (current_present_mode == VK_PRESENT_MODE_FIFO_KHR) {
-      present_mode = VK_PRESENT_MODE_FIFO_KHR;
-      return true;
-    }
-  }
-
-  std::cout << "VK_PRESENT_MODE_FIFO_KHR is not supported though it's "
-               "mandatory for all drivers!"
-            << std::endl;
-  return false;
-}
-
-bool VulkanLibraryInterface::getCapabilitiesOfPresentationSurface(
-    VkPhysicalDevice physical_device, VkSurfaceKHR presentation_surface,
-    VkSurfaceCapabilitiesKHR &surface_capabilities) {
-  VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-      physical_device, presentation_surface, &surface_capabilities);
-
-  if (VK_SUCCESS != result) {
-    std::cout << "Could not get the capabilities of a presentation surface."
-              << std::endl;
-    return false;
-  }
-  return true;
-}
-
-bool VulkanLibraryInterface::selectNumberOfSwapchainImages(
-    VkSurfaceCapabilitiesKHR const &surface_capabilities,
-    uint32_t &number_of_images) {
-  number_of_images = surface_capabilities.minImageCount + 1;
-  if ((surface_capabilities.maxImageCount > 0) &&
-      (number_of_images > surface_capabilities.maxImageCount)) {
-    number_of_images = surface_capabilities.maxImageCount;
-  }
-  return true;
-}
-
-bool VulkanLibraryInterface::chooseSizeOfSwapchainImages(
-    VkSurfaceCapabilitiesKHR const &surface_capabilities,
-    VkExtent2D &size_of_images) {
-  if (0xFFFFFFFF == surface_capabilities.currentExtent.width) {
-    size_of_images = {640, 480};
-
-    if (size_of_images.width < surface_capabilities.minImageExtent.width) {
-      size_of_images.width = surface_capabilities.minImageExtent.width;
-    } else if (size_of_images.width >
-               surface_capabilities.maxImageExtent.width) {
-      size_of_images.width = surface_capabilities.maxImageExtent.width;
-    }
-
-    if (size_of_images.height < surface_capabilities.minImageExtent.height) {
-      size_of_images.height = surface_capabilities.minImageExtent.height;
-    } else if (size_of_images.height >
-               surface_capabilities.maxImageExtent.height) {
-      size_of_images.height = surface_capabilities.maxImageExtent.height;
-    }
-  } else {
-    size_of_images = surface_capabilities.currentExtent;
-  }
-  return true;
-}
-
-bool VulkanLibraryInterface::selectDesiredUsageScenariosOfSwapchainImages(
-    VkSurfaceCapabilitiesKHR const &surface_capabilities,
-    VkImageUsageFlags desired_usages, VkImageUsageFlags &image_usage) {
-  image_usage = desired_usages & surface_capabilities.supportedUsageFlags;
-
-  return desired_usages == image_usage;
-}
-
-bool VulkanLibraryInterface::selectTransformationOfSwapchainImages(
-    VkSurfaceCapabilitiesKHR const &surface_capabilities,
-    VkSurfaceTransformFlagBitsKHR desired_transform,
-    VkSurfaceTransformFlagBitsKHR &surface_transform) {
-  if (surface_capabilities.supportedTransforms & desired_transform) {
-    surface_transform = desired_transform;
-  } else {
-    surface_transform = surface_capabilities.currentTransform;
-  }
-  return true;
-}
-
-bool VulkanLibraryInterface::selectFormatOfSwapchainImages(
-    VkPhysicalDevice physical_device, VkSurfaceKHR presentation_surface,
-    VkSurfaceFormatKHR desired_surface_format, VkFormat &image_format,
-    VkColorSpaceKHR &image_color_space) {
-  // Enumerate supported formats
-  uint32_t formats_count = 0;
-  VkResult result = VK_SUCCESS;
-
-  result = vkGetPhysicalDeviceSurfaceFormatsKHR(
-      physical_device, presentation_surface, &formats_count, nullptr);
-  if ((VK_SUCCESS != result) || (0 == formats_count)) {
-    std::cout << "Could not get the number of supported surface formats."
-              << std::endl;
-    return false;
-  }
-
-  std::vector<VkSurfaceFormatKHR> surface_formats(formats_count);
-  result = vkGetPhysicalDeviceSurfaceFormatsKHR(
-      physical_device, presentation_surface, &formats_count,
-      surface_formats.data());
-  if ((VK_SUCCESS != result) || (0 == formats_count)) {
-    std::cout << "Could not enumerate supported surface formats." << std::endl;
-    return false;
-  }
-
-  // Select surface format
-  if ((1 == surface_formats.size()) &&
-      (VK_FORMAT_UNDEFINED == surface_formats[0].format)) {
-    image_format = desired_surface_format.format;
-    image_color_space = desired_surface_format.colorSpace;
-    return true;
-  }
-
-  for (auto &surface_format : surface_formats) {
-    if (desired_surface_format.format == surface_format.format &&
-        desired_surface_format.colorSpace == surface_format.colorSpace) {
-      image_format = desired_surface_format.format;
-      image_color_space = desired_surface_format.colorSpace;
-      return true;
-    }
-  }
-
-  for (auto &surface_format : surface_formats) {
-    if (desired_surface_format.format == surface_format.format) {
-      image_format = desired_surface_format.format;
-      image_color_space = surface_format.colorSpace;
-      std::cout << "Desired combination of format and colorspace is not "
-                   "supported. Selecting other colorspace."
-                << std::endl;
-      return true;
-    }
-  }
-
-  image_format = surface_formats[0].format;
-  image_color_space = surface_formats[0].colorSpace;
-  std::cout << "Desired format is not supported. Selecting available format - "
-               "colorspace combination."
-            << std::endl;
-  return true;
-}
-
-bool VulkanLibraryInterface::createSwapchain(
-    VkDevice logical_device, VkSurfaceKHR presentation_surface,
-    uint32_t image_count, VkSurfaceFormatKHR surface_format,
-    VkExtent2D image_size, VkImageUsageFlags image_usage,
-    VkSurfaceTransformFlagBitsKHR surface_transform,
-    VkPresentModeKHR present_mode, VkSwapchainKHR &old_swapchain,
-    VkSwapchainKHR &swapchain) {
-  VkSwapchainCreateInfoKHR swapchain_create_info = {
-      VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR, // VkStructureType sType
-      nullptr,               // const void                     * pNext
-      0,                     // VkSwapchainCreateFlagsKHR        flags
-      presentation_surface,  // VkSurfaceKHR                     surface
-      image_count,           // uint32_t                         minImageCount
-      surface_format.format, // VkFormat                         imageFormat
-      surface_format.colorSpace, // VkColorSpaceKHR imageColorSpace
-      image_size,                // VkExtent2D                       imageExtent
-      1,           // uint32_t                         imageArrayLayers
-      image_usage, // VkImageUsageFlags                imageUsage
-      VK_SHARING_MODE_EXCLUSIVE, // VkSharingMode imageSharingMode
-      0,       // uint32_t                         queueFamilyIndexCount
-      nullptr, // const uint32_t                 * pQueueFamilyIndices
-      surface_transform, // VkSurfaceTransformFlagBitsKHR    preTransform
-      VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR, // VkCompositeAlphaFlagBitsKHR
-                                         // compositeAlpha
-      present_mode, // VkPresentModeKHR                 presentMode
-      VK_TRUE,      // VkBool32                         clipped
-      old_swapchain // VkSwapchainKHR                   oldSwapchain
-  };
-
-  VkResult result = vkCreateSwapchainKHR(logical_device, &swapchain_create_info,
-                                         nullptr, &swapchain);
-  if ((VK_SUCCESS != result) || (VK_NULL_HANDLE == swapchain)) {
-    std::cout << "Could not create a swapchain." << std::endl;
-    return false;
-  }
-
-  if (VK_NULL_HANDLE != old_swapchain) {
-    vkDestroySwapchainKHR(logical_device, old_swapchain, nullptr);
-    old_swapchain = VK_NULL_HANDLE;
-  }
-
-  return true;
-}
-
-bool VulkanLibraryInterface::getHandlesOfSwapchainImages(
-    VkDevice logical_device, VkSwapchainKHR swapchain,
-    std::vector<VkImage> &swapchain_images) {
-  uint32_t images_count = 0;
-  VkResult result = VK_SUCCESS;
-
-  result = vkGetSwapchainImagesKHR(logical_device, swapchain, &images_count,
-                                   nullptr);
-  if ((VK_SUCCESS != result) || (0 == images_count)) {
-    std::cout << "Could not get the number of swapchain images." << std::endl;
-    return false;
-  }
-
-  swapchain_images.resize(images_count);
-  result = vkGetSwapchainImagesKHR(logical_device, swapchain, &images_count,
-                                   swapchain_images.data());
-  if ((VK_SUCCESS != result) || (0 == images_count)) {
-    std::cout << "Could not enumerate swapchain images." << std::endl;
-    return false;
-  }
-
-  return true;
 }
 
 bool VulkanLibraryInterface::

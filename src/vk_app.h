@@ -77,12 +77,20 @@ public:
       const std::vector<const char *> &desired_extensions =
           std::vector<char const *>(),
       VkPhysicalDeviceFeatures *desired_features = {});
+  /// Setups the swapchain structure, that is responsible for image presentation
+  /// on screen. It is configured with image format, color space and other
+  /// settings.
+  /// \param format **[in]** desired image format
+  /// \param color_space **[in]** desired color space
+  /// \return bool true if success
+  bool setupSwapChain(VkFormat format, VkColorSpaceKHR color_space);
 
 private:
+  VkSwapchainKHR swap_chain_, old_swap_chain_;
+  std::vector<VkImage> swap_chain_images_;
   std::string application_name_;
   std::unique_ptr<GraphicsDisplay> graphics_display_;
   VkInstance instance_ = VK_NULL_HANDLE;
-  VkDebugUtilsMessengerEXT debug_messenger_ = nullptr;
   VkPhysicalDevice physical_device_ = VK_NULL_HANDLE;
   VkDevice device_ = VK_NULL_HANDLE;
   VkSurfaceKHR surface_ = VK_NULL_HANDLE;
