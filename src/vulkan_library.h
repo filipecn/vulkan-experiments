@@ -252,6 +252,7 @@ public:
     VkPhysicalDeviceProperties &properties;
     std::vector<VkQueueFamilyProperties> queue_families;
   };
+  ///
   struct WindowParameters {
 #ifdef VK_USE_PLATFORM_WIN32_KHR
     HINSTANCE HInstance;
@@ -264,10 +265,14 @@ public:
     xcb_window_t Window;
 #endif
   };
+  /// Used in the presentation of an image in a given swapchain, for each
+  /// swapchain only one image can be presented at a time.
   struct PresentInfo {
     VkSwapchainKHR Swapchain;
     uint32_t ImageIndex;
   };
+  /// Stores a semaphore on which hardware should wait and on what pipeline
+  /// stages the wait should occur.
   struct WaitSemaphoreInfo {
     VkSemaphore Semaphore;
     VkPipelineStageFlags WaitingStage;
@@ -491,6 +496,10 @@ public:
   static bool createPresentationSurface(VkInstance instance,
                                         WindowParameters window_parameters,
                                         VkSurfaceKHR &presentation_surface);
+  /// \param instance **[in]** instance handle
+  /// \param presentation_surface **[in/out]** surface handle
+  static void destroyPresentationSurface(VkInstance instance,
+                                         VkSurfaceKHR &presentation_surface);
   /// \brief Retrieve the capabilities of the surface
   /// \param physical_device **[in]** physical device handle
   /// \param presentation_surface **[in]** surface handle
@@ -624,7 +633,22 @@ public:
                   VkSurfaceTransformFlagBitsKHR surface_transform,
                   VkPresentModeKHR present_mode, VkSwapchainKHR &old_swapchain,
                   VkSwapchainKHR &swapchain);
-  /// \brief Get the Handles Of Swapchain Images object
+  /// Needs to be destroyed before the presentation surface
+  /// \param logical_device **[in]** logical device handle
+  /// \param swapchain **[in/out]** swapchain handle
+  static void destroySwapchain(VkDevice logical_device,
+                               VkSwapchainKHR &swapchain);
+
+  // SWAPCHAIN IMAGE OPERATIONS
+  // --------------------------
+  // In order to use the images contained in the swapchain, we need to acquire
+  // them first. When acquiring images, we can use semaphores and fences.
+  // Semaphores can be used in internal queue synchronization. Fences are used
+  // to synchronize the queues and the application.
+  // After we use the image, we need to give it back to the presentation engine
+  // so it can be displayed on screen.
+
+  /// \brief Get the handle list of swapchain images
   /// \param logical_device **[in]** logical device handle
   /// \param swapchain **[in]** swapchain handle
   /// \param swapchain_images **[out]** list of swapchain image handles
@@ -632,9 +656,204 @@ public:
   static bool
   getHandlesOfSwapchainImages(VkDevice logical_device, VkSwapchainKHR swapchain,
                               std::vector<VkImage> &swapchain_images);
+  /// Acquires an image index (in the array returned by the
+  /// **getHandlesOfSwapchainImages** method). The fence is used to make sure
+  /// the application does not modify the image while there are still previously
+  /// submitted operations happening on the image. The semaphore is used to tell
+  /// the driver to not start processing new commands with the given image.
+  /// \param logical_device **[in]** logical device handle
+  /// \param swapchain **[in]** swapchain handle
+  /// \param semaphore **[in]** semaphore handle
+  /// \param fence **[in]** fence handle
+  /// \param image_index **[out]** acquired image index
+  /// \return bool true if success
+  static bool acquireSwapchainImage(VkDevice logical_device,
+                                    VkSwapchainKHR swapchain,
+                                    VkSemaphore semaphore, VkFence fence,
+                                    uint32_t &image_index);
+  /// \brief Sends to the hardware the images to be presented. Semaphores are
+  /// used to assure the correct display time for each image. Multiple images
+  /// can be presented at the same time, but only one per swapchain.
+  /// \param queue **[in]** the handle of a queue that supports presentation
+  /// \param rendering_semaphores **[in]** associated semaphore for each image
+  /// list
+  /// \param images_to_present **[in]** list of images
+  static bool presentImage(VkQueue queue,
+                           std::vector<VkSemaphore> rendering_semaphores,
+                           std::vector<PresentInfo> images_to_present);
 
-  // UTILS
-  // -----
+  // SYNCHRONIZATION
+  // ---------------
+  // A very important task in vulkan applications is the submission of
+  // operations to the hardware. The operations are submitted in form of
+  // commands that are stored in buffers and sent to family queues provided
+  // by the device. Each of these queues are specialized in certain types of
+  // commands and different queues can be processed simultaniously. Depending on
+  // the application and the commands being executed and the operations waiting
+  // to be executed, some dependencies might appear. One queue might need the
+  // operations of another queue to finish first and then complete its work for
+  // example. The same may happen on the application side, waiting for the queue
+  // to finish its work. For that, Vulkan provides semaphores and fences.
+  // - Semaphores allow us to coordinate operations submitted within one queue
+  //   and between different queues in one logical device. They are submitted to
+  //   command buffer submissions and have their state changed as soon as all
+  //   commands are finished. We can also specify that certain commands should
+  //   wait until all semaphores from a certain list get activated.
+  // - Fences inform the application that a submitted work is finished. A fence
+  //   changes its state as soon all work submitted along with it is finished.
+
+  /// \brief Creates a semaphore for a given logical device
+  /// \param logical_device **[in]** logical device handle
+  /// \param semaphore **[out]** semaphore handle
+  /// \return bool true if success
+  static bool createSemaphore(VkDevice logical_device, VkSemaphore &semaphore);
+  /// \param logical_device **[in]** logical device handle
+  /// \param semaphore **[in/out]** semaphore handle
+  static void destroySemaphore(VkDevice logical_device, VkSemaphore &semaphore);
+  /// \brief Creates a fence for a given logical device.
+  /// \param logical_device **[in]** logical device handle
+  /// \param signaled **[in]** fence's initial state
+  /// \param fence **[out]** fence handle
+  /// \return bool true if success
+  static bool createFence(VkDevice logical_device, bool signaled,
+                          VkFence &fence);
+  /// \param logical_device **[in]** logical device handle
+  /// \param fence **[in/out]** fence handle
+  static void destroyFence(VkDevice logical_device, VkFence &fence);
+  /// \brief Blocks application until the fence(s) get changed or time out.
+  /// \param logical_device **[in]** logical device handle
+  /// \param fences **[in]** list of fences
+  /// \param wait_for_all **[in]** **false** if any fence that gets changed is
+  /// enough, or **true** if all fences must be changed.
+  /// \param timeout **[in]** time out
+  /// \return bool true if success
+  static bool waitForFences(VkDevice logical_device,
+                            std::vector<VkFence> const &fences,
+                            VkBool32 wait_for_all, uint64_t timeout);
+  /// \brief Deactivate the given fences. Its the application's responsability
+  /// to put the fences back to their initial state after they get activated.
+  /// \param logical_device **[in]** logical device handle
+  /// \param fences **[in/out]** list of fences
+  /// \return bool true if success
+  static bool resetFences(VkDevice logical_device,
+                          std::vector<VkFence> const &fences);
+
+  // VULKAN COMMAND BUFFERS
+  // ----------------------
+  // Command buffers record operations and are submitted to the hardware.  They
+  // can be recorded in multiple threads and also can be saved and reused.
+  // Synchronization is very important on this part, because the operations
+  // submitted need to be processed properly.
+  // Before allocating command buffers, we need to allocate command pools, from
+  // which the command buffers acquire memory. Command pools are also
+  // responsible for informing the driver on how to deal with the command
+  // buffers memory allocated from them (for example, whether the command buffer
+  // will have a short life or if they need to be reset or freed). Command pools
+  // also control the queues that receive the command buffers.
+  // Command buffers are separate in two groups:
+  // 1. Primary - can be directly submitted to queues and call secondary command
+  //    buffers.
+  // 2. Secondary - can only be executed from primary command buffers.
+  // When recording commands to command buffers, we need to set the state for
+  // the operations as well (for example, vertex attributes use other buffers to
+  // work). When calling a secondary command buffer, the state of the caller
+  // primary command buffer is not preserved (unless it is a render pass).
+
+  /// \brief Create a Command Pool object
+  /// Command pools cannot be used concurrently, we must create a separate
+  /// command pool for each thread.
+  /// \param logical_device **[in]** logical device handle
+  /// \param parameters **[in]** flags that define how the command pool will
+  /// handle command buffer creation, memory, life span, etc.
+  /// \param queue_family **[in]** queue family to which command buffers will be
+  /// submitted.
+  /// \param command_pool **[out]** command pool handle
+  /// \return bool
+  static bool createCommandPool(VkDevice logical_device,
+                                VkCommandPoolCreateFlags parameters,
+                                uint32_t queue_family,
+                                VkCommandPool &command_pool);
+  /// \param logical_device **[in]** logical device handle
+  /// \param command_pool **[in/out]** command pool handle
+  static void destroyCommandPool(VkDevice logical_device,
+                                 VkCommandPool &command_pool);
+  /// Creates a list of command buffers from a given command pool.
+  /// \param logical_device **[in]** logical device handle
+  /// \param command_pool **[in]** command pool handle
+  /// \param level **[in]** command buffers level (Primary or Secondary)
+  /// \param count **[in]** number of command buffers
+  /// \param command_buffers **[out]** list of command buffer handles
+  /// \return bool true if success
+  static bool
+  allocateCommandBuffers(VkDevice logical_device, VkCommandPool command_pool,
+                         VkCommandBufferLevel level, uint32_t count,
+                         std::vector<VkCommandBuffer> &command_buffers);
+  /// \brief Puts the command buffer in record state and allow vkCmd* functions
+  /// to be recorderd.
+  /// \param command_buffer **[in]** command buffer handle
+  /// \param usage **[in]** usage description
+  /// \param secondary_command_buffer_info **[in]**
+  /// \return bool true if success
+  static bool beginCommandBufferRecordingOperation(
+      VkCommandBuffer command_buffer, VkCommandBufferUsageFlags usage,
+      VkCommandBufferInheritanceInfo *secondary_command_buffer_info);
+  /// \brief Stops recording commands by taking the command buffer out of the
+  /// recording state.
+  /// \param command_buffer **[in]** command buffer handle
+  /// \return bool true if success
+  static bool
+  endCommandBufferRecordingOperation(VkCommandBuffer command_buffer);
+  /// \brief Explicitly reset the command buffer to allow a new recording.
+  /// \param command_buffer **[in]** command buffer handle
+  /// \param release_resources **[in]** set to give back the memory to the
+  /// memory pool
+  /// \return bool true if success
+  static bool resetCommandBuffer(VkCommandBuffer command_buffer,
+                                 bool release_resources);
+  /// \brief Resets all command buffers of a given command pool at once.
+  /// \param logical_device **[in]** logical device
+  /// \param command_pool **[in]** command pool handle
+  /// \param release_resources **[in]** give memory from the command buffers
+  /// back to the pool
+  /// \return bool true if success
+  static bool resetCommandPool(VkDevice logical_device,
+                               VkCommandPool command_pool,
+                               bool release_resources);
+  /// \param logical_device **[in]** logical device handle
+  /// \param command_pool **[in]** command pool handle
+  /// \param command_buffers **[in]** list of command buffer handles
+  static void freeCommandBuffers(VkDevice logical_device,
+                                 VkCommandPool command_pool,
+                                 std::vector<VkCommandBuffer> &command_buffers);
+
+  // COMMAND BUFFER SUBMISSION
+  // -------------------------
+  // When submitting a command buffer, we can choose semaphores on which the
+  // device should wait before processing the command buffer and also in which
+  // pipeline stages the wait should occur.
+
+  /// \brief Submittes command buffers to a queue following waiting rules.
+  /// \param queue **[in]** queue handle
+  /// \param wait_semaphore_infos **[in]** waiting information
+  /// \param command_buffers **[in]** list of command buffer handles
+  /// \param signal_semaphores **[in]** list of semaphores on which the queue
+  /// should wait to execute the command buffers
+  /// \param fence **[in]** fance handle to be signaled after all command
+  /// buffers get executed
+  /// \return bool true if success
+  static bool submitCommandBuffersToQueue(
+      VkQueue queue, std::vector<WaitSemaphoreInfo> wait_semaphore_infos,
+      std::vector<VkCommandBuffer> command_buffers,
+      std::vector<VkSemaphore> signal_semaphores, VkFence fence);
+  /// \param queue **[in]** queue handle
+  /// \return bool true if success
+  static bool waitUntilAllCommandsSubmittedToQueueAreFinished(VkQueue queue);
+  /// \param logical_device **[in]** logical device handle
+  /// \return bool true if success
+  static bool waitForAllSubmittedCommandsToBeFinished(VkDevice logical_device);
+
+  // EXAMPLES
+  // --------
   // Here follows some auxiliary methods for instance and device creation
 
   /// Same as **createVulkanInstance**, but automatically appends the
@@ -662,55 +881,12 @@ public:
   static bool createLogicalDeviceWithGeometryShadersAndGraphicsAndComputeQueues(
       VkInstance instance, VkDevice &logical_device, VkQueue &graphics_queue,
       VkQueue &compute_queue);
-
   static bool createSwapchainWithR8G8B8A8FormatAndMailboxPresentMode(
       VkPhysicalDevice physical_device, VkSurfaceKHR presentation_surface,
       VkDevice logical_device, VkImageUsageFlags swapchain_image_usage,
       VkExtent2D &image_size, VkFormat &image_format,
       VkSwapchainKHR &old_swapchain, VkSwapchainKHR &swapchain,
       std::vector<VkImage> &swapchain_images);
-
-  static bool acquireSwapchainImage(VkDevice logical_device,
-                                    VkSwapchainKHR swapchain,
-                                    VkSemaphore semaphore, VkFence fence,
-                                    uint32_t &image_index);
-  static bool presentImage(VkQueue queue,
-                           std::vector<VkSemaphore> rendering_semaphores,
-                           std::vector<PresentInfo> images_to_present);
-  static void destroySwapchain(VkDevice logical_device,
-                               VkSwapchainKHR &swapchain);
-  static void destroyPresentationSurface(VkInstance instance,
-                                         VkSurfaceKHR &presentation_surface);
-  static bool createCommandPool(VkDevice logical_device,
-                                VkCommandPoolCreateFlags parameters,
-                                uint32_t queue_family,
-                                VkCommandPool &command_pool);
-  static bool
-  allocateCommandBuffers(VkDevice logical_device, VkCommandPool command_pool,
-                         VkCommandBufferLevel level, uint32_t count,
-                         std::vector<VkCommandBuffer> &command_buffers);
-  static bool beginCommandBufferRecordingOperation(
-      VkCommandBuffer command_buffer, VkCommandBufferUsageFlags usage,
-      VkCommandBufferInheritanceInfo *secondary_command_buffer_info);
-  static bool
-  endCommandBufferRecordingOperation(VkCommandBuffer command_buffer);
-  static bool resetCommandBuffer(VkCommandBuffer command_buffer,
-                                 bool release_resources);
-  static bool resetCommandPool(VkDevice logical_device,
-                               VkCommandPool command_pool,
-                               bool release_resources);
-  static bool createSemaphore(VkDevice logical_device, VkSemaphore &semaphore);
-  static bool createFence(VkDevice logical_device, bool signaled,
-                          VkFence &fence);
-  static bool waitForFences(VkDevice logical_device,
-                            std::vector<VkFence> const &fences,
-                            VkBool32 wait_for_all, uint64_t timeout);
-  static bool resetFences(VkDevice logical_device,
-                          std::vector<VkFence> const &fences);
-  static bool submitCommandBuffersToQueue(
-      VkQueue queue, std::vector<WaitSemaphoreInfo> wait_semaphore_infos,
-      std::vector<VkCommandBuffer> command_buffers,
-      std::vector<VkSemaphore> signal_semaphores, VkFence fence);
   static bool synchronizeTwoCommandBuffers(
       VkQueue first_queue,
       std::vector<WaitSemaphoreInfo> first_wait_semaphore_infos,
@@ -724,18 +900,9 @@ public:
       std::vector<VkCommandBuffer> command_buffers,
       std::vector<VkSemaphore> signal_semaphores, VkFence fence,
       uint64_t timeout, VkResult &wait_status);
-  static bool waitUntilAllCommandsSubmittedToQueueAreFinished(VkQueue queue);
-  static bool waitForAllSubmittedCommandsToBeFinished(VkDevice logical_device);
-  static void destroyFence(VkDevice logical_device, VkFence &fence);
-  static void destroySemaphore(VkDevice logical_device, VkSemaphore &semaphore);
-  static void freeCommandBuffers(VkDevice logical_device,
-                                 VkCommandPool command_pool,
-                                 std::vector<VkCommandBuffer> &command_buffers);
-  static void destroyCommandPool(VkDevice logical_device,
-                                 VkCommandPool &command_pool);
 
 private:
-  VulkanLibraryType vulkanLibrary_;
+  // VulkanLibraryType vulkanLibrary_;
 };
 
 } // namespace vk

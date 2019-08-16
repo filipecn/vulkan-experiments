@@ -421,6 +421,14 @@ bool VulkanLibraryInterface::createPresentationSurface(
   return true;
 }
 
+void VulkanLibraryInterface::destroyPresentationSurface(
+    VkInstance instance, VkSurfaceKHR &presentation_surface) {
+  if (instance && presentation_surface) {
+    vkDestroySurfaceKHR(instance, presentation_surface, nullptr);
+    presentation_surface = VK_NULL_HANDLE;
+  }
+}
+
 bool VulkanLibraryInterface::getCapabilitiesOfPresentationSurface(
     VkPhysicalDevice physical_device, VkSurfaceKHR presentation_surface,
     VkSurfaceCapabilitiesKHR &surface_capabilities) {
@@ -436,17 +444,15 @@ bool VulkanLibraryInterface::selectDesiredPresentationMode(
     VkPresentModeKHR desired_present_mode, VkPresentModeKHR &present_mode) {
   // Enumerate supported present modes
   uint32_t present_modes_count = 0;
-  VkResult result = VK_SUCCESS;
-  result = vkGetPhysicalDeviceSurfacePresentModesKHR(
-      physical_device, presentation_surface, &present_modes_count, nullptr);
-  CHECK_INFO(VK_SUCCESS == result && 0 != present_modes_count,
-             "Could not get the number of supported present modes.");
+  CHECK_VULKAN(vkGetPhysicalDeviceSurfacePresentModesKHR(
+      physical_device, presentation_surface, &present_modes_count, nullptr));
+  CHECK(0 != present_modes_count,
+        "Could not get the number of supported present modes.");
   std::vector<VkPresentModeKHR> present_modes(present_modes_count);
-  result = vkGetPhysicalDeviceSurfacePresentModesKHR(
+  CHECK_VULKAN(vkGetPhysicalDeviceSurfacePresentModesKHR(
       physical_device, presentation_surface, &present_modes_count,
-      present_modes.data());
-  CHECK_INFO(VK_SUCCESS != result && 0 != present_modes_count,
-             "Could not enumerate present modes.");
+      present_modes.data()));
+  CHECK(0 != present_modes_count, "Could not enumerate present modes.");
   // Select present mode
   for (auto &current_present_mode : present_modes) {
     if (current_present_mode == desired_present_mode) {
@@ -638,6 +644,16 @@ bool VulkanLibraryInterface::createSwapchain(
   return true;
 }
 
+void VulkanLibraryInterface::destroySwapchain(VkDevice logical_device,
+                                              VkSwapchainKHR &swapchain) {
+  if (swapchain) {
+    vkDestroySwapchainKHR(logical_device, swapchain, nullptr);
+    swapchain = VK_NULL_HANDLE;
+  }
+}
+
+// SWAPCHAIN IMAGE OPERATIONS /////////////////////////////////////////////////
+
 bool VulkanLibraryInterface::getHandlesOfSwapchainImages(
     VkDevice logical_device, VkSwapchainKHR swapchain,
     std::vector<VkImage> &swapchain_images) {
@@ -652,7 +668,270 @@ bool VulkanLibraryInterface::getHandlesOfSwapchainImages(
   return true;
 }
 
-// UTILS /////////////////////////////////////////////////////////////////////
+bool VulkanLibraryInterface::acquireSwapchainImage(VkDevice logical_device,
+                                                   VkSwapchainKHR swapchain,
+                                                   VkSemaphore semaphore,
+                                                   VkFence fence,
+                                                   uint32_t &image_index) {
+  VkResult result;
+  result = vkAcquireNextImageKHR(logical_device, swapchain, 2000000000,
+                                 semaphore, fence, &image_index);
+  switch (result) {
+  case VK_SUCCESS:
+  case VK_SUBOPTIMAL_KHR:
+    return true;
+  default:
+    return false;
+  }
+}
+
+bool VulkanLibraryInterface::presentImage(
+    VkQueue queue, std::vector<VkSemaphore> rendering_semaphores,
+    std::vector<PresentInfo> images_to_present) {
+  VkResult result;
+  std::vector<VkSwapchainKHR> swapchains;
+  std::vector<uint32_t> image_indices;
+
+  for (auto &image_to_present : images_to_present) {
+    swapchains.emplace_back(image_to_present.Swapchain);
+    image_indices.emplace_back(image_to_present.ImageIndex);
+  }
+
+  VkPresentInfoKHR present_info = {
+      VK_STRUCTURE_TYPE_PRESENT_INFO_KHR, // VkStructureType          sType
+      nullptr,                            // const void*              pNext
+      static_cast<uint32_t>(
+          rendering_semaphores.size()), // uint32_t waitSemaphoreCount
+      rendering_semaphores.data(), // const VkSemaphore      * pWaitSemaphores
+      static_cast<uint32_t>(swapchains.size()), // uint32_t swapchainCount
+      swapchains.data(),    // const VkSwapchainKHR   * pSwapchains
+      image_indices.data(), // const uint32_t         * pImageIndices
+      nullptr               // VkResult*                pResults
+  };
+
+  result = vkQueuePresentKHR(queue, &present_info);
+  switch (result) {
+  case VK_SUCCESS:
+    return true;
+  default:
+    return false;
+  }
+}
+
+// SYNCHRONIZATION ///////////////////////////////////////////////////////////
+
+bool VulkanLibraryInterface::createSemaphore(VkDevice logical_device,
+                                             VkSemaphore &semaphore) {
+  VkSemaphoreCreateInfo semaphore_create_info = {
+      VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, // VkStructureType sType
+      nullptr, // const void               * pNext
+      0        // VkSemaphoreCreateFlags     flags
+  };
+  CHECK_VULKAN(vkCreateSemaphore(logical_device, &semaphore_create_info,
+                                 nullptr, &semaphore));
+  return true;
+}
+
+void VulkanLibraryInterface::destroySemaphore(VkDevice logical_device,
+                                              VkSemaphore &semaphore) {
+  if (VK_NULL_HANDLE != semaphore) {
+    vkDestroySemaphore(logical_device, semaphore, nullptr);
+    semaphore = VK_NULL_HANDLE;
+  }
+}
+
+bool VulkanLibraryInterface::createFence(VkDevice logical_device, bool signaled,
+                                         VkFence &fence) {
+  VkFenceCreateInfo fence_create_info = {
+      VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, // VkStructureType        sType
+      nullptr,                             // const void           * pNext
+      signaled ? VK_FENCE_CREATE_SIGNALED_BIT : 0u, // VkFenceCreateFlags flags
+  };
+  CHECK_VULKAN(
+      vkCreateFence(logical_device, &fence_create_info, nullptr, &fence));
+  return true;
+}
+
+void VulkanLibraryInterface::destroyFence(VkDevice logical_device,
+                                          VkFence &fence) {
+  if (VK_NULL_HANDLE != fence) {
+    vkDestroyFence(logical_device, fence, nullptr);
+    fence = VK_NULL_HANDLE;
+  }
+}
+
+bool VulkanLibraryInterface::waitForFences(VkDevice logical_device,
+                                           std::vector<VkFence> const &fences,
+                                           VkBool32 wait_for_all,
+                                           uint64_t timeout) {
+  if (fences.size() > 0) {
+    CHECK_VULKAN(vkWaitForFences(logical_device,
+                                 static_cast<uint32_t>(fences.size()),
+                                 fences.data(), wait_for_all, timeout));
+    return true;
+  }
+  return false;
+}
+
+bool VulkanLibraryInterface::resetFences(VkDevice logical_device,
+                                         std::vector<VkFence> const &fences) {
+  if (fences.size() > 0) {
+    CHECK_VULKAN(vkResetFences(
+        logical_device, static_cast<uint32_t>(fences.size()), fences.data()));
+    return true;
+  }
+  return false;
+}
+
+// VULKAN COMMAND BUFFERS ////////////////////////////////////////////////////
+
+bool VulkanLibraryInterface::createCommandPool(
+    VkDevice logical_device, VkCommandPoolCreateFlags parameters,
+    uint32_t queue_family, VkCommandPool &command_pool) {
+  VkCommandPoolCreateInfo command_pool_create_info = {
+      VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO, // VkStructureType sType
+      nullptr,     // const void                 * pNext
+      parameters,  // VkCommandPoolCreateFlags     flags
+      queue_family // uint32_t                     queueFamilyIndex
+  };
+  CHECK_VULKAN(vkCreateCommandPool(logical_device, &command_pool_create_info,
+                                   nullptr, &command_pool));
+  return true;
+}
+
+void VulkanLibraryInterface::destroyCommandPool(VkDevice logical_device,
+                                                VkCommandPool &command_pool) {
+  if (VK_NULL_HANDLE != command_pool) {
+    vkDestroyCommandPool(logical_device, command_pool, nullptr);
+    command_pool = VK_NULL_HANDLE;
+  }
+}
+
+bool VulkanLibraryInterface::allocateCommandBuffers(
+    VkDevice logical_device, VkCommandPool command_pool,
+    VkCommandBufferLevel level, uint32_t count,
+    std::vector<VkCommandBuffer> &command_buffers) {
+  VkCommandBufferAllocateInfo command_buffer_allocate_info = {
+      VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // VkStructureType sType
+      nullptr,      // const void             * pNext
+      command_pool, // VkCommandPool            commandPool
+      level,        // VkCommandBufferLevel     level
+      count         // uint32_t                 commandBufferCount
+  };
+  command_buffers.resize(count);
+  CHECK_VULKAN(vkAllocateCommandBuffers(
+      logical_device, &command_buffer_allocate_info, command_buffers.data()));
+  return true;
+}
+
+bool VulkanLibraryInterface::beginCommandBufferRecordingOperation(
+    VkCommandBuffer command_buffer, VkCommandBufferUsageFlags usage,
+    VkCommandBufferInheritanceInfo *secondary_command_buffer_info) {
+  VkCommandBufferBeginInfo command_buffer_begin_info = {
+      VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, // VkStructureType sType
+      nullptr, // const void                           * pNext
+      usage,   // VkCommandBufferUsageFlags              flags
+      secondary_command_buffer_info // const VkCommandBufferInheritanceInfo *
+                                    // pInheritanceInfo
+  };
+  CHECK_VULKAN(
+      vkBeginCommandBuffer(command_buffer, &command_buffer_begin_info));
+  return true;
+}
+
+bool VulkanLibraryInterface::endCommandBufferRecordingOperation(
+    VkCommandBuffer command_buffer) {
+  CHECK_VULKAN(vkEndCommandBuffer(command_buffer));
+  return true;
+}
+
+bool VulkanLibraryInterface::resetCommandBuffer(VkCommandBuffer command_buffer,
+                                                bool release_resources) {
+  CHECK_VULKAN(vkResetCommandBuffer(
+      command_buffer,
+      release_resources ? VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT : 0));
+  return true;
+}
+
+bool VulkanLibraryInterface::resetCommandPool(VkDevice logical_device,
+                                              VkCommandPool command_pool,
+                                              bool release_resources) {
+  CHECK_VULKAN(vkResetCommandPool(
+      logical_device, command_pool,
+      release_resources ? VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT : 0));
+  return true;
+}
+
+void VulkanLibraryInterface::freeCommandBuffers(
+    VkDevice logical_device, VkCommandPool command_pool,
+    std::vector<VkCommandBuffer> &command_buffers) {
+  if (command_buffers.size() > 0) {
+    vkFreeCommandBuffers(logical_device, command_pool,
+                         static_cast<uint32_t>(command_buffers.size()),
+                         command_buffers.data());
+    command_buffers.clear();
+  }
+}
+
+// COMMAND BUFFER SUBMISSION ///////////////////////////////////////////////
+
+bool VulkanLibraryInterface::submitCommandBuffersToQueue(
+    VkQueue queue, std::vector<WaitSemaphoreInfo> wait_semaphore_infos,
+    std::vector<VkCommandBuffer> command_buffers,
+    std::vector<VkSemaphore> signal_semaphores, VkFence fence) {
+  std::vector<VkSemaphore> wait_semaphore_handles;
+  std::vector<VkPipelineStageFlags> wait_semaphore_stages;
+
+  for (auto &wait_semaphore_info : wait_semaphore_infos) {
+    wait_semaphore_handles.emplace_back(wait_semaphore_info.Semaphore);
+    wait_semaphore_stages.emplace_back(wait_semaphore_info.WaitingStage);
+  }
+
+  VkSubmitInfo submit_info = {
+      VK_STRUCTURE_TYPE_SUBMIT_INFO, // VkStructureType                sType
+      nullptr,                       // const void                   * pNext
+      static_cast<uint32_t>(
+          wait_semaphore_infos.size()), // uint32_t waitSemaphoreCount
+      wait_semaphore_handles
+          .data(), // const VkSemaphore            * pWaitSemaphores
+      wait_semaphore_stages
+          .data(), // const VkPipelineStageFlags   * pWaitDstStageMask
+      static_cast<uint32_t>(
+          command_buffers.size()), // uint32_t commandBufferCount
+      command_buffers.data(), // const VkCommandBuffer        * pCommandBuffers
+      static_cast<uint32_t>(
+          signal_semaphores.size()), // uint32_t signalSemaphoreCount
+      signal_semaphores
+          .data() // const VkSemaphore            * pSignalSemaphores
+  };
+
+  CHECK_VULKAN(vkQueueSubmit(queue, 1, &submit_info, fence));
+  return true;
+}
+
+bool VulkanLibraryInterface::waitUntilAllCommandsSubmittedToQueueAreFinished(
+    VkQueue queue) {
+  VkResult result = vkQueueWaitIdle(queue);
+  if (VK_SUCCESS != result) {
+    std::cout << "Waiting for all operations submitted to queue failed."
+              << std::endl;
+    return false;
+  }
+  return true;
+}
+
+bool VulkanLibraryInterface::waitForAllSubmittedCommandsToBeFinished(
+    VkDevice logical_device) {
+  VkResult result = vkDeviceWaitIdle(logical_device);
+  if (VK_SUCCESS != result) {
+    std::cout << "Waiting on a device failed." << std::endl;
+    return false;
+  }
+  return true;
+}
+
+// UTILS
+// /////////////////////////////////////////////////////////////////////
 
 bool VulkanLibraryInterface::createVulkanInstanceWithWsiExtensionsEnabled(
     std::vector<char const *> &desired_extensions,
@@ -804,275 +1083,6 @@ bool VulkanLibraryInterface::
   return true;
 }
 
-bool VulkanLibraryInterface::acquireSwapchainImage(VkDevice logical_device,
-                                                   VkSwapchainKHR swapchain,
-                                                   VkSemaphore semaphore,
-                                                   VkFence fence,
-                                                   uint32_t &image_index) {
-  VkResult result;
-
-  result = vkAcquireNextImageKHR(logical_device, swapchain, 2000000000,
-                                 semaphore, fence, &image_index);
-  switch (result) {
-  case VK_SUCCESS:
-  case VK_SUBOPTIMAL_KHR:
-    return true;
-  default:
-    return false;
-  }
-}
-
-bool VulkanLibraryInterface::presentImage(
-    VkQueue queue, std::vector<VkSemaphore> rendering_semaphores,
-    std::vector<PresentInfo> images_to_present) {
-  VkResult result;
-  std::vector<VkSwapchainKHR> swapchains;
-  std::vector<uint32_t> image_indices;
-
-  for (auto &image_to_present : images_to_present) {
-    swapchains.emplace_back(image_to_present.Swapchain);
-    image_indices.emplace_back(image_to_present.ImageIndex);
-  }
-
-  VkPresentInfoKHR present_info = {
-      VK_STRUCTURE_TYPE_PRESENT_INFO_KHR, // VkStructureType          sType
-      nullptr,                            // const void*              pNext
-      static_cast<uint32_t>(
-          rendering_semaphores.size()), // uint32_t waitSemaphoreCount
-      rendering_semaphores.data(), // const VkSemaphore      * pWaitSemaphores
-      static_cast<uint32_t>(swapchains.size()), // uint32_t swapchainCount
-      swapchains.data(),    // const VkSwapchainKHR   * pSwapchains
-      image_indices.data(), // const uint32_t         * pImageIndices
-      nullptr               // VkResult*                pResults
-  };
-
-  result = vkQueuePresentKHR(queue, &present_info);
-  switch (result) {
-  case VK_SUCCESS:
-    return true;
-  default:
-    return false;
-  }
-}
-
-void VulkanLibraryInterface::destroySwapchain(VkDevice logical_device,
-                                              VkSwapchainKHR &swapchain) {
-  if (swapchain) {
-    vkDestroySwapchainKHR(logical_device, swapchain, nullptr);
-    swapchain = VK_NULL_HANDLE;
-  }
-}
-
-void VulkanLibraryInterface::destroyPresentationSurface(
-    VkInstance instance, VkSurfaceKHR &presentation_surface) {
-  if (presentation_surface) {
-    vkDestroySurfaceKHR(instance, presentation_surface, nullptr);
-    presentation_surface = VK_NULL_HANDLE;
-  }
-}
-
-bool VulkanLibraryInterface::createCommandPool(
-    VkDevice logical_device, VkCommandPoolCreateFlags parameters,
-    uint32_t queue_family, VkCommandPool &command_pool) {
-  VkCommandPoolCreateInfo command_pool_create_info = {
-      VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO, // VkStructureType sType
-      nullptr,     // const void                 * pNext
-      parameters,  // VkCommandPoolCreateFlags     flags
-      queue_family // uint32_t                     queueFamilyIndex
-  };
-
-  VkResult result = vkCreateCommandPool(
-      logical_device, &command_pool_create_info, nullptr, &command_pool);
-  if (VK_SUCCESS != result) {
-    std::cout << "Could not create command pool." << std::endl;
-    return false;
-  }
-  return true;
-}
-
-bool VulkanLibraryInterface::allocateCommandBuffers(
-    VkDevice logical_device, VkCommandPool command_pool,
-    VkCommandBufferLevel level, uint32_t count,
-    std::vector<VkCommandBuffer> &command_buffers) {
-  VkCommandBufferAllocateInfo command_buffer_allocate_info = {
-      VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // VkStructureType sType
-      nullptr,      // const void             * pNext
-      command_pool, // VkCommandPool            commandPool
-      level,        // VkCommandBufferLevel     level
-      count         // uint32_t                 commandBufferCount
-  };
-
-  command_buffers.resize(count);
-
-  VkResult result = vkAllocateCommandBuffers(
-      logical_device, &command_buffer_allocate_info, command_buffers.data());
-  if (VK_SUCCESS != result) {
-    std::cout << "Could not allocate command buffers." << std::endl;
-    return false;
-  }
-  return true;
-}
-
-bool VulkanLibraryInterface::beginCommandBufferRecordingOperation(
-    VkCommandBuffer command_buffer, VkCommandBufferUsageFlags usage,
-    VkCommandBufferInheritanceInfo *secondary_command_buffer_info) {
-  VkCommandBufferBeginInfo command_buffer_begin_info = {
-      VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, // VkStructureType sType
-      nullptr, // const void                           * pNext
-      usage,   // VkCommandBufferUsageFlags              flags
-      secondary_command_buffer_info // const VkCommandBufferInheritanceInfo *
-                                    // pInheritanceInfo
-  };
-
-  VkResult result =
-      vkBeginCommandBuffer(command_buffer, &command_buffer_begin_info);
-  if (VK_SUCCESS != result) {
-    std::cout << "Could not begin command buffer recording operation."
-              << std::endl;
-    return false;
-  }
-  return true;
-}
-
-bool VulkanLibraryInterface::endCommandBufferRecordingOperation(
-    VkCommandBuffer command_buffer) {
-  VkResult result = vkEndCommandBuffer(command_buffer);
-  if (VK_SUCCESS != result) {
-    std::cout << "Error occurred during command buffer recording." << std::endl;
-    return false;
-  }
-  return true;
-}
-
-bool VulkanLibraryInterface::resetCommandBuffer(VkCommandBuffer command_buffer,
-                                                bool release_resources) {
-  VkResult result = vkResetCommandBuffer(
-      command_buffer,
-      release_resources ? VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT : 0);
-  if (VK_SUCCESS != result) {
-    std::cout << "Error occurred during command buffer reset." << std::endl;
-    return false;
-  }
-  return true;
-}
-
-bool VulkanLibraryInterface::resetCommandPool(VkDevice logical_device,
-                                              VkCommandPool command_pool,
-                                              bool release_resources) {
-  VkResult result = vkResetCommandPool(
-      logical_device, command_pool,
-      release_resources ? VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT : 0);
-  if (VK_SUCCESS != result) {
-    std::cout << "Error occurred during command pool reset." << std::endl;
-    return false;
-  }
-  return true;
-}
-
-bool VulkanLibraryInterface::createSemaphore(VkDevice logical_device,
-                                             VkSemaphore &semaphore) {
-  VkSemaphoreCreateInfo semaphore_create_info = {
-      VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, // VkStructureType sType
-      nullptr, // const void               * pNext
-      0        // VkSemaphoreCreateFlags     flags
-  };
-
-  VkResult result = vkCreateSemaphore(logical_device, &semaphore_create_info,
-                                      nullptr, &semaphore);
-  if (VK_SUCCESS != result) {
-    std::cout << "Could not create a semaphore." << std::endl;
-    return false;
-  }
-  return true;
-}
-
-bool VulkanLibraryInterface::createFence(VkDevice logical_device, bool signaled,
-                                         VkFence &fence) {
-  VkFenceCreateInfo fence_create_info = {
-      VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, // VkStructureType        sType
-      nullptr,                             // const void           * pNext
-      signaled ? VK_FENCE_CREATE_SIGNALED_BIT : 0u, // VkFenceCreateFlags flags
-  };
-
-  VkResult result =
-      vkCreateFence(logical_device, &fence_create_info, nullptr, &fence);
-  if (VK_SUCCESS != result) {
-    std::cout << "Could not create a fence." << std::endl;
-    return false;
-  }
-  return true;
-}
-
-bool VulkanLibraryInterface::waitForFences(VkDevice logical_device,
-                                           std::vector<VkFence> const &fences,
-                                           VkBool32 wait_for_all,
-                                           uint64_t timeout) {
-  if (fences.size() > 0) {
-    VkResult result =
-        vkWaitForFences(logical_device, static_cast<uint32_t>(fences.size()),
-                        fences.data(), wait_for_all, timeout);
-    if (VK_SUCCESS != result) {
-      std::cout << "Waiting on fence failed." << std::endl;
-      return false;
-    }
-    return true;
-  }
-  return false;
-}
-
-bool VulkanLibraryInterface::resetFences(VkDevice logical_device,
-                                         std::vector<VkFence> const &fences) {
-  if (fences.size() > 0) {
-    VkResult result = vkResetFences(
-        logical_device, static_cast<uint32_t>(fences.size()), fences.data());
-    if (VK_SUCCESS != result) {
-      std::cout << "Error occurred when tried to reset fences." << std::endl;
-      return false;
-    }
-    return VK_SUCCESS == result;
-  }
-  return false;
-}
-
-bool VulkanLibraryInterface::submitCommandBuffersToQueue(
-    VkQueue queue, std::vector<WaitSemaphoreInfo> wait_semaphore_infos,
-    std::vector<VkCommandBuffer> command_buffers,
-    std::vector<VkSemaphore> signal_semaphores, VkFence fence) {
-  std::vector<VkSemaphore> wait_semaphore_handles;
-  std::vector<VkPipelineStageFlags> wait_semaphore_stages;
-
-  for (auto &wait_semaphore_info : wait_semaphore_infos) {
-    wait_semaphore_handles.emplace_back(wait_semaphore_info.Semaphore);
-    wait_semaphore_stages.emplace_back(wait_semaphore_info.WaitingStage);
-  }
-
-  VkSubmitInfo submit_info = {
-      VK_STRUCTURE_TYPE_SUBMIT_INFO, // VkStructureType                sType
-      nullptr,                       // const void                   * pNext
-      static_cast<uint32_t>(
-          wait_semaphore_infos.size()), // uint32_t waitSemaphoreCount
-      wait_semaphore_handles
-          .data(), // const VkSemaphore            * pWaitSemaphores
-      wait_semaphore_stages
-          .data(), // const VkPipelineStageFlags   * pWaitDstStageMask
-      static_cast<uint32_t>(
-          command_buffers.size()), // uint32_t commandBufferCount
-      command_buffers.data(), // const VkCommandBuffer        * pCommandBuffers
-      static_cast<uint32_t>(
-          signal_semaphores.size()), // uint32_t signalSemaphoreCount
-      signal_semaphores
-          .data() // const VkSemaphore            * pSignalSemaphores
-  };
-
-  VkResult result = vkQueueSubmit(queue, 1, &submit_info, fence);
-  if (VK_SUCCESS != result) {
-    std::cout << "Error occurred during command buffer submission."
-              << std::endl;
-    return false;
-  }
-  return true;
-}
-
 bool VulkanLibraryInterface::synchronizeTwoCommandBuffers(
     VkQueue first_queue,
     std::vector<WaitSemaphoreInfo> first_wait_semaphore_infos,
@@ -1111,62 +1121,6 @@ bool VulkanLibraryInterface::
   }
 
   return waitForFences(logical_device, {fence}, VK_FALSE, timeout);
-}
-
-bool VulkanLibraryInterface::waitUntilAllCommandsSubmittedToQueueAreFinished(
-    VkQueue queue) {
-  VkResult result = vkQueueWaitIdle(queue);
-  if (VK_SUCCESS != result) {
-    std::cout << "Waiting for all operations submitted to queue failed."
-              << std::endl;
-    return false;
-  }
-  return true;
-}
-
-bool VulkanLibraryInterface::waitForAllSubmittedCommandsToBeFinished(
-    VkDevice logical_device) {
-  VkResult result = vkDeviceWaitIdle(logical_device);
-  if (VK_SUCCESS != result) {
-    std::cout << "Waiting on a device failed." << std::endl;
-    return false;
-  }
-  return true;
-}
-
-void VulkanLibraryInterface::destroyFence(VkDevice logical_device,
-                                          VkFence &fence) {
-  if (VK_NULL_HANDLE != fence) {
-    vkDestroyFence(logical_device, fence, nullptr);
-    fence = VK_NULL_HANDLE;
-  }
-}
-
-void VulkanLibraryInterface::destroySemaphore(VkDevice logical_device,
-                                              VkSemaphore &semaphore) {
-  if (VK_NULL_HANDLE != semaphore) {
-    vkDestroySemaphore(logical_device, semaphore, nullptr);
-    semaphore = VK_NULL_HANDLE;
-  }
-}
-
-void VulkanLibraryInterface::freeCommandBuffers(
-    VkDevice logical_device, VkCommandPool command_pool,
-    std::vector<VkCommandBuffer> &command_buffers) {
-  if (command_buffers.size() > 0) {
-    vkFreeCommandBuffers(logical_device, command_pool,
-                         static_cast<uint32_t>(command_buffers.size()),
-                         command_buffers.data());
-    command_buffers.clear();
-  }
-}
-
-void VulkanLibraryInterface::destroyCommandPool(VkDevice logical_device,
-                                                VkCommandPool &command_pool) {
-  if (VK_NULL_HANDLE != command_pool) {
-    vkDestroyCommandPool(logical_device, command_pool, nullptr);
-    command_pool = VK_NULL_HANDLE;
-  }
 }
 
 } // namespace vk

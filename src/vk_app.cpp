@@ -37,12 +37,9 @@ App::App(size_t w, size_t h, const std::string &name)
       graphics_display_(new GraphicsDisplay(w, h, name)) {}
 
 App::~App() {
+  VulkanLibraryInterface::destroySwapchain(device_, swap_chain_);
   VulkanLibraryInterface::destroyLogicalDevice(device_);
-  //   if (enableValidationLayers) {
-  //     DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-  //   }
-  if (instance_ && surface_)
-    vkDestroySurfaceKHR(instance_, surface_, nullptr);
+  VulkanLibraryInterface::destroyPresentationSurface(instance_, surface_);
   VulkanLibraryInterface::destroyVulkanInstance(instance_);
 }
 
@@ -96,9 +93,10 @@ bool App::createLogicalDevice(
     const std::vector<VulkanLibraryInterface::QueueFamilyInfo> &queue_infos,
     const std::vector<const char *> &desired_extensions,
     VkPhysicalDeviceFeatures *desired_features) {
+  auto extensions = desired_extensions;
+  extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
   return VulkanLibraryInterface::createLogicalDevice(
-      physical_device_, queue_infos, desired_extensions, desired_features,
-      device_);
+      physical_device_, queue_infos, extensions, desired_features, device_);
 }
 
 bool App::setupSwapChain(VkFormat desired_format,
@@ -120,12 +118,10 @@ bool App::setupSwapChain(VkFormat desired_format,
           surface_capabilities, number_of_images))
     return false;
   // QUERY IMAGE SIZE
-  VkExtent2D image_size = {graphics_display_->width(),
-                           graphics_display_->height()};
   if (!VulkanLibraryInterface::chooseSizeOfSwapchainImages(surface_capabilities,
-                                                           image_size))
+                                                           image_size_))
     return false;
-  if ((0 == image_size.width) || (0 == image_size.height))
+  if ((0 == image_size_.width) || (0 == image_size_.height))
     return false;
   // USAGE
   VkImageUsageFlags image_usage;
@@ -140,16 +136,15 @@ bool App::setupSwapChain(VkFormat desired_format,
           surface_transform))
     return false;
   // COLOR SPACE
-  VkFormat image_format;
   VkColorSpaceKHR image_color_space;
   if (!VulkanLibraryInterface::selectFormatOfSwapchainImages(
           physical_device_, surface_, {desired_format, desired_color_space},
-          image_format, image_color_space))
+          image_format_, image_color_space))
     return false;
   // SWAP CHAIN
   if (!VulkanLibraryInterface::createSwapchain(
           device_, surface_, number_of_images,
-          {image_format, image_color_space}, image_size, image_usage,
+          {image_format_, image_color_space}, image_size_, image_usage,
           surface_transform, desired_present_mode, old_swap_chain_,
           swap_chain_))
     return false;

@@ -67,11 +67,12 @@ public:
       const std::function<bool(const VulkanLibraryInterface::PhysicalDevice &)>
           &f);
   /// \brief Create a Logical Device object
-  ///
+  /// There is no need to append swapchain extension, this method already does
+  /// it.
   /// \param queue_infos **[in]**
-  /// \param desired_extensions **[in]**
-  /// \param desired_features **[in]**
-  /// \return bool
+  /// \param desired_extensions **[in]** desired device extensions list
+  /// \param desired_features **[in]** desired features list
+  /// \return bool true if success
   bool createLogicalDevice(
       const std::vector<VulkanLibraryInterface::QueueFamilyInfo> &queue_infos,
       const std::vector<const char *> &desired_extensions =
@@ -86,8 +87,10 @@ public:
   bool setupSwapChain(VkFormat format, VkColorSpaceKHR color_space);
 
 private:
-  VkSwapchainKHR swap_chain_, old_swap_chain_;
+  VkSwapchainKHR swap_chain_ = VK_NULL_HANDLE, old_swap_chain_ = VK_NULL_HANDLE;
   std::vector<VkImage> swap_chain_images_;
+  VkExtent2D image_size_;
+  VkFormat image_format_;
   std::string application_name_;
   std::unique_ptr<GraphicsDisplay> graphics_display_;
   VkInstance instance_ = VK_NULL_HANDLE;
