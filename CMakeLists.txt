@@ -8,6 +8,12 @@ set(ENV{VK_INSTANCE_LAYERS}
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# external
+include(ExternalProject)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/ext")
+# GLFW
+include(glfw)
+
 if(APPLE)
 set(VULKAN_SDK "/Users/filipecn/Documents/vulkansdk-macos-1.1.114.0")
     set(ENV{VK_ICD_FILENAMES} "${VULKAN_SDK}/macOS/etc/vulkan/icd.d/MoltenVK_icd.json")
@@ -22,9 +28,14 @@ set(VULKAN_SDK "/Users/filipecn/Documents/vulkansdk-macos-1.1.114.0")
     set(VULKAN_INCLUDES "/Users/filipecn/Documents/vulkansdk-macos-1.1.114.0/macOS/include")
     set(GLFW_INCLUDES "/usr/local/include")
     set(GLFW_LIBRARIES glfw)
-elseif(WIN32)
+elseif(MSVC)
     set(VULKAN_LIBRARIES "C:/VulkanSDK/1.1.82.1/Lib/vulkan-1.lib")
     set(VULKAN_INCLUDES "C:/VulkanSDK/1.1.82.1/Include")
+	set(GLFW_INCLUDES ${GLFW_INCLUDE_DIR})
+else()
+    set(GLFW_LIBRARIES glfw)
+    set(VULKAN_LIBRARIES vulkan dl)
+    set(VULKAN_INCLUDES )
 endif()
 
 # find_package(vulkan REQUIRED)
@@ -36,7 +47,7 @@ set(SOURCES
     # src/vulkan_api.cpp 
     src/vulkan_library.cpp
     )
-    set(HEADERS 
+set(HEADERS 
     src/vk_app.h
     src/vk_graphics_display.h
     # src/vulkan_api.h
@@ -46,13 +57,16 @@ set(SOURCES
 
 add_executable(hello_vulkan ${SOURCES} ${HEADERS})
 target_include_directories(hello_vulkan PUBLIC ${GLFW_INCLUDES} ${VULKAN_INCLUDES})
+add_dependencies(hello_vulkan glfw)
 target_link_libraries(hello_vulkan 
 # Vulkan::Vulkan
  ${GLFW_LIBRARIES} 
  ${VULKAN_LIBRARIES}
  )
 
+if(APPLE)
 add_custom_command(TARGET hello_vulkan POST_BUILD        
     COMMAND ${CMAKE_COMMAND} -E copy_if_different  
         "/Users/filipecn/Documents/vulkansdk-macos-1.1.114.0/macOS/lib/libvulkan.1.1.114.dylib"
         $<TARGET_FILE_DIR:hello_vulkan>)                 
+endif()

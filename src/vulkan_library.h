@@ -30,12 +30,12 @@
 #ifndef CIRCE_VULKAN_LIBRARY
 #define CIRCE_VULKAN_LIBRARY
 
+#ifndef GLFW_INCLUDE_VULKAN
+// #include "vulkan_api.h"
+#endif
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-
-#ifndef GLFW_INCLUDE_VULKAN
-#include "vulkan_api.h"
-#endif
 
 #include <iostream>
 #include <optional>
@@ -124,6 +124,7 @@ inline std::string vulkanResultString(VkResult err) {
            "or link. More details are reported back to the application via "
            "https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/"
            "vkspec.html#VK_EXT_debug_report if enabled.";
+#ifndef __linux
   case VK_ERROR_OUT_OF_POOL_MEMORY:
     return "VK_ERROR_OUT_OF_POOL_MEMORY A pool memory allocation has failed. "
            "This must only be returned if no attempt to allocate host or "
@@ -136,6 +137,7 @@ inline std::string vulkanResultString(VkResult err) {
   case VK_ERROR_FRAGMENTATION_EXT:
     return "VK_ERROR_FRAGMENTATION_EXT A descriptor pool creation has failed "
            "due to fragmentation.";
+#ifndef WIN32
   case VK_ERROR_INVALID_DEVICE_ADDRESS_EXT:
     return "VK_ERROR_INVALID_DEVICE_ADDRESS_EXT A buffer creation failed "
            "because the requested address is not available.";
@@ -148,12 +150,14 @@ inline std::string vulkanResultString(VkResult err) {
            "control.";
   // case VK_ERROR_OUT_OF_POOL_MEMORY_KHR:
   //   return "VK_ERROR_OUT_OF_POOL_MEMORY_KHR";
-  case VK_ERROR_VALIDATION_FAILED_EXT:
-    return "VK_ERROR_VALIDATION_FAILED_EXT";
   case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT:
     return "VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT";
+#endif
   case VK_ERROR_NOT_PERMITTED_EXT:
     return "VK_ERROR_NOT_PERMITTED_EXT";
+#endif
+  case VK_ERROR_VALIDATION_FAILED_EXT:
+    return "VK_ERROR_VALIDATION_FAILED_EXT";
   // case VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR:
   //   return "VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR";
   default:
@@ -162,7 +166,7 @@ inline std::string vulkanResultString(VkResult err) {
   return "UNDEFINED";
 }
 ///
-#define DEBUG_INFO(M)                                                          \
+#define INFO(M)                                                                \
   std::cerr << "[INFO] in [" << __FILE__ << "][" << __LINE__ << "]: " << (M)   \
             << std::endl;
 ///

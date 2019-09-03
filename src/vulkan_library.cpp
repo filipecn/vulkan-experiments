@@ -32,6 +32,8 @@
 
 #if defined __APPLE__
 #include <dlfcn.h>
+#elif defined __linux
+#include <dlfcn.h>
 #endif
 
 namespace circe {
@@ -52,12 +54,12 @@ bool VulkanLibraryInterface::loadLoaderFunctionFromVulkan(
 #ifndef GLFW_INCLUDE_VULKAN
 #define EXPORTED_VULKAN_FUNCTION(name)                                         \
   name = (PFN_##name)LoadFunction(vulkanLibrary, #name);                       \
-    CHECK(name != nullptr, \ concat("Could not load exported Vulkan function
-named:
-  ", #name)) #include " vulkan_api.inl "
-
+  CHECK(name != nullptr, concat("Could not load exported Vulkan function \
+named:",                                                                       \
+                                #name))
+#include "vulkan_api.inl"
 #endif
-      return true;
+  return true;
 }
 
 void VulkanLibraryInterface::releaseVulkanLoaderLibrary(
@@ -67,7 +69,7 @@ void VulkanLibraryInterface::releaseVulkanLoaderLibrary(
     FreeLibrary(vulkan_library);
 #elif defined __linux
     dlclose(vulkan_library);
-#elfif defined __APPLE__
+#elif defined __APPLE__
     dlclose(vulkan_library);
 #endif
     vulkan_library = nullptr;
@@ -460,16 +462,15 @@ bool VulkanLibraryInterface::selectDesiredPresentationMode(
       return true;
     }
   }
-  DEBUG_INFO(
-      "Desired present mode is not supported. Selecting default FIFO mode.");
+  INFO("Desired present mode is not supported. Selecting default FIFO mode.");
   for (auto &current_present_mode : present_modes) {
     if (current_present_mode == VK_PRESENT_MODE_FIFO_KHR) {
       present_mode = VK_PRESENT_MODE_FIFO_KHR;
       return true;
     }
   }
-  DEBUG_INFO("VK_PRESENT_MODE_FIFO_KHR is not supported though it's mandatory "
-             "for all drivers!");
+  INFO("VK_PRESENT_MODE_FIFO_KHR is not supported though it's mandatory "
+       "for all drivers!");
   return false;
 }
 
@@ -592,16 +593,16 @@ bool VulkanLibraryInterface::selectFormatOfSwapchainImages(
     if (desired_surface_format.format == surface_format.format) {
       image_format = desired_surface_format.format;
       image_color_space = surface_format.colorSpace;
-      DEBUG_INFO("Desired combination of format and colorspace is not "
-                 "supported. Selecting other colorspace.");
+      INFO("Desired combination of format and colorspace is not "
+           "supported. Selecting other colorspace.");
       return true;
     }
   }
 
   image_format = surface_formats[0].format;
   image_color_space = surface_formats[0].colorSpace;
-  DEBUG_INFO("Desired format is not supported. Selecting available format - "
-             "colorspace combination.");
+  INFO("Desired format is not supported. Selecting available format - "
+       "colorspace combination.");
   return true;
 }
 

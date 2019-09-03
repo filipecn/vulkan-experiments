@@ -32,7 +32,7 @@ namespace circe {
 
 namespace vk {
 
-App::App(size_t w, size_t h, const std::string &name)
+App::App(uint32_t w, uint32_t h, const std::string &name)
     : application_name_(name),
       graphics_display_(new GraphicsDisplay(w, h, name)) {}
 

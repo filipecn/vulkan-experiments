@@ -29,6 +29,8 @@
 #define CIRCE_VK_APP_H
 
 #include "vk_graphics_display.h"
+#include <functional>
+#include <memory>
 
 namespace circe {
 
@@ -42,7 +44,7 @@ public:
   /// \param w **[in]** window width (in pixels)
   /// \param h **[in]** window height (in pixels)
   /// \param title **[in]** window title text
-  App(size_t w, size_t h,
+  App(uint32_t w, uint32_t h,
       const std::string &title = std::string("Vulkan Application"));
   /// \brief Destroy the App object
   ~App();
@@ -67,8 +69,8 @@ public:
       const std::function<bool(const VulkanLibraryInterface::PhysicalDevice &)>
           &f);
   /// \brief Create a Logical Device object
-  /// There is no need to append swapchain extension, this method already does
-  /// it.
+  /// There is no need to append the swapchain extension, this method already
+  /// does it.
   /// \param queue_infos **[in]**
   /// \param desired_extensions **[in]** desired device extensions list
   /// \param desired_features **[in]** desired features list
@@ -80,7 +82,8 @@ public:
       VkPhysicalDeviceFeatures *desired_features = {});
   /// Setups the swapchain structure, that is responsible for image presentation
   /// on screen. It is configured with image format, color space and other
-  /// settings.
+  /// settings. If the swap chain is succefully created, the method retrieves
+  /// the list of swap chain images.
   /// \param format **[in]** desired image format
   /// \param color_space **[in]** desired color space
   /// \return bool true if success

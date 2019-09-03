@@ -31,8 +31,8 @@
 /// Disable the function prototypes in vulkan.h to load later function pointers
 /// dynamically in the application. This way we avoid redirection to function
 /// implementations.
-// #define VK_NO_PROTOTYPES
-// #include <vulkan/vulkan.h>
+#define VK_NO_PROTOTYPES
+#include <vulkan/vulkan.h>
 #endif
 
 #include <iostream>
