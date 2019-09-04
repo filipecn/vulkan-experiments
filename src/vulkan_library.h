@@ -651,6 +651,10 @@ public:
   // to synchronize the queues and the application.
   // After we use the image, we need to give it back to the presentation engine
   // so it can be displayed on screen.
+  // The type of access on the images is described by the image view object,
+  // which defines the portion of the image to be accessed and how it will be
+  // accessed (for example, if it should be treated as a 2D depth texture with
+  // mipmap levels).
 
   /// \brief Get the handle list of swapchain images
   /// \param logical_device **[in]** logical device handle

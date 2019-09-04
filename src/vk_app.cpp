@@ -37,6 +37,9 @@ App::App(uint32_t w, uint32_t h, const std::string &name)
       graphics_display_(new GraphicsDisplay(w, h, name)) {}
 
 App::~App() {
+  for (auto imageView : swap_chain_images_) {
+    vkDestroyImageView(device_, imageView, nullptr);
+  }
   VulkanLibraryInterface::destroySwapchain(device_, swap_chain_);
   VulkanLibraryInterface::destroyLogicalDevice(device_);
   VulkanLibraryInterface::destroyPresentationSurface(instance_, surface_);
@@ -118,10 +121,11 @@ bool App::setupSwapChain(VkFormat desired_format,
           surface_capabilities, number_of_images))
     return false;
   // QUERY IMAGE SIZE
-  if (!VulkanLibraryInterface::chooseSizeOfSwapchainImages(surface_capabilities,
-                                                           image_size_))
+  if (!VulkanLibraryInterface::chooseSizeOfSwapchainImages(
+          surface_capabilities, swap_chain_image_size_))
     return false;
-  if ((0 == image_size_.width) || (0 == image_size_.height))
+  if ((0 == swap_chain_image_size_.width) ||
+      (0 == swap_chain_image_size_.height))
     return false;
   // USAGE
   VkImageUsageFlags image_usage;
@@ -139,13 +143,13 @@ bool App::setupSwapChain(VkFormat desired_format,
   VkColorSpaceKHR image_color_space;
   if (!VulkanLibraryInterface::selectFormatOfSwapchainImages(
           physical_device_, surface_, {desired_format, desired_color_space},
-          image_format_, image_color_space))
+          swap_chain_image_format_, image_color_space))
     return false;
   // SWAP CHAIN
   if (!VulkanLibraryInterface::createSwapchain(
           device_, surface_, number_of_images,
-          {image_format_, image_color_space}, image_size_, image_usage,
-          surface_transform, desired_present_mode, old_swap_chain_,
+          {swap_chain_image_format_, image_color_space}, swap_chain_image_size_,
+          image_usage, surface_transform, desired_present_mode, old_swap_chain_,
           swap_chain_))
     return false;
   if (!VulkanLibraryInterface::getHandlesOfSwapchainImages(device_, swap_chain_,
