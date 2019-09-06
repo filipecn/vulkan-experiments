@@ -47,8 +47,9 @@ set(SOURCES
     # src/vulkan_api.cpp 
     src/vulkan_library.cpp
     )
-set(HEADERS 
+    set(HEADERS 
     src/vk_app.h
+    src/vk_buffer.h
     src/vk_graphics_display.h
     # src/vulkan_api.h
     # src/vulkan_api.inl

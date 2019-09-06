@@ -42,166 +42,6 @@
 #include <sstream>
 #include <vector>
 
-/// Retrieves the description of VkResult values
-/// \param err **[in]** error code
-/// \return std::string error description
-inline std::string vulkanResultString(VkResult err) {
-  switch (err) {
-  case VK_SUCCESS:
-    return "VK_SUCCESS Command successfully completed";
-  case VK_NOT_READY:
-    return "VK_NOT_READY A fence or query has not yet completed";
-  case VK_TIMEOUT:
-    return "VK_TIMEOUT A wait operation has not completed in the specified "
-           "time";
-  case VK_EVENT_SET:
-    return "VK_EVENT_SET An event is signaled";
-  case VK_EVENT_RESET:
-    return "VK_EVENT_RESET An event is unsignaled";
-  case VK_INCOMPLETE:
-    return "VK_INCOMPLETE A return array was too small for the result";
-  case VK_SUBOPTIMAL_KHR:
-    return "VK_SUBOPTIMAL_KHR A swapchain no longer matches the surface "
-           "properties exactly, but can still be used to present to the "
-           "surface successfully.";
-  case VK_ERROR_OUT_OF_HOST_MEMORY:
-    return "VK_ERROR_OUT_OF_HOST_MEMORY A host memory allocation has failed.";
-  case VK_ERROR_OUT_OF_DEVICE_MEMORY:
-    return "VK_ERROR_OUT_OF_DEVICE_MEMORY A device memory allocation has "
-           "failed.";
-  case VK_ERROR_INITIALIZATION_FAILED:
-    return "VK_ERROR_INITIALIZATION_FAILED Initialization of an object could "
-           "not be completed for implementation-specific reasons.";
-  case VK_ERROR_DEVICE_LOST:
-    return "VK_ERROR_DEVICE_LOST The logical or physical device has been lost. "
-           "See Lost Device";
-  case VK_ERROR_MEMORY_MAP_FAILED:
-    return "VK_ERROR_MEMORY_MAP_FAILED Mapping of a memory object has failed.";
-  case VK_ERROR_LAYER_NOT_PRESENT:
-    return "VK_ERROR_LAYER_NOT_PRESENT A requested layer is not present or "
-           "could not be loaded.";
-  case VK_ERROR_EXTENSION_NOT_PRESENT:
-    return "VK_ERROR_EXTENSION_NOT_PRESENT A requested extension is not "
-           "supported.";
-  case VK_ERROR_FEATURE_NOT_PRESENT:
-    return "VK_ERROR_FEATURE_NOT_PRESENT A requested feature is not supported.";
-  case VK_ERROR_INCOMPATIBLE_DRIVER:
-    return "VK_ERROR_INCOMPATIBLE_DRIVER The requested version of Vulkan is "
-           "not supported by the driver or is otherwise incompatible for "
-           "implementation-specific reasons.";
-  case VK_ERROR_TOO_MANY_OBJECTS:
-    return "VK_ERROR_TOO_MANY_OBJECTS Too many objects of the type have "
-           "already been created.";
-  case VK_ERROR_FORMAT_NOT_SUPPORTED:
-    return "VK_ERROR_FORMAT_NOT_SUPPORTED A requested format is not supported "
-           "on this device.";
-  case VK_ERROR_FRAGMENTED_POOL:
-    return "VK_ERROR_FRAGMENTED_POOL A pool allocation has failed due to "
-           "fragmentation of the pool’s memory. This must only be returned if "
-           "no attempt to allocate host or device memory was made to "
-           "accommodate the new allocation. This should be returned in "
-           "preference to VK_ERROR_OUT_OF_POOL_MEMORY, but only if the "
-           "implementation is certain that the pool allocation failure was due "
-           "to fragmentation.";
-  case VK_ERROR_SURFACE_LOST_KHR:
-    return "VK_ERROR_SURFACE_LOST_KHR A surface is no longer available.";
-  case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
-    return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR The requested window is already "
-           "in use by Vulkan or another API in a manner which prevents it from "
-           "being used again.";
-  case VK_ERROR_OUT_OF_DATE_KHR:
-    return "VK_ERROR_OUT_OF_DATE_KHR A surface has changed in such a way that "
-           "it is no longer compatible with the swapchain, and further "
-           "presentation requests using the swapchain will fail. Applications "
-           "must query the new surface properties and recreate their swapchain "
-           "if they wish to continue presenting to the surface.";
-  case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:
-    return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR The display used by a swapchain "
-           "does not use the same presentable image layout, or is incompatible "
-           "in a way that prevents sharing an image.";
-  case VK_ERROR_INVALID_SHADER_NV:
-    return "VK_ERROR_INVALID_SHADER_NV One or more shaders failed to compile "
-           "or link. More details are reported back to the application via "
-           "https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/"
-           "vkspec.html#VK_EXT_debug_report if enabled.";
-#ifndef __linux
-  case VK_ERROR_OUT_OF_POOL_MEMORY:
-    return "VK_ERROR_OUT_OF_POOL_MEMORY A pool memory allocation has failed. "
-           "This must only be returned if no attempt to allocate host or "
-           "device memory was made to accommodate the new allocation. If the "
-           "failure was definitely due to fragmentation of the pool, "
-           "VK_ERROR_FRAGMENTED_POOL should be returned instead.";
-  case VK_ERROR_INVALID_EXTERNAL_HANDLE:
-    return "VK_ERROR_INVALID_EXTERNAL_HANDLE An external handle is not a valid "
-           "handle of the specified type.";
-  case VK_ERROR_FRAGMENTATION_EXT:
-    return "VK_ERROR_FRAGMENTATION_EXT A descriptor pool creation has failed "
-           "due to fragmentation.";
-#ifndef WIN32
-  case VK_ERROR_INVALID_DEVICE_ADDRESS_EXT:
-    return "VK_ERROR_INVALID_DEVICE_ADDRESS_EXT A buffer creation failed "
-           "because the requested address is not available.";
-  case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:
-    return "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT An operation on a "
-           "swapchain created with "
-           "VK_FULL_SCREEN_EXCLUSIVE_APPLICATION_CONTROLLED_EXT failed as it "
-           "did not have exlusive full-screen access. This may occur due to "
-           "implementation-dependent reasons, outside of the application’s "
-           "control.";
-  // case VK_ERROR_OUT_OF_POOL_MEMORY_KHR:
-  //   return "VK_ERROR_OUT_OF_POOL_MEMORY_KHR";
-  case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT:
-    return "VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT";
-#endif
-  case VK_ERROR_NOT_PERMITTED_EXT:
-    return "VK_ERROR_NOT_PERMITTED_EXT";
-#endif
-  case VK_ERROR_VALIDATION_FAILED_EXT:
-    return "VK_ERROR_VALIDATION_FAILED_EXT";
-  // case VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR:
-  //   return "VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR";
-  default:
-    return "UNDEFINED";
-  }
-  return "UNDEFINED";
-}
-///
-#define INFO(M)                                                                \
-  std::cerr << "[INFO] in [" << __FILE__ << "][" << __LINE__ << "]: " << (M)   \
-            << std::endl;
-///
-#define CHECK_INFO(A, M)                                                       \
-  if (!(A)) {                                                                  \
-    std::cerr << "[INFO] in [" << __FILE__ << "][" << __LINE__ << "]: " << (M) \
-              << std::endl;                                                    \
-    return false;                                                              \
-  }
-///
-#define ASSERT(A)                                                              \
-  if (!(A)) {                                                                  \
-    std::cerr << "[ASSERTION_ERROR] in [" << __FILE__ << "][" << __LINE__      \
-              << "]: " << #A << std::endl;                                     \
-    exit(-1);                                                                  \
-  }
-///
-#define CHECK_VULKAN(A)                                                        \
-  {                                                                            \
-    VkResult err = (A);                                                        \
-    if (err != VK_SUCCESS) {                                                   \
-      std::cerr << "[VULKAN_ERROR] in [" << __FILE__ << "][" << __LINE__       \
-                << "]: call " << #A << std::endl;                              \
-      std::cerr << ".............. " << vulkanResultString(err) << std::endl;  \
-      return false;                                                            \
-    }                                                                          \
-  }
-///
-#define CHECK(A, M)                                                            \
-  if (!(A)) {                                                                  \
-    std::cerr << "[CHECK_ERROR] in [" << __FILE__ << "][" << __LINE__          \
-              << "]: " << (M) << std::endl;                                    \
-    return false;                                                              \
-  }
-
 #if defined _WIN32
 #include <windows.h>
 #define VulkanLibraryType HMODULE
@@ -280,6 +120,14 @@ public:
   struct WaitSemaphoreInfo {
     VkSemaphore Semaphore;
     VkPipelineStageFlags WaitingStage;
+  };
+  /// Defines parameters to use for buffer memory barrier
+  struct BufferTransition {
+    VkBuffer Buffer;
+    VkAccessFlags CurrentAccess; //!< how the buffer has been used so far
+    VkAccessFlags NewAccess;     //!< how the buffer will be used from now on
+    uint32_t CurrentQueueFamily; //!< queue family owning the buffer
+    uint32_t NewQueueFamily; //!< queue family that will receive the ownership
   };
 
   // VULKAN API FUNCTION LOADING
@@ -409,6 +257,13 @@ public:
       VkPhysicalDevice physical_device,
       VkPhysicalDeviceFeatures &device_features,
       VkPhysicalDeviceProperties &device_properties);
+  /// Acquires physical device memory properties, such as number of heaps, their
+  /// sizes, types and etc.
+  /// \param physical_device **[in]** physical device handler
+  /// \param properties **[out]** physical device memory properties
+  static void getPhysicalDeviceMemoryProperties(
+      VkPhysicalDevice physical_device,
+      VkPhysicalDeviceMemoryProperties &properties);
 
   // VULKAN QUEUE FAMILIES
   // ---------------------
@@ -482,6 +337,49 @@ public:
                              uint32_t queue_family_index, uint32_t queue_index,
                              VkQueue &queue);
 
+  // VULKAN RESOURCES AND MEMORY
+  // ---------------------------
+  // Vulkan uses memory objects to provide resources such as buffers and images.
+  // Buffers represent linear arrays and images can represent up to
+  // three-dimensional data arranged in ways specific to hardware. These
+  // resources serve to various purposes (such as shader data, render targets,
+  // etc). These usages must be specified on resource's creation.
+  // The driver must be informed about the usage not only during the buffer
+  // creation, but also before the actual usage. It is because we might want to
+  // change the usage of the buffer during execution. This is done by memory
+  // barriers, which are set as part of the pipeline barriers during command
+  // buffer recording.
+  // Memory barriers are very important to assure that commands read content
+  // from buffers properly, i.e. that the commands that write into the memory
+  // finish their job before the read.
+
+  /// Iterates over available physical device's memory types and check against
+  /// the desired memory properties (number of heaps, their sizes and types),
+  /// then allocate and binds it to the given buffer.
+  /// \param physical_device **[in]** physical device handle which the logical
+  /// device was created
+  /// \param logical_device **[in]** logical device handle created from the
+  /// physical device
+  /// \param buffer **[in]** buffer handle
+  /// \param memory_properties **[in]** desired memory properties
+  /// \param memory_object **[out]** allocated memory object
+  /// \return bool true if success
+  static bool allocateAndBindMemoryObjectToBuffer(
+      VkPhysicalDevice physical_device, VkDevice logical_device,
+      VkBuffer buffer, VkMemoryPropertyFlagBits memory_properties,
+      VkDeviceMemory &memory_object);
+  /// Setups buffer memory barriers
+  /// \param command_buffer **[in]** command buffer handle (in recording stage)
+  /// \param generating_stages **[in]** pipeline stages that have been using the
+  /// buffer so far
+  /// \param consuming_stages **[in]** pipeline stages in which the buffer will
+  /// be used after the barrier
+  /// \param buffer_transitions **[in]** parameters for each buffer that a
+  /// barrier will be set up for
+  void setBufferMemoryBarrier(VkCommandBuffer command_buffer,
+                              VkPipelineStageFlags generating_stages,
+                              VkPipelineStageFlags consuming_stages,
+                              std::vector<BufferTransition> buffer_transitions);
   // VULKAN SURFACE
   // --------------
   // Vulkan does not provide a way to display images in the application's

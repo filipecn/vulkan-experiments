@@ -23,7 +23,7 @@
 /// \author FilipeCN (filipedecn@gmail.com)
 /// \date 2019-08-03
 ///
-/// The contets were based on the Vulkan Cookbook 2017.
+/// The contets were heavely based on the Vulkan Cookbook 2017.
 ///
 /// \brief Implementation of circe's vulkan library interface.
 
@@ -242,6 +242,12 @@ void VulkanLibraryInterface::getFeaturesAndPropertiesOfPhysicalDevice(
   vkGetPhysicalDeviceProperties(physical_device, &device_properties);
 }
 
+void VulkanLibraryInterface::getPhysicalDeviceMemoryProperties(
+    VkPhysicalDevice physical_device,
+    VkPhysicalDeviceMemoryProperties &properties) {
+  vkGetPhysicalDeviceMemoryProperties(physical_device, &properties);
+}
+
 // VULKAN QUEUE FAMILIES //////////////////////////////////////////////////////
 
 bool VulkanLibraryInterface::checkAvailableQueueFamiliesAndTheirProperties(
@@ -367,6 +373,80 @@ void VulkanLibraryInterface::getDeviceQueue(VkDevice logical_device,
   vkGetDeviceQueue(logical_device, queue_family_index, queue_index, &queue);
 }
 
+// VULKAN RESOURCES AND MEMORY ///////////////////////////////////////////////
+
+bool VulkanLibraryInterface::allocateAndBindMemoryObjectToBuffer(
+    VkPhysicalDevice physical_device, VkDevice logical_device, VkBuffer buffer,
+    VkMemoryPropertyFlagBits memory_properties, VkDeviceMemory &memory_object) {
+  // create a pointer to the physical device's memory properties: number of
+  // heaps, sizes, etc
+  VkPhysicalDeviceMemoryProperties physical_device_memory_properties;
+  vkGetPhysicalDeviceMemoryProperties(physical_device,
+                                      &physical_device_memory_properties);
+  // acquire parameters of a memory that needs to be used for the buffer
+  // (buffer's memory may need to be bigger than the buffer's size)
+  VkMemoryRequirements memory_requirements;
+  vkGetBufferMemoryRequirements(logical_device, buffer, &memory_requirements);
+  memory_object = VK_NULL_HANDLE;
+  // iterate over the available physical device's memory types
+  for (uint32_t type = 0;
+       type < physical_device_memory_properties.memoryTypeCount; ++type) {
+    // check if type and properties match the desired ones
+    if ((memory_requirements.memoryTypeBits & (1 << type)) &&
+        ((physical_device_memory_properties.memoryTypes[type].propertyFlags &
+          memory_properties) == memory_properties)) {
+      // try to allocate memory
+      VkMemoryAllocateInfo buffer_memory_allocate_info = {
+          VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, // VkStructureType    sType
+          nullptr,                                // const void       * pNext
+          memory_requirements.size, // VkDeviceSize       allocationSize
+          type                      // uint32_t           memoryTypeIndex
+      };
+      VkResult result =
+          vkAllocateMemory(logical_device, &buffer_memory_allocate_info,
+                           nullptr, &memory_object);
+      if (VK_SUCCESS == result) {
+        break;
+      }
+    }
+  }
+  if (VK_NULL_HANDLE == memory_object) {
+    INFO("Could not allocate memory for a buffer.");
+    return false;
+  }
+  CHECK_VULKAN(vkBindBufferMemory(logical_device, buffer, memory_object, 0));
+  return true;
+}
+
+void VulkanLibraryInterface::setBufferMemoryBarrier(
+    VkCommandBuffer command_buffer, VkPipelineStageFlags generating_stages,
+    VkPipelineStageFlags consuming_stages,
+    std::vector<BufferTransition> buffer_transitions) {
+
+  std::vector<VkBufferMemoryBarrier> buffer_memory_barriers;
+
+  for (auto &buffer_transition : buffer_transitions) {
+    buffer_memory_barriers.push_back({
+        VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // VkStructureType    sType
+        nullptr,                                 // const void       * pNext
+        buffer_transition.CurrentAccess, // VkAccessFlags      srcAccessMask
+        buffer_transition.NewAccess,     // VkAccessFlags      dstAccessMask
+        buffer_transition.CurrentQueueFamily, // uint32_t srcQueueFamilyIndex
+        buffer_transition.NewQueueFamily,     // uint32_t dstQueueFamilyIndex
+        buffer_transition.Buffer,             // VkBuffer           buffer
+        0,                                    // VkDeviceSize       offset
+        VK_WHOLE_SIZE                         // VkDeviceSize       size
+    });
+  }
+
+  if (buffer_memory_barriers.size() > 0) {
+    vkCmdPipelineBarrier(command_buffer, generating_stages, consuming_stages, 0,
+                         0, nullptr,
+                         static_cast<uint32_t>(buffer_memory_barriers.size()),
+                         buffer_memory_barriers.data(), 0, nullptr);
+  }
+}
+
 // VULKAN SURFACE ////////////////////////////////////////////////////////////
 
 bool VulkanLibraryInterface::createPresentationSurface(
@@ -377,10 +457,11 @@ bool VulkanLibraryInterface::createPresentationSurface(
 #ifdef VK_USE_PLATFORM_WIN32_KHR
 
   VkWin32SurfaceCreateInfoKHR surface_create_info = {
-      VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR, // VkStructureType sType
+      VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR, // VkStructureType
+                                                       // sType
       nullptr,                     // const void                    * pNext
       0,                           // VkWin32SurfaceCreateFlagsKHR    flags
-      window_parameters.HInstance, // HINSTANCE                       hinstance
+      window_parameters.HInstance, // HINSTANCE hinstance
       window_parameters.HWnd       // HWND                            hwnd
   };
 
@@ -653,7 +734,8 @@ void VulkanLibraryInterface::destroySwapchain(VkDevice logical_device,
   }
 }
 
-// SWAPCHAIN IMAGE OPERATIONS /////////////////////////////////////////////////
+// SWAPCHAIN IMAGE OPERATIONS
+// /////////////////////////////////////////////////
 
 bool VulkanLibraryInterface::getHandlesOfSwapchainImages(
     VkDevice logical_device, VkSwapchainKHR swapchain,
