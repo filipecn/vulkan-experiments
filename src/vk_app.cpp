@@ -37,9 +37,9 @@ App::App(uint32_t w, uint32_t h, const std::string &name)
       graphics_display_(new GraphicsDisplay(w, h, name)) {}
 
 App::~App() {
-  // for (auto imageView : swap_chain_images_) {
-  //  vkDestroyImageView(device_, imageView, nullptr);
-  //}
+  for (auto image_view : swap_chain_image_views_) {
+    vkDestroyImageView(device_, image_view, nullptr);
+  }
   VulkanLibraryInterface::destroySwapchain(device_, swap_chain_);
   VulkanLibraryInterface::destroyLogicalDevice(device_);
   VulkanLibraryInterface::destroyPresentationSurface(instance_, surface_);
@@ -155,6 +155,15 @@ bool App::setupSwapChain(VkFormat desired_format,
   if (!VulkanLibraryInterface::getHandlesOfSwapchainImages(device_, swap_chain_,
                                                            swap_chain_images_))
     return false;
+  // CREATE IMAGE VIEWS
+  swap_chain_image_views_.resize(swap_chain_images_.size());
+  for (uint32_t i = 0; i < swap_chain_image_views_.size(); i++) {
+    if (!VulkanLibraryInterface::createImageView(
+            device_, swap_chain_images_[i], VK_IMAGE_VIEW_TYPE_2D,
+            swap_chain_image_format_, VK_IMAGE_ASPECT_COLOR_BIT,
+            swap_chain_image_views_[i]))
+      return false;
+  }
   return true;
 }
 

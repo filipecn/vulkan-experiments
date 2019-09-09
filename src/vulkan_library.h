@@ -129,6 +129,18 @@ public:
     uint32_t CurrentQueueFamily; //!< queue family owning the buffer
     uint32_t NewQueueFamily; //!< queue family that will receive the ownership
   };
+  /// Defines parameters to use for image memory barrier
+  struct ImageTransition {
+    VkImage Image;
+    VkAccessFlags CurrentAccess; //!< how the image has been used so far
+    VkAccessFlags NewAccess;     //!< how the image will be used from now on
+    VkImageLayout CurrentLayout; //!< how the image has been organized in memory
+    VkImageLayout NewLayout;     //!< how the image will be organized in memory
+    uint32_t CurrentQueueFamily; //!< queue family owning the image
+    uint32_t NewQueueFamily; //!< queue family that will receive the ownership
+    VkImageAspectFlags
+        Aspect; //!< image's usage contex (color, depth or stencil)
+  };
 
   // VULKAN API FUNCTION LOADING
   // ---------------------------
@@ -344,14 +356,17 @@ public:
   // three-dimensional data arranged in ways specific to hardware. These
   // resources serve to various purposes (such as shader data, render targets,
   // etc). These usages must be specified on resource's creation.
-  // The driver must be informed about the usage not only during the buffer
-  // creation, but also before the actual usage. It is because we might want to
-  // change the usage of the buffer during execution. This is done by memory
-  // barriers, which are set as part of the pipeline barriers during command
-  // buffer recording.
+  // The driver must be informed about the usage not only during the
+  // buffer/image creation, but also before the actual usage. It is because we
+  // might want to change the usage of the buffer/image during execution. This
+  // is done by memory barriers, which are set as part of the pipeline barriers
+  // during command buffer recording.
   // Memory barriers are very important to assure that commands read content
-  // from buffers properly, i.e. that the commands that write into the memory
-  // finish their job before the read.
+  // from buffers/images properly, i.e. that the commands that write into the
+  // memory finish their job before the read.
+  // Vulkan also provides image layouts. Depending on the usage of the image,
+  // it may be organized in memory differently to optimize access to it. We
+  // can also change the image layout during an image memory barrier.
 
   /// Iterates over available physical device's memory types and check against
   /// the desired memory properties (number of heaps, their sizes and types),
@@ -380,15 +395,62 @@ public:
                               VkPipelineStageFlags generating_stages,
                               VkPipelineStageFlags consuming_stages,
                               std::vector<BufferTransition> buffer_transitions);
+  /// Iterates over available physical device's memory types and check against
+  /// the desired memory properties (number of heaps, their sizes and types),
+  /// then allocate and binds it to the given image.
+  /// \param physical_device **[in]** physical device handle which the logical
+  /// device was created
+  /// \param logical_device **[in]** logical device handle created from the
+  /// physical device
+  /// \param image **[in]** image handle
+  /// \param memory_properties **[in]** desired memory properties
+  /// \param memory_object **[out]** allocated memory object
+  /// \return bool true if success
+  static bool
+  allocateAndBindMemoryObjectToImage(VkPhysicalDevice physical_device,
+                                     VkDevice logical_device, VkImage image,
+                                     VkMemoryPropertyFlagBits memory_properties,
+                                     VkDeviceMemory &memory_object);
+  /// Setups image memory barriers
+  /// \param command_buffer **[in]** command buffer handle (in recording stage)
+  /// \param generating_stages **[in]** pipeline stages that have been using the
+  /// image so far
+  /// \param consuming_stages **[in]** pipeline stages in which the image will
+  /// be used after the barrier
+  /// \param image_transitions **[in]** parameters for each image that a
+  /// barrier will be set up for
+  void VulkanLibraryInterface::SetImageMemoryBarrier(
+      VkCommandBuffer command_buffer, VkPipelineStageFlags generating_stages,
+      VkPipelineStageFlags consuming_stages,
+      std::vector<ImageTransition> image_transitions);
+
+  // VULKAN IMAGE VIEW
+  // -----------------
+  // Image views define a selected part of an image's memory and specify
+  // additional information needed to properly read an image's data.
+
+  /// Creates an image view object for the entire given image
+  /// \param logical_device **[in]** logical device handle
+  /// \param image **[in]** image handle
+  /// \param view_type **[in]**
+  /// \param format **[in]** data format
+  /// \param aspect **[in]** context: color, depth or stencil
+  /// \param image_view **[out]** image view object
+  /// \return bool true if success
+  static bool createImageView(VkDevice logical_device, VkImage image,
+                              VkImageViewType view_type, VkFormat format,
+                              VkImageAspectFlags aspect,
+                              VkImageView &image_view);
+
   // VULKAN SURFACE
   // --------------
   // Vulkan does not provide a way to display images in the application's
   // window by default. We need extensions to do so. These extensions are
-  // commonly referred as Windowing System Integration (WSI) and each operating
-  // system has its own set of extensions.
-  // The presentation surface is the Vulkan representation of an application's
-  // window. Instance-level extensions are responsable for managing, creating,
-  // and destroying a presentation surface.
+  // commonly referred as Windowing System Integration (WSI) and each
+  // operating system has its own set of extensions. The presentation surface
+  // is the Vulkan representation of an application's window. Instance-level
+  // extensions are responsable for managing, creating, and destroying a
+  // presentation surface.
 
   /// \brief Create a Presentation Surface handle
   /// \param instance **[in]** vulkan instance handle
@@ -413,19 +475,17 @@ public:
 
   // VULKAN SWAP CHAIN
   // -----------------
-  // Different from other high level libraries, such as OpenGL, Vulkan does not
-  // have a system of framebuffers. In order to control the buffers that are
-  // rendered and presented on the display, Vulkan provides a mechanism called
-  // swap chain. The Vulkan swapchain is a queue of images that are presented to
-  // the screen in a synchronized manner, following the rules and properties
-  // defined on its setup.
-  // The swapchain is owned by the presentation engine, and not by the
-  // application. We can't create the images or destroy them, all the
-  // application does is to request images, do work and give it back to the
-  // presentation engine.
-  // In order to use the swapchain, the device has to support the
-  // VK_KHR_swapchain extension.
-  // The swapchain works following a presentation mode. The presentation mode
+  // Different from other high level libraries, such as OpenGL, Vulkan does
+  // not have a system of framebuffers. In order to control the buffers that
+  // are rendered and presented on the display, Vulkan provides a mechanism
+  // called swap chain. The Vulkan swapchain is a queue of images that are
+  // presented to the screen in a synchronized manner, following the rules and
+  // properties defined on its setup. The swapchain is owned by the
+  // presentation engine, and not by the application. We can't create the
+  // images or destroy them, all the application does is to request images, do
+  // work and give it back to the presentation engine. In order to use the
+  // swapchain, the device has to support the VK_KHR_swapchain extension. The
+  // swapchain works following a presentation mode. The presentation mode
   // defines the format of an image, the number of images (double/triple
   // buffering), v-sync and etc. In other words, it defines how images are
   // displayed on screen. Vulkan provides 4 presentation modes:
@@ -434,25 +494,23 @@ public:
   //    displayed. Screen tearing may happen when using this mode.
   // 2. FIFO mode
   //    When a image is presented, it is added to the queue. Images are
-  //    displayed on screen in sync with blanking periods (v-sync). This mode is
-  //    similar to OpenGL's buffer swap.
+  //    displayed on screen in sync with blanking periods (v-sync). This mode
+  //    is similar to OpenGL's buffer swap.
   // 3. (FIFO) RELAXED mode
-  //    Images are displayed with blanking periods only when are faster than the
-  //    refresh rate.
+  //    Images are displayed with blanking periods only when are faster than
+  //    the refresh rate.
   // 4. MAILBOX mode (triple buffering)
   //    There is a queue with just one element. An image waiting in this queue
   //    is displayed in sync with blanking periods. When the application
-  //    presents an image, the new image replaces the one waiting in the queue.
-  //    So the displayed image is always the most recent available.
+  //    presents an image, the new image replaces the one waiting in the
+  //    queue. So the displayed image is always the most recent available.
 
-  /// Checks if the desired presentation mode is supported by the device, if so,
-  /// it is returned in **present_mode**. If not, VK_PRESENT_MODE_FIFO_KHR is
-  /// chosen.
-  /// \param physical_device **[in]** physical device handle
-  /// \param presentation_surface **[in]** surface handle
-  /// \param desired_present_mode **[in]** described presentation mode
-  /// \param present_mode **[out]** available presentation mode
-  /// \return bool true if success
+  /// Checks if the desired presentation mode is supported by the device, if
+  /// so, it is returned in **present_mode**. If not, VK_PRESENT_MODE_FIFO_KHR
+  /// is chosen. \param physical_device **[in]** physical device handle \param
+  /// presentation_surface **[in]** surface handle \param desired_present_mode
+  /// **[in]** described presentation mode \param present_mode **[out]**
+  /// available presentation mode \return bool true if success
   static bool selectDesiredPresentationMode(
       VkPhysicalDevice physical_device, VkSurfaceKHR presentation_surface,
       VkPresentModeKHR desired_present_mode, VkPresentModeKHR &present_mode);
@@ -482,8 +540,8 @@ public:
       VkSurfaceCapabilitiesKHR const &surface_capabilities,
       VkExtent2D &size_of_images);
   /// \brief Clamps the usage flag to the surface capabilities
-  /// Images can also be used for purposes other than as color attachments. For
-  /// example, we can sample from them and use them in copy operations.
+  /// Images can also be used for purposes other than as color attachments.
+  /// For example, we can sample from them and use them in copy operations.
   /// \param surface_capabilities **[in]** surface capabilities
   /// \param desired_usages **[in]** desired usages
   /// \param image_usage **[in/out]** available usages
@@ -547,12 +605,11 @@ public:
   // them first. When acquiring images, we can use semaphores and fences.
   // Semaphores can be used in internal queue synchronization. Fences are used
   // to synchronize the queues and the application.
-  // After we use the image, we need to give it back to the presentation engine
-  // so it can be displayed on screen.
-  // The type of access on the images is described by the image view object,
-  // which defines the portion of the image to be accessed and how it will be
-  // accessed (for example, if it should be treated as a 2D depth texture with
-  // mipmap levels).
+  // After we use the image, we need to give it back to the presentation
+  // engine so it can be displayed on screen. The type of access on the images
+  // is described by the image view object, which defines the portion of the
+  // image to be accessed and how it will be accessed (for example, if it
+  // should be treated as a 2D depth texture with mipmap levels).
 
   /// \brief Get the handle list of swapchain images
   /// \param logical_device **[in]** logical device handle
@@ -564,15 +621,13 @@ public:
                               std::vector<VkImage> &swapchain_images);
   /// Acquires an image index (in the array returned by the
   /// **getHandlesOfSwapchainImages** method). The fence is used to make sure
-  /// the application does not modify the image while there are still previously
-  /// submitted operations happening on the image. The semaphore is used to tell
-  /// the driver to not start processing new commands with the given image.
-  /// \param logical_device **[in]** logical device handle
-  /// \param swapchain **[in]** swapchain handle
-  /// \param semaphore **[in]** semaphore handle
-  /// \param fence **[in]** fence handle
-  /// \param image_index **[out]** acquired image index
-  /// \return bool true if success
+  /// the application does not modify the image while there are still
+  /// previously submitted operations happening on the image. The semaphore is
+  /// used to tell the driver to not start processing new commands with the
+  /// given image. \param logical_device **[in]** logical device handle \param
+  /// swapchain **[in]** swapchain handle \param semaphore **[in]** semaphore
+  /// handle \param fence **[in]** fence handle \param image_index **[out]**
+  /// acquired image index \return bool true if success
   static bool acquireSwapchainImage(VkDevice logical_device,
                                     VkSwapchainKHR swapchain,
                                     VkSemaphore semaphore, VkFence fence,
@@ -594,18 +649,20 @@ public:
   // operations to the hardware. The operations are submitted in form of
   // commands that are stored in buffers and sent to family queues provided
   // by the device. Each of these queues are specialized in certain types of
-  // commands and different queues can be processed simultaniously. Depending on
-  // the application and the commands being executed and the operations waiting
-  // to be executed, some dependencies might appear. One queue might need the
-  // operations of another queue to finish first and then complete its work for
-  // example. The same may happen on the application side, waiting for the queue
-  // to finish its work. For that, Vulkan provides semaphores and fences.
+  // commands and different queues can be processed simultaniously. Depending
+  // on the application and the commands being executed and the operations
+  // waiting to be executed, some dependencies might appear. One queue might
+  // need the operations of another queue to finish first and then complete
+  // its work for example. The same may happen on the application side,
+  // waiting for the queue to finish its work. For that, Vulkan provides
+  // semaphores and fences.
   // - Semaphores allow us to coordinate operations submitted within one queue
-  //   and between different queues in one logical device. They are submitted to
-  //   command buffer submissions and have their state changed as soon as all
-  //   commands are finished. We can also specify that certain commands should
-  //   wait until all semaphores from a certain list get activated.
-  // - Fences inform the application that a submitted work is finished. A fence
+  //   and between different queues in one logical device. They are submitted
+  //   to command buffer submissions and have their state changed as soon as
+  //   all commands are finished. We can also specify that certain commands
+  //   should wait until all semaphores from a certain list get activated.
+  // - Fences inform the application that a submitted work is finished. A
+  // fence
   //   changes its state as soon all work submitted along with it is finished.
 
   /// \brief Creates a semaphore for a given logical device
@@ -646,24 +703,26 @@ public:
 
   // VULKAN COMMAND BUFFERS
   // ----------------------
-  // Command buffers record operations and are submitted to the hardware.  They
+  // Command buffers record operations and are submitted to the hardware. They
   // can be recorded in multiple threads and also can be saved and reused.
   // Synchronization is very important on this part, because the operations
   // submitted need to be processed properly.
-  // Before allocating command buffers, we need to allocate command pools, from
-  // which the command buffers acquire memory. Command pools are also
+  // Before allocating command buffers, we need to allocate command pools,
+  // from which the command buffers acquire memory. Command pools are also
   // responsible for informing the driver on how to deal with the command
-  // buffers memory allocated from them (for example, whether the command buffer
-  // will have a short life or if they need to be reset or freed). Command pools
-  // also control the queues that receive the command buffers.
+  // buffers memory allocated from them (for example, whether the command
+  // buffer will have a short life or if they need to be reset or freed).
+  // Command pools also control the queues that receive the command buffers.
   // Command buffers are separate in two groups:
-  // 1. Primary - can be directly submitted to queues and call secondary command
+  // 1. Primary - can be directly submitted to queues and call secondary
+  // command
   //    buffers.
   // 2. Secondary - can only be executed from primary command buffers.
   // When recording commands to command buffers, we need to set the state for
-  // the operations as well (for example, vertex attributes use other buffers to
-  // work). When calling a secondary command buffer, the state of the caller
-  // primary command buffer is not preserved (unless it is a render pass).
+  // the operations as well (for example, vertex attributes use other buffers
+  // to work). When calling a secondary command buffer, the state of the
+  // caller primary command buffer is not preserved (unless it is a render
+  // pass).
 
   /// \brief Create a Command Pool object
   /// Command pools cannot be used concurrently, we must create a separate
@@ -671,10 +730,9 @@ public:
   /// \param logical_device **[in]** logical device handle
   /// \param parameters **[in]** flags that define how the command pool will
   /// handle command buffer creation, memory, life span, etc.
-  /// \param queue_family **[in]** queue family to which command buffers will be
-  /// submitted.
-  /// \param command_pool **[out]** command pool handle
-  /// \return bool
+  /// \param queue_family **[in]** queue family to which command buffers will
+  /// be submitted. \param command_pool **[out]** command pool handle \return
+  /// bool
   static bool createCommandPool(VkDevice logical_device,
                                 VkCommandPoolCreateFlags parameters,
                                 uint32_t queue_family,
@@ -694,12 +752,10 @@ public:
   allocateCommandBuffers(VkDevice logical_device, VkCommandPool command_pool,
                          VkCommandBufferLevel level, uint32_t count,
                          std::vector<VkCommandBuffer> &command_buffers);
-  /// \brief Puts the command buffer in record state and allow vkCmd* functions
-  /// to be recorderd.
-  /// \param command_buffer **[in]** command buffer handle
-  /// \param usage **[in]** usage description
-  /// \param secondary_command_buffer_info **[in]**
-  /// \return bool true if success
+  /// \brief Puts the command buffer in record state and allow vkCmd*
+  /// functions to be recorderd. \param command_buffer **[in]** command buffer
+  /// handle \param usage **[in]** usage description \param
+  /// secondary_command_buffer_info **[in]** \return bool true if success
   static bool beginCommandBufferRecordingOperation(
       VkCommandBuffer command_buffer, VkCommandBufferUsageFlags usage,
       VkCommandBufferInheritanceInfo *secondary_command_buffer_info);

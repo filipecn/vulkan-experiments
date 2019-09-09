@@ -92,6 +92,7 @@ public:
 private:
   VkSwapchainKHR swap_chain_ = VK_NULL_HANDLE, old_swap_chain_ = VK_NULL_HANDLE;
   std::vector<VkImage> swap_chain_images_;
+  std::vector<VkImageView> swap_chain_image_views_;
   VkExtent2D swap_chain_image_size_;
   VkFormat swap_chain_image_format_;
   std::string application_name_;

@@ -418,10 +418,8 @@ bool VulkanLibraryInterface::allocateAndBindMemoryObjectToBuffer(
       }
     }
   }
-  if (VK_NULL_HANDLE == memory_object) {
-    INFO("Could not allocate memory for a buffer.");
-    return false;
-  }
+  CHECK_INFO(VK_NULL_HANDLE == memory_object,
+             "Could not allocate memory for a buffer.");
   CHECK_VULKAN(vkBindBufferMemory(logical_device, buffer, memory_object, 0));
   return true;
 }
@@ -453,6 +451,114 @@ void VulkanLibraryInterface::setBufferMemoryBarrier(
                          static_cast<uint32_t>(buffer_memory_barriers.size()),
                          buffer_memory_barriers.data(), 0, nullptr);
   }
+}
+
+bool VulkanLibraryInterface::allocateAndBindMemoryObjectToImage(
+    VkPhysicalDevice physical_device, VkDevice logical_device, VkImage image,
+    VkMemoryPropertyFlagBits memory_properties, VkDeviceMemory &memory_object) {
+  // create a pointer to the physical device's memory properties: number of
+  // heaps, sizes, etc
+  VkPhysicalDeviceMemoryProperties physical_device_memory_properties;
+  vkGetPhysicalDeviceMemoryProperties(physical_device,
+                                      &physical_device_memory_properties);
+  // acquire parameters of a memory that needs to be used for the image
+  // (buffer's memory may need to be bigger than the buffer's size)
+  VkMemoryRequirements memory_requirements;
+  vkGetImageMemoryRequirements(logical_device, image, &memory_requirements);
+  memory_object = VK_NULL_HANDLE;
+  // iterate over the available physical device's memory types
+  for (uint32_t type = 0;
+       type < physical_device_memory_properties.memoryTypeCount; ++type) {
+    // check if type and properties match the desired ones
+    if ((memory_requirements.memoryTypeBits & (1 << type)) &&
+        ((physical_device_memory_properties.memoryTypes[type].propertyFlags &
+          memory_properties) == memory_properties)) {
+      // try to allocate memory
+      VkMemoryAllocateInfo image_memory_allocate_info = {
+          VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, // VkStructureType    sType
+          nullptr,                                // const void       * pNext
+          memory_requirements.size, // VkDeviceSize       allocationSize
+          type                      // uint32_t           memoryTypeIndex
+      };
+      VkResult result = vkAllocateMemory(
+          logical_device, &image_memory_allocate_info, nullptr, &memory_object);
+      if (VK_SUCCESS == result) {
+        break;
+      }
+    }
+  }
+  CHECK_INFO(VK_NULL_HANDLE == memory_object,
+             "Could not allocate memory for an image.");
+  CHECK_VULKAN(vkBindImageMemory(logical_device, image, memory_object, 0));
+  return true;
+}
+
+void VulkanLibraryInterface::SetImageMemoryBarrier(
+    VkCommandBuffer command_buffer, VkPipelineStageFlags generating_stages,
+    VkPipelineStageFlags consuming_stages,
+    std::vector<ImageTransition> image_transitions) {
+  std::vector<VkImageMemoryBarrier> image_memory_barriers;
+
+  for (auto &image_transition : image_transitions) {
+    image_memory_barriers.push_back(
+        {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // VkStructureType sType
+         nullptr,                        // const void               * pNext
+         image_transition.CurrentAccess, // VkAccessFlags srcAccessMask
+         image_transition.NewAccess, // VkAccessFlags              dstAccessMask
+         image_transition.CurrentLayout, // VkImageLayout              oldLayout
+         image_transition.NewLayout,     // VkImageLayout              newLayout
+         image_transition.CurrentQueueFamily, // uint32_t srcQueueFamilyIndex
+         image_transition.NewQueueFamily,     // uint32_t dstQueueFamilyIndex
+         image_transition.Image, // VkImage                    image
+         {
+             // VkImageSubresourceRange    subresourceRange
+             image_transition.Aspect, // VkImageAspectFlags         aspectMask
+             0,                       // uint32_t                   baseMipLevel
+             VK_REMAINING_MIP_LEVELS, // uint32_t                   levelCount
+             0, // uint32_t                   baseArrayLayer
+             VK_REMAINING_ARRAY_LAYERS // uint32_t                   layerCount
+         }});
+  }
+
+  if (image_memory_barriers.size() > 0) {
+    vkCmdPipelineBarrier(command_buffer, generating_stages, consuming_stages, 0,
+                         0, nullptr, 0, nullptr,
+                         static_cast<uint32_t>(image_memory_barriers.size()),
+                         image_memory_barriers.data());
+  }
+}
+
+// VULKAN IMAGE VIEW /////////////////////////////////////////////////////////
+
+bool VulkanLibraryInterface::createImageView(
+    VkDevice logical_device, VkImage image, VkImageViewType view_type,
+    VkFormat format, VkImageAspectFlags aspect, VkImageView &image_view) {
+  VkImageViewCreateInfo image_view_create_info = {
+      VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, // VkStructureType sType
+      nullptr,   // const void               * pNext
+      0,         // VkImageViewCreateFlags     flags
+      image,     // VkImage                    image
+      view_type, // VkImageViewType            viewType
+      format,    // VkFormat                   format
+      {
+          // VkComponentMapping         components
+          VK_COMPONENT_SWIZZLE_IDENTITY, // VkComponentSwizzle         r
+          VK_COMPONENT_SWIZZLE_IDENTITY, // VkComponentSwizzle         g
+          VK_COMPONENT_SWIZZLE_IDENTITY, // VkComponentSwizzle         b
+          VK_COMPONENT_SWIZZLE_IDENTITY  // VkComponentSwizzle         a
+      },
+      {
+          // VkImageSubresourceRange    subresourceRange
+          aspect,                   // VkImageAspectFlags         aspectMask
+          0,                        // uint32_t                   baseMipLevel
+          VK_REMAINING_MIP_LEVELS,  // uint32_t                   levelCount
+          0,                        // uint32_t                   baseArrayLayer
+          VK_REMAINING_ARRAY_LAYERS // uint32_t                   layerCount
+      }};
+
+  CHECK_VULKAN(vkCreateImageView(logical_device, &image_view_create_info,
+                                 nullptr, &image_view));
+  return true;
 }
 
 // VULKAN SURFACE ////////////////////////////////////////////////////////////

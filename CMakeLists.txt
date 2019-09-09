@@ -42,7 +42,9 @@ endif()
 set(SOURCES
     src/hello_vulkan.cpp 
     src/vk_app.cpp
+    src/vk_buffer.cpp
     src/vk_graphics_display.cpp
+    src/vk_image.cpp
     # src/vulkan_api.cpp 
     src/vulkan_library.cpp
     )
@@ -51,6 +53,7 @@ set(SOURCES
     src/vk_app.h
     src/vk_buffer.h
     src/vk_graphics_display.h
+    src/vk_image.h
     # src/vulkan_api.h
     # src/vulkan_api.inl
     src/vulkan_library.h

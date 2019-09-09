@@ -28,6 +28,9 @@
 #ifndef CIRCE_VULKAN_DEBUG_H
 #define CIRCE_VULKAN_DEBUG_H
 
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+
 #include <string>
 
 /// Retrieves the description of VkResult values
