@@ -154,24 +154,6 @@ inline std::string vulkanResultString(VkResult err) {
   return "UNDEFINED";
 }
 ///
-#define INFO(M)                                                                \
-  std::cerr << "[INFO] in [" << __FILE__ << "][" << __LINE__ << "]: " << (M)   \
-            << std::endl;
-///
-#define CHECK_INFO(A, M)                                                       \
-  if (!(A)) {                                                                  \
-    std::cerr << "[INFO] in [" << __FILE__ << "][" << __LINE__ << "]: " << (M) \
-              << std::endl;                                                    \
-    return false;                                                              \
-  }
-///
-#define ASSERT(A)                                                              \
-  if (!(A)) {                                                                  \
-    std::cerr << "[ASSERTION_ERROR] in [" << __FILE__ << "][" << __LINE__      \
-              << "]: " << #A << std::endl;                                     \
-    exit(-1);                                                                  \
-  }
-///
 #define CHECK_VULKAN(A)                                                        \
   {                                                                            \
     VkResult err = (A);                                                        \
@@ -192,13 +174,6 @@ inline std::string vulkanResultString(VkResult err) {
       std::cerr << ".............. " << vulkanResultString(err) << std::endl;  \
       exit(-1);                                                                \
     }                                                                          \
-  }
-///
-#define CHECK(A, M)                                                            \
-  if (!(A)) {                                                                  \
-    std::cerr << "[CHECK_ERROR] in [" << __FILE__ << "][" << __LINE__          \
-              << "]: " << (M) << std::endl;                                    \
-    return false;                                                              \
   }
 
 #endif

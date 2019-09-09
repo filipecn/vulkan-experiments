@@ -11,7 +11,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # external
 include(ExternalProject)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/ext")
-# GLFW
 include(glfw)
 
 if(APPLE)
@@ -48,6 +47,7 @@ set(SOURCES
     src/vulkan_library.cpp
     )
     set(HEADERS 
+	src/logging.h
     src/vk_app.h
     src/vk_buffer.h
     src/vk_graphics_display.h
@@ -55,10 +55,11 @@ set(SOURCES
     # src/vulkan_api.inl
     src/vulkan_library.h
 )
-
 add_executable(hello_vulkan ${SOURCES} ${HEADERS})
-target_include_directories(hello_vulkan PUBLIC ${GLFW_INCLUDES} ${VULKAN_INCLUDES})
-add_dependencies(hello_vulkan glfw)
+target_include_directories(hello_vulkan PUBLIC ${GLOG_INCLUDE_DIR} ${GLFW_INCLUDES} ${VULKAN_INCLUDES})
+add_dependencies(hello_vulkan 
+glfw 
+)
 target_link_libraries(hello_vulkan 
 # Vulkan::Vulkan
  ${GLFW_LIBRARIES} 

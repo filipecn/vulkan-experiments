@@ -28,6 +28,8 @@
 /// \brief Implementation of circe's vulkan library interface.
 
 #include "vulkan_library.h"
+#include "logging.h"
+#include "vulkan_debug.h"
 #include <iostream>
 
 #if defined __APPLE__
@@ -189,8 +191,9 @@ bool VulkanLibraryInterface::createInstance(
   if (!checkAvaliableInstanceExtensions(instanceExtensions))
     return false;
   for (auto &extension : extensions)
-    CHECK(isExtensionSupported(instanceExtensions, extension),
-          concat("Extension named '", extension, "' is not supported."));
+    D_RETURN_FALSE_IF_NOT(
+        isExtensionSupported(instanceExtensions, extension),
+        concat("Extension named '", extension, "' is not supported."));
   VkApplicationInfo info;
   info.pApplicationName = applicationName.c_str();
   info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -210,7 +213,8 @@ bool VulkanLibraryInterface::createInstance(
   createInfo.ppEnabledExtensionNames =
       (extensions.size()) ? extensions.data() : nullptr;
   CHECK_VULKAN(vkCreateInstance(&createInfo, nullptr, &instance));
-  CHECK(instance != VK_NULL_HANDLE, "Could not create Vulkan Instance.");
+  D_RETURN_FALSE_IF_NOT(instance != VK_NULL_HANDLE,
+                        "Could not create Vulkan Instance.");
   return true;
 }
 
@@ -226,12 +230,14 @@ bool VulkanLibraryInterface::enumerateAvailablePhysicalDevices(
     VkInstance instance, std::vector<VkPhysicalDevice> &devices) {
   uint32_t devicesCount = 0;
   CHECK_VULKAN(vkEnumeratePhysicalDevices(instance, &devicesCount, nullptr));
-  CHECK(devicesCount != 0,
-        "Could not get the number of available physical devices.");
+  D_RETURN_FALSE_IF_NOT(
+      devicesCount != 0,
+      "Could not get the number of available physical devices.");
   devices.resize(devicesCount);
   CHECK_VULKAN(
       vkEnumeratePhysicalDevices(instance, &devicesCount, devices.data()));
-  CHECK(devicesCount != 0, "Could not enumerate physical devices.");
+  D_RETURN_FALSE_IF_NOT(devicesCount != 0,
+                        "Could not enumerate physical devices.");
   return true;
 }
 
@@ -256,13 +262,13 @@ bool VulkanLibraryInterface::checkAvailableQueueFamiliesAndTheirProperties(
   uint32_t queue_families_count = 0;
   vkGetPhysicalDeviceQueueFamilyProperties(physical_device,
                                            &queue_families_count, nullptr);
-  CHECK(queue_families_count != 0,
-        "Could not get the number of queue families.\n");
+  D_RETURN_FALSE_IF_NOT(queue_families_count != 0,
+                        "Could not get the number of queue families.\n");
   queue_families.resize(queue_families_count);
   vkGetPhysicalDeviceQueueFamilyProperties(
       physical_device, &queue_families_count, queue_families.data());
-  CHECK(queue_families_count != 0,
-        "Could not acquire properties of queue families.\n");
+  D_RETURN_FALSE_IF_NOT(queue_families_count != 0,
+                        "Could not acquire properties of queue families.\n");
   return true;
 }
 
@@ -270,9 +276,9 @@ bool VulkanLibraryInterface::selectIndexOfQueueFamilyWithDesiredCapabilities(
     VkPhysicalDevice physical_device, VkQueueFlags desired_capabilities,
     uint32_t &queue_family_index) {
   std::vector<VkQueueFamilyProperties> queue_families;
-  CHECK(checkAvailableQueueFamiliesAndTheirProperties(physical_device,
-                                                      queue_families),
-        "");
+  D_RETURN_FALSE_IF_NOT(checkAvailableQueueFamiliesAndTheirProperties(
+                            physical_device, queue_families),
+                        "");
   for (uint32_t index = 0; index < static_cast<uint32_t>(queue_families.size());
        ++index) {
     if ((queue_families[index].queueCount > 0) &&
@@ -315,13 +321,14 @@ bool VulkanLibraryInterface::createLogicalDevice(
     std::vector<char const *> const &desired_extensions,
     VkPhysicalDeviceFeatures *desired_features, VkDevice &logical_device) {
   std::vector<VkExtensionProperties> available_extensions;
-  CHECK(checkAvailableDeviceExtensions(physical_device, available_extensions),
-        "");
+  D_RETURN_FALSE_IF_NOT(
+      checkAvailableDeviceExtensions(physical_device, available_extensions),
+      "");
 
   for (auto &extension : desired_extensions)
-    CHECK(isExtensionSupported(available_extensions, extension),
-          concat("Extension named '", extension,
-                 "' is not supported by a physical device.\n"));
+    D_RETURN_FALSE_IF_NOT(isExtensionSupported(available_extensions, extension),
+                          concat("Extension named '", extension,
+                                 "' is not supported by a physical device.\n"));
 
   std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
 
@@ -355,7 +362,8 @@ bool VulkanLibraryInterface::createLogicalDevice(
   };
   CHECK_VULKAN(vkCreateDevice(physical_device, &device_create_info, nullptr,
                               &logical_device));
-  CHECK(logical_device != VK_NULL_HANDLE, "Could not create logical device.");
+  D_RETURN_FALSE_IF_NOT(logical_device != VK_NULL_HANDLE,
+                        "Could not create logical device.");
   return true;
 }
 
@@ -529,13 +537,14 @@ bool VulkanLibraryInterface::selectDesiredPresentationMode(
   uint32_t present_modes_count = 0;
   CHECK_VULKAN(vkGetPhysicalDeviceSurfacePresentModesKHR(
       physical_device, presentation_surface, &present_modes_count, nullptr));
-  CHECK(0 != present_modes_count,
-        "Could not get the number of supported present modes.");
+  D_RETURN_FALSE_IF_NOT(0 != present_modes_count,
+                        "Could not get the number of supported present modes.");
   std::vector<VkPresentModeKHR> present_modes(present_modes_count);
   CHECK_VULKAN(vkGetPhysicalDeviceSurfacePresentModesKHR(
       physical_device, presentation_surface, &present_modes_count,
       present_modes.data()));
-  CHECK(0 != present_modes_count, "Could not enumerate present modes.");
+  D_RETURN_FALSE_IF_NOT(0 != present_modes_count,
+                        "Could not enumerate present modes.");
   // Select present mode
   for (auto &current_present_mode : present_modes) {
     if (current_present_mode == desired_present_mode) {
@@ -644,14 +653,16 @@ bool VulkanLibraryInterface::selectFormatOfSwapchainImages(
 
   CHECK_VULKAN(vkGetPhysicalDeviceSurfaceFormatsKHR(
       physical_device, presentation_surface, &formats_count, nullptr));
-  CHECK(0 != formats_count,
-        "Could not get the number of supported surface formats.");
+  D_RETURN_FALSE_IF_NOT(
+      0 != formats_count,
+      "Could not get the number of supported surface formats.");
 
   std::vector<VkSurfaceFormatKHR> surface_formats(formats_count);
   CHECK_VULKAN(vkGetPhysicalDeviceSurfaceFormatsKHR(
       physical_device, presentation_surface, &formats_count,
       surface_formats.data()));
-  CHECK(0 != formats_count, "Could not enumerate supported surface formats.");
+  D_RETURN_FALSE_IF_NOT(0 != formats_count,
+                        "Could not enumerate supported surface formats.");
 
   // Select surface format
   if ((1 == surface_formats.size()) &&
@@ -718,7 +729,8 @@ bool VulkanLibraryInterface::createSwapchain(
 
   CHECK_VULKAN(vkCreateSwapchainKHR(logical_device, &swapchain_create_info,
                                     nullptr, &swapchain));
-  CHECK(VK_NULL_HANDLE != swapchain, "Could not create a swapchain.");
+  D_RETURN_FALSE_IF_NOT(VK_NULL_HANDLE != swapchain,
+                        "Could not create a swapchain.");
   if (VK_NULL_HANDLE != old_swapchain) {
     vkDestroySwapchainKHR(logical_device, old_swapchain, nullptr);
     old_swapchain = VK_NULL_HANDLE;
@@ -743,11 +755,13 @@ bool VulkanLibraryInterface::getHandlesOfSwapchainImages(
   uint32_t images_count = 0;
   CHECK_VULKAN(vkGetSwapchainImagesKHR(logical_device, swapchain, &images_count,
                                        nullptr));
-  CHECK(0 != images_count, "Could not get the number of swapchain images.");
+  D_RETURN_FALSE_IF_NOT(0 != images_count,
+                        "Could not get the number of swapchain images.");
   swapchain_images.resize(images_count);
   CHECK_VULKAN(vkGetSwapchainImagesKHR(logical_device, swapchain, &images_count,
                                        swapchain_images.data()));
-  CHECK(0 != images_count, "Could not enumerate swapchain images.");
+  D_RETURN_FALSE_IF_NOT(0 != images_count,
+                        "Could not enumerate swapchain images.");
   return true;
 }
 

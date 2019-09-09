@@ -26,6 +26,8 @@
 /// \brief
 
 #include "vk_graphics_display.h"
+#include "logging.h"
+#include "vulkan_debug.h"
 
 namespace circe {
 

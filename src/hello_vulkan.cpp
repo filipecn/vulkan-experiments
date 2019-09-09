@@ -1,3 +1,4 @@
+#include "logging.h"
 #include "vk_app.h"
 #include <iostream>
 
@@ -22,6 +23,7 @@ int main(int argc, char const *argv[]) {
 #endif
   // The app represents the window in which we display our graphics
   circe::vk::App app(800, 800);
+  // LOG(INFO) << "Found " << " cookies";
   // In order to setup the window we first need to connect to the vulkan
   // library. Here we could pass a list of vulkan instance extensions needed by
   // the application. Since the App automatically handles the basic extensions

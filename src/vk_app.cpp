@@ -37,9 +37,9 @@ App::App(uint32_t w, uint32_t h, const std::string &name)
       graphics_display_(new GraphicsDisplay(w, h, name)) {}
 
 App::~App() {
-  for (auto imageView : swap_chain_images_) {
-    vkDestroyImageView(device_, imageView, nullptr);
-  }
+  // for (auto imageView : swap_chain_images_) {
+  //  vkDestroyImageView(device_, imageView, nullptr);
+  //}
   VulkanLibraryInterface::destroySwapchain(device_, swap_chain_);
   VulkanLibraryInterface::destroyLogicalDevice(device_);
   VulkanLibraryInterface::destroyPresentationSurface(instance_, surface_);
