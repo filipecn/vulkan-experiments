@@ -419,10 +419,43 @@ public:
   /// be used after the barrier
   /// \param image_transitions **[in]** parameters for each image that a
   /// barrier will be set up for
-  void VulkanLibraryInterface::SetImageMemoryBarrier(
+  static void VulkanLibraryInterface::SetImageMemoryBarrier(
       VkCommandBuffer command_buffer, VkPipelineStageFlags generating_stages,
       VkPipelineStageFlags consuming_stages,
       std::vector<ImageTransition> image_transitions);
+  /// \param logical_device **[in]** logical device handle
+  /// \param buffer **[in/out]** buffer handle
+  static void destroyBuffer(VkDevice logical_device, VkBuffer &buffer);
+  /// \param logical_device **[in]** logical device handle
+  /// \param image **[in/out]** image handle
+  static void destroyImage(VkDevice logical_device, VkImage &image);
+  /// \param logical_device **[in]** logical device handle
+  /// \param memory_object **[in/out]** memory object
+  static void freeMemoryObject(VkDevice logical_device,
+                               VkDeviceMemory &memory_object);
+
+  // VULKAN BUFFER VIEW
+  // -----------------
+  // Buffer views allow us to define how buffer's memory is accessed and
+  // interpreted. For example, we can choose to look at the buffer as a uniform
+  // texel buffer or as a storage texel buffer.
+
+  /// Creates a buffer view of a portion of the given buffer
+  /// \param logical_device **[in]** logical device handle
+  /// \param buffer **[in]** buffer handle
+  /// \param format **[in]** how buffer contents should be interpreted
+  /// \param memory_offset **[in]** view's starting point
+  /// \param memory_range **[in]** size of the view
+  /// \param buffer_view **[out]** buffer view object
+  /// \return bool true if success
+  static bool createBufferView(VkDevice logical_device, VkBuffer buffer,
+                               VkFormat format, VkDeviceSize memory_offset,
+                               VkDeviceSize memory_range,
+                               VkBufferView &buffer_view);
+  /// \param logical_device **[in]** logical device handle
+  /// \param buffer_view **[in/out]** buffer view handle
+  static void destroyBufferView(VkDevice logical_device,
+                                VkBufferView &buffer_view);
 
   // VULKAN IMAGE VIEW
   // -----------------
@@ -441,6 +474,10 @@ public:
                               VkImageViewType view_type, VkFormat format,
                               VkImageAspectFlags aspect,
                               VkImageView &image_view);
+  /// \param logical_device **[in]** logical device handle
+  /// \param image_view **[in/out]** image view handle
+  static void DestroyImageView(VkDevice logical_device,
+                               VkImageView &image_view);
 
   // VULKAN SURFACE
   // --------------

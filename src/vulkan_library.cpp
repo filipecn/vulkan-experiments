@@ -383,6 +383,55 @@ void VulkanLibraryInterface::getDeviceQueue(VkDevice logical_device,
 
 // VULKAN RESOURCES AND MEMORY ///////////////////////////////////////////////
 
+void freeMemoryObject(VkDevice logical_device, VkDeviceMemory &memory_object) {
+  if (VK_NULL_HANDLE != memory_object) {
+    vkFreeMemory(logical_device, memory_object, nullptr);
+    memory_object = VK_NULL_HANDLE;
+  }
+}
+
+// VULKAN BUFFER /////////////////////////////////////////////////////////////
+
+void VulkanLibraryInterface::destroyBuffer(VkDevice logical_device,
+                                           VkBuffer &buffer) {
+  if (VK_NULL_HANDLE != buffer) {
+    vkDestroyBuffer(logical_device, buffer, nullptr);
+    buffer = VK_NULL_HANDLE;
+  }
+}
+
+bool VulkanLibraryInterface::createBufferView(VkDevice logical_device,
+                                              VkBuffer buffer, VkFormat format,
+                                              VkDeviceSize memory_offset,
+                                              VkDeviceSize memory_range,
+                                              VkBufferView &buffer_view) {
+  VkBufferViewCreateInfo buffer_view_create_info = {
+      VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO, // VkStructureType sType
+      nullptr,       // const void               * pNext
+      0,             // VkBufferViewCreateFlags    flags
+      buffer,        // VkBuffer                   buffer
+      format,        // VkFormat                   format
+      memory_offset, // VkDeviceSize               offset
+      memory_range   // VkDeviceSize               range
+  };
+
+  VkResult result = vkCreateBufferView(logical_device, &buffer_view_create_info,
+                                       nullptr, &buffer_view);
+  if (VK_SUCCESS != result) {
+    std::cout << "Could not creat buffer view." << std::endl;
+    return false;
+  }
+  return true;
+}
+
+void VulkanLibraryInterface::destroyBufferView(VkDevice logical_device,
+                                               VkBufferView &buffer_view) {
+  if (VK_NULL_HANDLE != buffer_view) {
+    vkDestroyBufferView(logical_device, buffer_view, nullptr);
+    buffer_view = VK_NULL_HANDLE;
+  }
+}
+
 bool VulkanLibraryInterface::allocateAndBindMemoryObjectToBuffer(
     VkPhysicalDevice physical_device, VkDevice logical_device, VkBuffer buffer,
     VkMemoryPropertyFlagBits memory_properties, VkDeviceMemory &memory_object) {
@@ -450,6 +499,55 @@ void VulkanLibraryInterface::setBufferMemoryBarrier(
                          0, nullptr,
                          static_cast<uint32_t>(buffer_memory_barriers.size()),
                          buffer_memory_barriers.data(), 0, nullptr);
+  }
+}
+
+// VULKAN IMAGE //////////////////////////////////////////////////////////////
+
+void VulkanLibraryIntterface::destroyImage(VkDevice logical_device,
+                                           VkImage &image) {
+  if (VK_NULL_HANDLE != image) {
+    vkDestroyImage(logical_device, image, nullptr);
+    image = VK_NULL_HANDLE;
+  }
+}
+
+bool VulkanLibraryInterface::createImageView(
+    VkDevice logical_device, VkImage image, VkImageViewType view_type,
+    VkFormat format, VkImageAspectFlags aspect, VkImageView &image_view) {
+  VkImageViewCreateInfo image_view_create_info = {
+      VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, // VkStructureType sType
+      nullptr,   // const void               * pNext
+      0,         // VkImageViewCreateFlags     flags
+      image,     // VkImage                    image
+      view_type, // VkImageViewType            viewType
+      format,    // VkFormat                   format
+      {
+          // VkComponentMapping         components
+          VK_COMPONENT_SWIZZLE_IDENTITY, // VkComponentSwizzle         r
+          VK_COMPONENT_SWIZZLE_IDENTITY, // VkComponentSwizzle         g
+          VK_COMPONENT_SWIZZLE_IDENTITY, // VkComponentSwizzle         b
+          VK_COMPONENT_SWIZZLE_IDENTITY  // VkComponentSwizzle         a
+      },
+      {
+          // VkImageSubresourceRange    subresourceRange
+          aspect,                   // VkImageAspectFlags         aspectMask
+          0,                        // uint32_t                   baseMipLevel
+          VK_REMAINING_MIP_LEVELS,  // uint32_t                   levelCount
+          0,                        // uint32_t                   baseArrayLayer
+          VK_REMAINING_ARRAY_LAYERS // uint32_t                   layerCount
+      }};
+
+  CHECK_VULKAN(vkCreateImageView(logical_device, &image_view_create_info,
+                                 nullptr, &image_view));
+  return true;
+}
+
+void VulkanLibraryInterface::destroyImageView(VkDevice logical_device,
+                                              VkImageView &image_view) {
+  if (VK_NULL_HANDLE != image_view) {
+    vkDestroyImageView(logical_device, image_view, nullptr);
+    image_view = VK_NULL_HANDLE;
   }
 }
 
@@ -526,39 +624,6 @@ void VulkanLibraryInterface::SetImageMemoryBarrier(
                          static_cast<uint32_t>(image_memory_barriers.size()),
                          image_memory_barriers.data());
   }
-}
-
-// VULKAN IMAGE VIEW /////////////////////////////////////////////////////////
-
-bool VulkanLibraryInterface::createImageView(
-    VkDevice logical_device, VkImage image, VkImageViewType view_type,
-    VkFormat format, VkImageAspectFlags aspect, VkImageView &image_view) {
-  VkImageViewCreateInfo image_view_create_info = {
-      VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, // VkStructureType sType
-      nullptr,   // const void               * pNext
-      0,         // VkImageViewCreateFlags     flags
-      image,     // VkImage                    image
-      view_type, // VkImageViewType            viewType
-      format,    // VkFormat                   format
-      {
-          // VkComponentMapping         components
-          VK_COMPONENT_SWIZZLE_IDENTITY, // VkComponentSwizzle         r
-          VK_COMPONENT_SWIZZLE_IDENTITY, // VkComponentSwizzle         g
-          VK_COMPONENT_SWIZZLE_IDENTITY, // VkComponentSwizzle         b
-          VK_COMPONENT_SWIZZLE_IDENTITY  // VkComponentSwizzle         a
-      },
-      {
-          // VkImageSubresourceRange    subresourceRange
-          aspect,                   // VkImageAspectFlags         aspectMask
-          0,                        // uint32_t                   baseMipLevel
-          VK_REMAINING_MIP_LEVELS,  // uint32_t                   levelCount
-          0,                        // uint32_t                   baseArrayLayer
-          VK_REMAINING_ARRAY_LAYERS // uint32_t                   layerCount
-      }};
-
-  CHECK_VULKAN(vkCreateImageView(logical_device, &image_view_create_info,
-                                 nullptr, &image_view));
-  return true;
 }
 
 // VULKAN SURFACE ////////////////////////////////////////////////////////////
