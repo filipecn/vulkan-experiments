@@ -851,6 +851,10 @@ public:
   /// \return bool true if success
   static bool waitForAllSubmittedCommandsToBeFinished(VkDevice logical_device);
 
+  // VULKAN PIPELINES
+  // ----------------
+  //
+
   // EXAMPLES
   // --------
   // Here follows some auxiliary methods for instance and device creation
