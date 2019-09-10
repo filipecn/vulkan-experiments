@@ -23,7 +23,8 @@
 /// \author FilipeCN (filipedecn@gmail.com)
 /// \date 2019-08-03
 ///
-/// The contets were based on the Vulkan Cookbook 2017.
+/// The contets were based on the Vulkan Cookbook 2017 by Pawel Lapinski
+/// ISBN: 9781786468154
 ///
 /// \brief
 
@@ -140,6 +141,21 @@ public:
     uint32_t NewQueueFamily; //!< queue family that will receive the ownership
     VkImageAspectFlags
         Aspect; //!< image's usage contex (color, depth or stencil)
+  };
+  /// Defines parameters for shader stages definitions
+  structShaderStageParameters {
+    VkShaderStageFlagBits ShaderStage; //!< pipeline stage
+    VkShaderModule ShaderModule;       //!< module with the shader code
+    char const *EntryPointName; //!< function name associated with the stage
+    VkSpecializationInfo const
+        *SpecializationInfo; //!< allows modification of constant variables
+                             //!< defined in shader
+  };
+  /// Viewport descriptions
+  struct ViewportInfo {
+    std::vector<VkViewport> Viewports; //!< parameters for a set of viewports
+    std::vector<VkRect2D> Scissors;    //!< parameters for scissor tests
+                                       //!< corresponding to each viewport
   };
 
   // VULKAN API FUNCTION LOADING
@@ -661,10 +677,13 @@ public:
   /// the application does not modify the image while there are still
   /// previously submitted operations happening on the image. The semaphore is
   /// used to tell the driver to not start processing new commands with the
-  /// given image. \param logical_device **[in]** logical device handle \param
-  /// swapchain **[in]** swapchain handle \param semaphore **[in]** semaphore
-  /// handle \param fence **[in]** fence handle \param image_index **[out]**
-  /// acquired image index \return bool true if success
+  /// given image.
+  /// \param logical_device **[in]** logical device handle
+  /// \param swapchain **[in]** swapchain handle
+  /// \param semaphore **[in]** semaphore handle
+  /// \param fence **[in]** fence handle
+  /// \param image_index **[out]** acquired image index \return bool true if
+  /// success
   static bool acquireSwapchainImage(VkDevice logical_device,
                                     VkSwapchainKHR swapchain,
                                     VkSemaphore semaphore, VkFence fence,
@@ -699,8 +718,8 @@ public:
   //   all commands are finished. We can also specify that certain commands
   //   should wait until all semaphores from a certain list get activated.
   // - Fences inform the application that a submitted work is finished. A
-  // fence
-  //   changes its state as soon all work submitted along with it is finished.
+  // fence changes its state as soon all work submitted along with it is
+  // finished.
 
   /// \brief Creates a semaphore for a given logical device
   /// \param logical_device **[in]** logical device handle
@@ -853,7 +872,200 @@ public:
 
   // VULKAN PIPELINES
   // ----------------
-  //
+  // The operations recorded in command buffers are processed by the hardware in
+  // a pipeline. Pipeline objects control the way in which computations are
+  // performed. Different from OpenGL though, the whole pipeline state is stored
+  // in a single object (In OpenGL we have a state machine where we can activate
+  // pieces separately and switch between resources during execution). In
+  // Vulkan, each configuration will require its own pipeline object (for
+  // example, if we want to switch between shaders, we need to prepare the whole
+  // pipeline for the new set of shaders).
+  // The computations executed inside the pipeline are performed by shaders.
+  // Shaders are represented by Shader Modules and must be provided to Vulkan as
+  // SPIR-V assembly code. A single module may contain code for multiple shader
+  // stages.
+
+  /// \param logical_device **[in]** logical device handle
+  /// \param source_code **[in]** binary SPIR-V assembly of the shader(s)
+  /// \param shader_module **[out]** shader module object
+  /// \return bool true if success
+  static bool createShaderModule(VkDevice logical_device,
+                                 std::vector<unsigned char> const &source_code,
+                                 VkShaderModule &shader_module);
+  /// Specifies the set of shader stages that will be active in a pipeline.
+  /// Graphics pipelines for example, may contain geometry, tesselation and
+  /// other stages.
+  /// \param shader_stage_params **[in]** description of stages active in the
+  /// pipeline
+  /// \param shader_stage_create_infos **[out]** pipeline stage creation infos
+  static void specifyPipelineShaderStages(
+      std::vector<ShaderStageParameters> const &shader_stage_params,
+      std::vector<VkPipelineShaderStageCreateInfo> &shader_stage_create_infos);
+  /// \brief Specifies pipeline vertex input state
+  /// The vertex input stages prepare vertex data by associating vertices to its
+  /// attributes and describing how they are stored in memory.
+  /// \param binding_descriptions **[in]** descriptions for each vertex binding
+  /// \param attribute_descriptions **[in]** vertex attributes provided to the
+  /// vertex shader
+  /// \param vertex_input_state_create_info **[out]** vertex input state
+  /// creation info object
+  static void specifyPipelineVertexInputState(
+      std::vector<VkVertexInputBindingDescription> const &binding_descriptions,
+      std::vector<VkVertexInputAttributeDescription> const
+          &attribute_descriptions,
+      VkPipelineVertexInputStateCreateInfo &vertex_input_state_create_info);
+  /// \brief Specifies pipeline input assembly state
+  /// Input assembly stages are resposible for assembling vertices into
+  /// primitives.
+  /// \param topology **[in]** type of primitives to be formed from vertices
+  /// \param primitive_restart_enable **[in]** whether a special index value
+  /// should restart a primitive (can't be used for list primitives)
+  /// \param input_assembly_state_create_info **[out]** assembly state creation
+  /// info object
+  static void specifyPipelineInputAssemblyState(
+      VkPrimitiveTopology topology, bool primitive_restart_enable,
+      VkPipelineInputAssemblyStateCreateInfo &input_assembly_state_create_info);
+  /// \brief Specifies pipeline tesselation state
+  /// The tesselation stages generate patchs of geometry to produce more refined
+  /// meshes.
+  /// Note: to use tesselation shaders the tesselationShader feature must be
+  /// enabled during logical device creation. Code for both tesselation control
+  /// and evaluation shaders.
+  /// \param patch_control_points_count **[in]** number of vertices which form a
+  /// patch
+  /// \param tessellation_state_create_info **[out]** tesselation state creation
+  /// info
+  static void specifyPipelineTessellationState(
+      uint32_t patch_control_points_count,
+      VkPipelineTessellationStateCreateInfo &tessellation_state_create_info);
+  /// \brief Specifies pipeline viewport and scissor test state
+  /// Viewports and scissor tests define the area of the image to which we want
+  /// to draw. These stages transform vertices into clip space and assemble
+  /// polygons for rasterization and fragment creation. Here we define the
+  /// rendering area and depth values. The scissor test can define rendering
+  /// areas smaller than the viewport. Viewport and scissor test can be defined
+  /// dynamic, so there is no need to recreate the pipeline when they change
+  /// (during command buffer recording). However, if their number is changed the
+  /// pipeline must be recreated.
+  /// \param viewport_infos **[in]** viewports description
+  /// \param viewport_state_create_info **[out]** viewport state creation info
+  /// object
+  static void specifyPipelineViewportAndScissorTestState(
+      ViewportInfo const &viewport_infos,
+      VkPipelineViewportStateCreateInfo &viewport_state_create_info);
+  /// \brief Specifies the pipeline rasterization state
+  /// The rasterizations stages produce fragments from the assembled polygons.
+  /// Here we can specify the polygon's front side, control culling, draw mode
+  /// (polygon fill, only edges, etc), define how depth value for fragments are
+  /// generated, width of lines and more.
+  /// \param depth_clamp_enable **[in]** whether fragments with out of range
+  /// depth values should be clamped (true) or clipped(false)
+  /// \param rasterizer_discard_enable **[in]** whether fragments should be
+  /// normally generated (false) or disable the rasterization (true)
+  /// \param polygon_mode **[in]** draw mode (fully filled or if lines or
+  /// points)
+  /// \param culling_mode **[in]** polygon visible sides
+  /// \param front_face **[in]** polygon's vertex order: cc or ccw
+  /// \param depth_bias_enable **[in]** whether the depth values are incremented
+  /// by an offset (true)
+  /// \param depth_bias_constant_factor **[in]** depth bias offset
+  /// \param depth_bias_clamp **[in]** the maximum/minimum value a depth bias
+  /// can assume
+  /// \param depth_bias_slope_factor **[in]** value added to fragment's slope in
+  /// depth bias calculations
+  /// \param line_width **[in]** line width in rendered lines
+  /// \param rasterization_state_create_info **[out]** rasterization state
+  /// creation info object
+  static void specifyPipelineRasterizationState(
+      bool depth_clamp_enable, bool rasterizer_discard_enable,
+      VkPolygonMode polygon_mode, VkCullModeFlags culling_mode,
+      VkFrontFace front_face, bool depth_bias_enable,
+      float depth_bias_constant_factor, float depth_bias_clamp,
+      float depth_bias_slope_factor, float line_width,
+      VkPipelineRasterizationStateCreateInfo &rasterization_state_create_info);
+  /// \brief Specifies a pipeline multisample state
+  /// Multisampling allows us to apply anti-aliasing of drawn primitives.
+  /// Note: to use per sample shading, the feature sampleRateShading must be
+  /// enabled.
+  /// \param sample_count **[in]** number of samples generated per pixel
+  /// \param per_sample_shading_enable **[in]** trus if per sample shading
+  /// should be performed
+  /// \param min_sample_shading **[in]** minimum fraction of uniquely shaded
+  /// samples
+  /// \param sample_masks **[in]** array of bitmasks that controls a fragment's
+  /// static coverage
+  /// \param alpha_to_coverage_enable **[in]** whether if a fragment's coverage
+  /// should be generated based on the fragment's alpha value (true)
+  /// \param alpha_to_one_enable **[in]** whether an alpha component of the
+  /// fragment's color should be replaced with a 1.0 value
+  /// \param multisample_state_create_info **[in]** multisample state creation
+  /// info object
+  static void specifyPipelineMultisampleState(
+      VkSampleCountFlagBits sample_count, bool per_sample_shading_enable,
+      float min_sample_shading, VkSampleMask const *sample_masks,
+      bool alpha_to_coverage_enable, bool alpha_to_one_enable,
+      VkPipelineMultisampleStateCreateInfo &multisample_state_create_info);
+  /// \brief Specifies a pipelin depth and stencil state
+  /// These stages perform depth and/or stencil test. Depth test discard
+  /// fragments that are covered by fragments of closer objects to camera. The
+  /// Stencil test performs tests on integer values associated with each
+  /// fragment and can serve to various purposes (for example, we can define
+  /// arbitrary complex shaped areas of the screen where pixels can be updated).
+  /// \param depth_test_enable **[in]** whether depth test is enabled
+  /// \param depth_write_enable **[in]** whether if depth values are stored in a
+  /// depth buffer
+  /// \param depth_compare_op **[in]** how depth values are compared (never,
+  /// less, less and equal, equal, greater and equal, greater, not equal,
+  /// always)
+  /// \param depth_bounds_test_enable **[in]** whether additional depth bounds
+  /// tests
+  /// \param min_depth_bounds **[in]** minimum depth bounds value
+  /// \param max_depth_bounds **[in]** maximum depth bounds value
+  /// \param stencil_test_enable **[in]** whether stencil test is enabled
+  /// \param front_stencil_test_parameters **[in]** stencil test parameters for
+  /// front faces
+  /// \param back_stencil_test_parameters **[in]** stencil test parameters for
+  /// back faces
+  /// \param depth_and_stencil_state_create_info **[out]** depth and stencil
+  /// state creation info object
+  static void specifyPipelineDepthAndStencilState(
+      bool depth_test_enable, bool depth_write_enable,
+      VkCompareOp depth_compare_op, bool depth_bounds_test_enable,
+      float min_depth_bounds, float max_depth_bounds, bool stencil_test_enable,
+      VkStencilOpState front_stencil_test_parameters,
+      VkStencilOpState back_stencil_test_parameters,
+      VkPipelineDepthStencilStateCreateInfo
+          &depth_and_stencil_state_create_info);
+  /// \brief Specifies a pipeline blend state
+  /// The blend stage mixes the color of a processed fragment with a color that
+  /// is already stored in a framebuffer. We can specify which color components
+  /// are updated and perform logical operations between the colors. Blending is
+  /// controlled separately for each color attachment used during rendering in a
+  /// subpass in which a given graphics pipeline is bound.
+  /// \param logic_op_enable **[in]** whether a logical operation will be used
+  /// \param logic_op **[in]** type of the logical operation
+  /// \param attachment_blend_states **[in]** blending parameters for each color
+  /// attachement used in the rendering (must be all the same if
+  /// independentBlend feature is not enabled)
+  /// \param blend_constants **[in]** some blending factors may use a constant
+  /// for each color component
+  /// \param blend_state_create_info **[out]** blend state creation info object
+  static void specifyPipelineBlendState(
+      bool logic_op_enable, VkLogicOp logic_op,
+      std::vector<VkPipelineColorBlendAttachmentState> const
+          &attachment_blend_states,
+      std::array<float, 4> const &blend_constants,
+      VkPipelineColorBlendStateCreateInfo &blend_state_create_info);
+  /// \brief Specifies pipeline dynamic states
+  /// Dynamic states allow us to control some of the pipeline's parameters
+  /// dynamically by recording specific functions in command buffers.
+  /// \param dynamic_states **[in]** list of unique pipeline stages that should
+  /// be set dinamically
+  /// \param dynamic_state_create_info **[out]** dynamic state creation info
+  /// object
+  static void specifyPipelineDynamicStates(
+      std::vector<VkDynamicState> const &dynamic_states,
+      VkPipelineDynamicStateCreateInfo &dynamic_state_create_info);
 
   // EXAMPLES
   // --------

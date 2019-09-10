@@ -1198,6 +1198,217 @@ bool VulkanLibraryInterface::waitForAllSubmittedCommandsToBeFinished(
   return true;
 }
 
+// COMMAND BUFFER SUBMISSION ///////////////////////////////////////////////
+
+bool VulkanInterfaceLibrary::createShaderModule(
+    VkDevice logical_device, std::vector<unsigned char> const &source_code,
+    VkShaderModule &shader_module) {
+  VkShaderModuleCreateInfo shader_module_create_info = {
+      VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, // VkStructureType sType
+      nullptr,            // const void                 * pNext
+      0,                  // VkShaderModuleCreateFlags    flags
+      source_code.size(), // size_t                       codeSize
+      reinterpret_cast<uint32_t const *>(
+          source_code.data()) // const uint32_t             * pCode
+  };
+  CHECK_VULKAN(vkCreateShaderModule(logical_device, &shader_module_create_info,
+                                    nullptr, &shader_module));
+  return true;
+}
+
+void VulkanInterfaceLibrary::specifyPipelineShaderStages(
+    std::vector<ShaderStageParameters> const &shader_stage_params,
+    std::vector<VkPipelineShaderStageCreateInfo> &shader_stage_create_infos) {
+  shader_stage_create_infos.clear();
+  for (auto &shader_stage : shader_stage_params) {
+    shader_stage_create_infos.push_back({
+        VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, // VkStructureType
+                                                             // sType
+        nullptr,                   // const void                       * pNext
+        0,                         // VkPipelineShaderStageCreateFlags   flags
+        shader_stage.ShaderStage,  // VkShaderStageFlagBits              stage
+        shader_stage.ShaderModule, // VkShaderModule                     module
+        shader_stage.EntryPointName, // const char                       * pName
+        shader_stage.SpecializationInfo // const VkSpecializationInfo       *
+                                        // pSpecializationInfo
+    });
+  }
+}
+
+void VulkanInterfaceLibrary::specifyPipelineVertexInputState(
+    std::vector<VkVertexInputBindingDescription> const &binding_descriptions,
+    std::vector<VkVertexInputAttributeDescription> const
+        &attribute_descriptions,
+    VkPipelineVertexInputStateCreateInfo &vertex_input_state_create_info) {
+  vertex_input_state_create_info = {
+      VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, // VkStructureType
+                                                                 // sType
+      nullptr, // const void                              * pNext
+      0,       // VkPipelineVertexInputStateCreateFlags     flags
+      static_cast<uint32_t>(
+          binding_descriptions
+              .size()),            // uint32_t vertexBindingDescriptionCount
+      binding_descriptions.data(), // const VkVertexInputBindingDescription   *
+                                   // pVertexBindingDescriptions
+      static_cast<uint32_t>(
+          attribute_descriptions
+              .size()),             // uint32_t vertexAttributeDescriptionCount
+      attribute_descriptions.data() // const VkVertexInputAttributeDescription *
+                                    // pVertexAttributeDescriptions
+  };
+}
+
+void VulkanInterfaceLibrary::specifyPipelineInputAssemblyState(
+    VkPrimitiveTopology topology, bool primitive_restart_enable,
+    VkPipelineInputAssemblyStateCreateInfo &input_assembly_state_create_info) {
+  input_assembly_state_create_info = {
+      VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO, // VkStructureType
+                                                                   // sType
+      nullptr,  // const void                              * pNext
+      0,        // VkPipelineInputAssemblyStateCreateFlags   flags
+      topology, // VkPrimitiveTopology                       topology
+      primitive_restart_enable // VkBool32 primitiveRestartEnable
+  };
+}
+
+void VulkanInterfaceLibrary::specifyPipelineTessellationState(
+    uint32_t patch_control_points_count,
+    VkPipelineTessellationStateCreateInfo &tessellation_state_create_info) {
+  tessellation_state_create_info = {
+      VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO, // VkStructureType
+                                                                 // sType
+      nullptr, // const void                               * pNext
+      0,       // VkPipelineTessellationStateCreateFlags     flags
+      patch_control_points_count // uint32_t patchControlPoints
+  };
+}
+
+void VulkanInterfaceLibrary::specifyPipelineViewportAndScissorTestState(
+    ViewportInfo const &viewport_infos,
+    VkPipelineViewportStateCreateInfo &viewport_state_create_info) {
+  uint32_t viewport_count =
+      static_cast<uint32_t>(viewport_infos.Viewports.size());
+  uint32_t scissor_count =
+      static_cast<uint32_t>(viewport_infos.Scissors.size());
+  viewport_state_create_info = {
+      VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO, // VkStructureType
+                                                             // sType
+      nullptr,        // const void                         * pNext
+      0,              // VkPipelineViewportStateCreateFlags   flags
+      viewport_count, // uint32_t                             viewportCount
+      viewport_infos.Viewports.data(), // const VkViewport * pViewports
+      scissor_count, // uint32_t                             scissorCount
+      viewport_infos.Scissors
+          .data() // const VkRect2D                     * pScissors
+  };
+}
+
+void VulkanInterfaceLibrary::specifyPipelineRasterizationState(
+    bool depth_clamp_enable, bool rasterizer_discard_enable,
+    VkPolygonMode polygon_mode, VkCullModeFlags culling_mode,
+    VkFrontFace front_face, bool depth_bias_enable,
+    float depth_bias_constant_factor, float depth_bias_clamp,
+    float depth_bias_slope_factor, float line_width,
+    VkPipelineRasterizationStateCreateInfo &rasterization_state_create_info) {
+  rasterization_state_create_info = {
+      VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO, // VkStructureType
+                                                                  // sType
+      nullptr,            // const void                               * pNext
+      0,                  // VkPipelineRasterizationStateCreateFlags    flags
+      depth_clamp_enable, // VkBool32 depthClampEnable
+      rasterizer_discard_enable, // VkBool32 rasterizerDiscardEnable
+      polygon_mode, // VkPolygonMode                              polygonMode
+      culling_mode, // VkCullModeFlags                            cullMode
+      front_face,   // VkFrontFace                                frontFace
+      depth_bias_enable,          // VkBool32 depthBiasEnable
+      depth_bias_constant_factor, // float depthBiasConstantFactor
+      depth_bias_clamp,           // float depthBiasClamp
+      depth_bias_slope_factor,    // float depthBiasSlopeFactor
+      line_width // float                                      lineWidth
+  };
+}
+
+void VulkanInterfaceLibrary::specifyPipelineMultisampleState(
+    VkSampleCountFlagBits sample_count, bool per_sample_shading_enable,
+    float min_sample_shading, VkSampleMask const *sample_masks,
+    bool alpha_to_coverage_enable, bool alpha_to_one_enable,
+    VkPipelineMultisampleStateCreateInfo &multisample_state_create_info) {
+  multisample_state_create_info = {
+      VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO, // VkStructureType
+                                                                // sType
+      nullptr,      // const void                             * pNext
+      0,            // VkPipelineMultisampleStateCreateFlags    flags
+      sample_count, // VkSampleCountFlagBits rasterizationSamples
+      per_sample_shading_enable, // VkBool32 sampleShadingEnable
+      min_sample_shading,        // float minSampleShading
+      sample_masks, // const VkSampleMask                     * pSampleMask
+      alpha_to_coverage_enable, // VkBool32 alphaToCoverageEnable
+      alpha_to_one_enable       // VkBool32 alphaToOneEnable
+  };
+}
+
+void VulkanInterfaceLibrary::specifyPipelineDepthAndStencilState(
+    bool depth_test_enable, bool depth_write_enable,
+    VkCompareOp depth_compare_op, bool depth_bounds_test_enable,
+    float min_depth_bounds, float max_depth_bounds, bool stencil_test_enable,
+    VkStencilOpState front_stencil_test_parameters,
+    VkStencilOpState back_stencil_test_parameters,
+    VkPipelineDepthStencilStateCreateInfo
+        &depth_and_stencil_state_create_info) {
+  depth_and_stencil_state_create_info = {
+      VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO, // VkStructureType
+                                                                  // sType
+      nullptr,            // const void                               * pNext
+      0,                  // VkPipelineDepthStencilStateCreateFlags     flags
+      depth_test_enable,  // VkBool32 depthTestEnable
+      depth_write_enable, // VkBool32 depthWriteEnable
+      depth_compare_op,   // VkCompareOp depthCompareOp
+      depth_bounds_test_enable,      // VkBool32 depthBoundsTestEnable
+      stencil_test_enable,           // VkBool32 stencilTestEnable
+      front_stencil_test_parameters, // VkStencilOpState front
+      back_stencil_test_parameters,  // VkStencilOpState back
+      min_depth_bounds,              // float minDepthBounds
+      max_depth_bounds               // float maxDepthBounds
+  };
+}
+
+void VulkanInterfaceLibrary::specifyPipelineBlendState(
+    bool logic_op_enable, VkLogicOp logic_op,
+    std::vector<VkPipelineColorBlendAttachmentState> const
+        &attachment_blend_states,
+    std::array<float, 4> const &blend_constants,
+    VkPipelineColorBlendStateCreateInfo &blend_state_create_info) {
+  blend_state_create_info = {
+      VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO, // VkStructureType
+                                                                // sType
+      nullptr,         // const void                                 * pNext
+      0,               // VkPipelineColorBlendStateCreateFlags         flags
+      logic_op_enable, // VkBool32 logicOpEnable
+      logic_op,        // VkLogicOp                                    logicOp
+      static_cast<uint32_t>(
+          attachment_blend_states.size()), // uint32_t attachmentCount
+      attachment_blend_states
+          .data(), // const VkPipelineColorBlendAttachmentState  * pAttachments
+      {// float                                        blendConstants[4]
+       blend_constants[0], blend_constants[1], blend_constants[2],
+       blend_constants[3]}};
+}
+
+void VulkanInterfaceLibrary::specifyPipelineDynamicStates(
+    std::vector<VkDynamicState> const &dynamic_states,
+    VkPipelineDynamicStateCreateInfo &dynamic_state_creat_info) {
+  dynamic_state_creat_info = {
+      VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO, // VkStructureType
+                                                            // sType
+      nullptr, // const void                         * pNext
+      0,       // VkPipelineDynamicStateCreateFlags    flags
+      static_cast<uint32_t>(
+          dynamic_states.size()), // uint32_t dynamicStateCount
+      dynamic_states
+          .data() // const VkDynamicState               * pDynamicStates
+  };
+}
+
 // UTILS
 // /////////////////////////////////////////////////////////////////////
 
