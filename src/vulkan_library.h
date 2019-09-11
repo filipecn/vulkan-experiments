@@ -884,6 +884,16 @@ public:
   // Shaders are represented by Shader Modules and must be provided to Vulkan as
   // SPIR-V assembly code. A single module may contain code for multiple shader
   // stages.
+  // The interface between shader stages and shader resources is specified
+  // through pipeline layouts (for example, the same address needs to be used in
+  // shaders).
+  // There are two types of pipelines:
+  // - Graphics pipelines
+  //    Are used for drawing when binded to the command buffer before recording
+  //    a drawing command. Can be bounded only inside render passes.
+  // - Compute pipelines
+  //    Consisted of a single compute shader stage, compute pipelines are used
+  //    to perform mathematical operations.
 
   /// \param logical_device **[in]** logical device handle
   /// \param source_code **[in]** binary SPIR-V assembly of the shader(s)
@@ -1066,6 +1076,166 @@ public:
   static void specifyPipelineDynamicStates(
       std::vector<VkDynamicState> const &dynamic_states,
       VkPipelineDynamicStateCreateInfo &dynamic_state_create_info);
+  /// \brief Create a Pipeline Layout object
+  /// Pipeline layouts define what types of resources can be accessed by a given
+  /// pipeline. They also define the range of push constants.
+  /// \param logical_device **[in]** logical device handle
+  /// \param descriptor_set_layouts **[in]** list of descriptor sets through
+  /// which resources will be accessed from shaders (same list, with same
+  /// indices, as the one binded on the command buffer)
+  /// \param push_constant_ranges **[in]** list of unique sets of push constants
+  /// used by different shader stages
+  /// \param pipeline_layout **[out]** pipeline layout object
+  /// \return bool true if success
+  static bool createPipelineLayout(
+      VkDevice logical_device,
+      std::vector<VkDescriptorSetLayout> const &descriptor_set_layouts,
+      std::vector<VkPushConstantRange> const &push_constant_ranges,
+      VkPipelineLayout &pipeline_layout);
+  /// \brief Specifies graphics pipeline creation parameters
+  /// \param additional_options **[in]** creation options such as: disable
+  /// optimization (faster creation), allow derivatives (allows children
+  /// pipelines), derivative (this pipeline is derivated from other pipeline)
+  /// \param shader_stage_create_infos **[in]**
+  /// \param vertex_input_state_create_info **[in]**
+  /// \param input_assembly_state_create_info **[in]**
+  /// \param tessellation_state_create_info **[in]**
+  /// \param viewport_state_create_info **[in]**
+  /// \param rasterization_state_create_info **[in]**
+  /// \param multisample_state_create_info **[in]**
+  /// \param depth_and_stencil_state_create_info **[in]**
+  /// \param blend_state_create_info **[in]**
+  /// \param dynamic_state_creat_info **[in]**
+  /// \param pipeline_layout **[in]**
+  /// \param render_pass **[in]** render pass handle in which this pipeline will
+  /// perform on
+  /// \param subpass **[in]** index of the render pass's subpass
+  /// \param base_pipeline_handle **[in]** the parent pipeline (in case this
+  /// pipeline will be a derivated one)
+  /// \param base_pipeline_index **[in]** the parent pipeline batch index (in
+  /// case the parent pipeline belongs to the same batch of pipelines), provide
+  /// -1 otherwise
+  /// \param graphics_pipeline_create_info **[out]** graphics pipeline creation
+  /// info object
+  static void specifyGraphicsPipelineCreationParameters(
+      VkPipelineCreateFlags additional_options,
+      std::vector<VkPipelineShaderStageCreateInfo> const
+          &shader_stage_create_infos,
+      VkPipelineVertexInputStateCreateInfo const
+          &vertex_input_state_create_info,
+      VkPipelineInputAssemblyStateCreateInfo const
+          &input_assembly_state_create_info,
+      VkPipelineTessellationStateCreateInfo const
+          *tessellation_state_create_info,
+      VkPipelineViewportStateCreateInfo const *viewport_state_create_info,
+      VkPipelineRasterizationStateCreateInfo const
+          &rasterization_state_create_info,
+      VkPipelineMultisampleStateCreateInfo const *multisample_state_create_info,
+      VkPipelineDepthStencilStateCreateInfo const
+          *depth_and_stencil_state_create_info,
+      VkPipelineColorBlendStateCreateInfo const *blend_state_create_info,
+      VkPipelineDynamicStateCreateInfo const *dynamic_state_creat_info,
+      VkPipelineLayout pipeline_layout, VkRenderPass render_pass,
+      uint32_t subpass, VkPipeline base_pipeline_handle,
+      int32_t base_pipeline_index,
+      VkGraphicsPipelineCreateInfo &graphics_pipeline_create_info);
+  /// \brief Create a Pipeline Cache Object
+  /// Creating a pipeline object can be very time consuming on execution. A
+  /// pipeline cache can be created to accelerate this process. Usually, the
+  /// pipeline cache is saved in a file and loaded by the application when its
+  /// is run again.
+  /// \param logical_device **[in]** logical device handle
+  /// \param cache_data **[in]** cache data, if available from other caches
+  /// \param pipeline_cache **[out]** pipeline cache object
+  /// \return bool true if success
+  static bool
+  createPipelineCacheObject(VkDevice logical_device,
+                            std::vector<unsigned char> const &cache_data,
+                            VkPipelineCache &pipeline_cache);
+  /// \brief Retrieves data from a pipeline cache
+  /// \param logical_device **[in]** logical device handle
+  /// \param pipeline_cache **[in]** pipeline cache from which data should be
+  /// retrieved
+  /// \param pipeline_cache_data **[out]** pipeline cache data
+  /// \return bool true if success
+  static bool retrieveDataFromPipelineCache(
+      VkDevice logical_device, VkPipelineCache pipeline_cache,
+      std::vector<unsigned char> &pipeline_cache_data);
+  /// \brief Merges multiple pipeline cache objects
+  /// \param logical_device **[in]** logical device handle
+  /// \param target_pipeline_cache **[in]**
+  /// \param source_pipeline_caches **[in]**
+  /// \return bool true if success
+  static bool mergeMultiplePipelineCacheObjects(
+      VkDevice logical_device, VkPipelineCache target_pipeline_cache,
+      std::vector<VkPipelineCache> const &source_pipeline_caches);
+  /// \brief Create a Graphics Pipelines object
+  /// The graphics pipeline controls how the graphics hardware performs all the
+  /// drawing related operations.
+  /// \param logical_device **[in]** logical device handle
+  /// \param graphics_pipeline_create_infos **[in]**
+  /// \param pipeline_cache **[in]** if available, cache can be passed here
+  /// \param graphics_pipelines **[out]** graphics pipeline objects
+  /// \return bool true if success
+  static bool
+  createGraphicsPipelines(VkDevice logical_device,
+                          std::vector<VkGraphicsPipelineCreateInfo> const
+                              &graphics_pipeline_create_infos,
+                          VkPipelineCache pipeline_cache,
+                          std::vector<VkPipeline> &graphics_pipelines);
+  /// \brief Create a Compute Pipeline object
+  /// Compute pipelines are used to perform mathematical operations and cannot
+  /// be used inside render passes. The compute shader doesn't have any input or
+  /// output variables, only uniform variables.
+  /// \param logical_device **[in]** logical device handle
+  /// \param additional_options **[in]** creation options such as: disable
+  /// optimization (faster creation), allow derivatives (allows children
+  /// pipelines), derivative (this pipeline is derivated from other pipeline)
+  /// \param compute_shader_stage **[in]**
+  /// \param pipeline_layout **[in]**
+  /// \param base_pipeline_handle **[in]** the parent pipeline (in case this
+  /// pipeline will be a derivated one)
+  /// \param pipeline_cache **[in]**
+  /// \param compute_pipeline **[out]** compute pipeline object
+  /// \return bool true if success
+  static bool createComputePipeline(
+      VkDevice logical_device, VkPipelineCreateFlags additional_options,
+      VkPipelineShaderStageCreateInfo const &compute_shader_stage,
+      VkPipelineLayout pipeline_layout, VkPipeline base_pipeline_handle,
+      VkPipelineCache pipeline_cache, VkPipeline &compute_pipeline);
+  /// \brief Binds a pipeline object
+  /// Note: If it is a graphics pipeline, make sure to bind it after the
+  /// recording of a render pass. If it is a compute pipeline, make sure there
+  /// is no render passes in the command buffer.
+  /// \param command_buffer **[in]** command buffer in recording state
+  /// \param pipeline_type **[in]**
+  /// \param pipeline **[in]**
+  static void bindPipelineObject(VkCommandBuffer command_buffer,
+                                 VkPipelineBindPoint pipeline_type,
+                                 VkPipeline pipeline);
+  /// Note: make sure all commands that use the pipeline are finished. A fence
+  /// can be used in this situation.
+  /// \param logical_device **[in]** logical device handle
+  /// \param pipeline **[in/out]** receives VK_NULL_HANDLE
+  static void destroyPipeline(VkDevice logical_device, VkPipeline &pipeline);
+  /// \param logical_device **[in]** logical device handle
+  /// \param pipeline_cache **[in/out]** receives VK_NULL_HANDLE
+  static void destroyPipelineCache(VkDevice logical_device,
+                                   VkPipelineCache &pipeline_cache);
+  /// Note: If it is being used to bind descriptor sets or update push
+  /// constants, be sure to wait hardware to process all command buffers that
+  /// use it
+  /// \param logical_device **[in]** logical device handle
+  /// \param pipeline_layout **[in/out]** receives VK_NULL_HANDLE
+  static void destroyPipelineLayout(VkDevice logical_device,
+                                    VkPipelineLayout &pipeline_layout);
+  /// \brief
+  /// Note: Shader modules are used only on pipeline creation, they can be
+  /// destroyed as soon the pipeline is created.
+  /// \param logical_device **[in]** logical device handle
+  /// \param shader_module **[in/out]** receives VK_NULL_HANDLE
+  static void destroyShaderModule(VkDevice logical_device,
+                                  VkShaderModule &shader_module);
 
   // EXAMPLES
   // --------

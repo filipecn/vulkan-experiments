@@ -1409,6 +1409,213 @@ void VulkanInterfaceLibrary::specifyPipelineDynamicStates(
   };
 }
 
+bool VulkanInterfaceLibrary::createPipelineLayout(
+    VkDevice logical_device,
+    std::vector<VkDescriptorSetLayout> const &descriptor_set_layouts,
+    std::vector<VkPushConstantRange> const &push_constant_ranges,
+    VkPipelineLayout &pipeline_layout) {
+  VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
+      VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO, // VkStructureType sType
+      nullptr, // const void                     * pNext
+      0,       // VkPipelineLayoutCreateFlags      flags
+      static_cast<uint32_t>(
+          descriptor_set_layouts.size()), // uint32_t setLayoutCount
+      descriptor_set_layouts
+          .data(), // const VkDescriptorSetLayout    * pSetLayouts
+      static_cast<uint32_t>(
+          push_constant_ranges.size()), // uint32_t pushConstantRangeCount
+      push_constant_ranges
+          .data() // const VkPushConstantRange      * pPushConstantRanges
+  };
+  CHECK_VULKAN(vkCreatePipelineLayout(
+      logical_device, &pipeline_layout_create_info, nullptr, &pipeline_layout));
+  return true;
+}
+
+void VulkanInterfaceLibrary::specifyGraphicsPipelineCreationParameters(
+    VkPipelineCreateFlags additional_options,
+    std::vector<VkPipelineShaderStageCreateInfo> const
+        &shader_stage_create_infos,
+    VkPipelineVertexInputStateCreateInfo const &vertex_input_state_create_info,
+    VkPipelineInputAssemblyStateCreateInfo const
+        &input_assembly_state_create_info,
+    VkPipelineTessellationStateCreateInfo const *tessellation_state_create_info,
+    VkPipelineViewportStateCreateInfo const *viewport_state_create_info,
+    VkPipelineRasterizationStateCreateInfo const
+        &rasterization_state_create_info,
+    VkPipelineMultisampleStateCreateInfo const *multisample_state_create_info,
+    VkPipelineDepthStencilStateCreateInfo const
+        *depth_and_stencil_state_create_info,
+    VkPipelineColorBlendStateCreateInfo const *blend_state_create_info,
+    VkPipelineDynamicStateCreateInfo const *dynamic_state_creat_info,
+    VkPipelineLayout pipeline_layout, VkRenderPass render_pass,
+    uint32_t subpass, VkPipeline base_pipeline_handle,
+    int32_t base_pipeline_index,
+    VkGraphicsPipelineCreateInfo &graphics_pipeline_create_info) {
+  graphics_pipeline_create_info = {
+      VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, // VkStructureType sType
+      nullptr, // const void                                   * pNext
+      additional_options, // VkPipelineCreateFlags flags
+      static_cast<uint32_t>(
+          shader_stage_create_infos.size()), // uint32_t stageCount
+      shader_stage_create_infos
+          .data(), // const VkPipelineShaderStageCreateInfo        * pStages
+      &vertex_input_state_create_info,   // const
+                                         // VkPipelineVertexInputStateCreateInfo
+                                         // * pVertexInputState
+      &input_assembly_state_create_info, // const
+                                         // VkPipelineInputAssemblyStateCreateInfo
+                                         // * pInputAssemblyState
+      tessellation_state_create_info, // const
+                                      // VkPipelineTessellationStateCreateInfo
+                                      // * pTessellationState
+      viewport_state_create_info, // const VkPipelineViewportStateCreateInfo *
+                                  // pViewportState
+      &rasterization_state_create_info, // const
+                                        // VkPipelineRasterizationStateCreateInfo
+                                        // * pRasterizationState
+      multisample_state_create_info, // const
+                                     // VkPipelineMultisampleStateCreateInfo   *
+                                     // pMultisampleState
+      depth_and_stencil_state_create_info, // const
+                                           // VkPipelineDepthStencilStateCreateInfo
+                                           // * pDepthStencilState
+      blend_state_create_info, // const VkPipelineColorBlendStateCreateInfo    *
+                               // pColorBlendState
+      dynamic_state_creat_info, // const VkPipelineDynamicStateCreateInfo *
+                                // pDynamicState
+      pipeline_layout, // VkPipelineLayout                               layout
+      render_pass, // VkRenderPass                                   renderPass
+      subpass,     // uint32_t                                       subpass
+      base_pipeline_handle, // VkPipeline basePipelineHandle
+      base_pipeline_index   // int32_t basePipelineIndex
+  };
+}
+
+bool VulkanInterfaceLibrary::createPipelineCacheObject(
+    VkDevice logical_device, std::vector<unsigned char> const &cache_data,
+    VkPipelineCache &pipeline_cache) {
+  VkPipelineCacheCreateInfo pipeline_cache_create_info = {
+      VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO, // VkStructureType sType
+      nullptr, // const void                   * pNext
+      0,       // VkPipelineCacheCreateFlags     flags
+      static_cast<uint32_t>(cache_data.size()), // size_t initialDataSize
+      cache_data.data() // const void                   * pInitialData
+  };
+  CHECK_VULKAN(vkCreatePipelineCache(
+      logical_device, &pipeline_cache_create_info, nullptr, &pipeline_cache));
+  return true;
+}
+
+bool VulkanInterfaceLibrary::retrieveDataFromPipelineCache(
+    VkDevice logical_device, VkPipelineCache pipeline_cache,
+    std::vector<unsigned char> &pipeline_cache_data) {
+  size_t data_size = 0;
+  CHECK_VULKAN(vkGetPipelineCacheData(logical_device, pipeline_cache,
+                                      &data_size, nullptr));
+  if (0 == data_size) {
+    std::cout << "Could not get the size of the pipeline cache." << std::endl;
+    return false;
+  }
+  pipeline_cache_data.resize(data_size);
+
+  CHECK_VULKAN(vkGetPipelineCacheData(logical_device, pipeline_cache,
+                                      &data_size, pipeline_cache_data.data()));
+  if (0 == data_size) {
+    std::cout << "Could not acquire pipeline cache data." << std::endl;
+    return false;
+  }
+  return true;
+}
+
+bool VulkanInterfaceLibrary::mergeMultiplePipelineCacheObjects(
+    VkDevice logical_device, VkPipelineCache target_pipeline_cache,
+    std::vector<VkPipelineCache> const &source_pipeline_caches) {
+  if (source_pipeline_caches.size() > 0) {
+    CHECK_VULKAN(vkMergePipelineCaches(
+        logical_device, target_pipeline_cache,
+        static_cast<uint32_t>(source_pipeline_caches.size()),
+        source_pipeline_caches.data()));
+    return true;
+  }
+  return false;
+}
+
+bool VulkanInterfaceLibrary::createGraphicsPipelines(
+    VkDevice logical_device,
+    std::vector<VkGraphicsPipelineCreateInfo> const
+        &graphics_pipeline_create_infos,
+    VkPipelineCache pipeline_cache,
+    std::vector<VkPipeline> &graphics_pipelines) {
+  if (graphics_pipeline_create_infos.size() > 0) {
+    graphics_pipelines.resize(graphics_pipeline_create_infos.size());
+    CHECK_VULKAN(vkCreateGraphicsPipelines(
+        logical_device, pipeline_cache,
+        static_cast<uint32_t>(graphics_pipeline_create_infos.size()),
+        graphics_pipeline_create_infos.data(), nullptr,
+        graphics_pipelines.data()));
+    return true;
+  }
+  return false;
+}
+
+bool VulkanLibraryInterface::createComputePipeline(
+    VkDevice logical_device, VkPipelineCreateFlags additional_options,
+    VkPipelineShaderStageCreateInfo const &compute_shader_stage,
+    VkPipelineLayout pipeline_layout, VkPipeline base_pipeline_handle,
+    VkPipelineCache pipeline_cache, VkPipeline &compute_pipeline) {
+  VkComputePipelineCreateInfo compute_pipeline_create_info = {
+      VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO, // VkStructureType sType
+      nullptr,              // const void                       * pNext
+      additional_options,   // VkPipelineCreateFlags              flags
+      compute_shader_stage, // VkPipelineShaderStageCreateInfo    stage
+      pipeline_layout,      // VkPipelineLayout                   layout
+      base_pipeline_handle, // VkPipeline basePipelineHandle
+      -1 // int32_t                            basePipelineIndex
+  };
+  CHECK_VULKAN(vkCreateComputePipelines(logical_device, pipeline_cache, 1,
+                                        &compute_pipeline_create_info, nullptr,
+                                        &compute_pipeline));
+  return true;
+}
+
+void VulkanLibraryInterface::bindPipelineObject(
+    VkCommandBuffer command_buffer, VkPipelineBindPoint pipeline_type,
+    VkPipeline pipeline) {
+  vkCmdBindPipeline(command_buffer, pipeline_type, pipeline);
+}
+
+void VulkanLibraryInterface::destroyPipeline(VkDevice logical_device,
+                                             VkPipeline &pipeline) {
+  if (VK_NULL_HANDLE != pipeline) {
+    vkDestroyPipeline(logical_device, pipeline, nullptr);
+    pipeline = VK_NULL_HANDLE;
+  }
+}
+
+void VulkanLibraryInterface::destroyPipelineCache(
+    VkDevice logical_device, VkPipelineCache &pipeline_cache) {
+  if (VK_NULL_HANDLE != pipeline_cache) {
+    vkDestroyPipelineCache(logical_device, pipeline_cache, nullptr);
+    pipeline_cache = VK_NULL_HANDLE;
+  }
+}
+
+void VulkanLibraryInterface::destroyPipelineLayout(
+    VkDevice logical_device, VkPipelineLayout &pipeline_layout) {
+  if (VK_NULL_HANDLE != pipeline_layout) {
+    vkDestroyPipelineLayout(logical_device, pipeline_layout, nullptr);
+    pipeline_layout = VK_NULL_HANDLE;
+  }
+}
+
+void VulkanLibraryInterface::destroyShaderModule(
+    VkDevice logical_device, VkShaderModule &shader_module) {
+  if (VK_NULL_HANDLE != shader_module) {
+    vkDestroyShaderModule(logical_device, shader_module, nullptr);
+    shader_module = VK_NULL_HANDLE;
+  }
+}
 // UTILS
 // /////////////////////////////////////////////////////////////////////
 
