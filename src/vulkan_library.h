@@ -157,6 +157,11 @@ public:
     std::vector<VkRect2D> Scissors;    //!< parameters for scissor tests
                                        //!< corresponding to each viewport
   };
+  // Specifies the buffer's parameters for buffer binding
+  struct VertexBufferParameters {
+    VkBuffer Buffer;
+    VkDeviceSize MemoryOffset;
+  };
 
   // VULKAN API FUNCTION LOADING
   // ---------------------------
@@ -1236,6 +1241,136 @@ public:
   /// \param shader_module **[in/out]** receives VK_NULL_HANDLE
   static void destroyShaderModule(VkDevice logical_device,
                                   VkShaderModule &shader_module);
+
+  // VULKAN COMMANDS OF A COMMAND BUFFER
+  // -----------------------------------
+  // Here is a list of auxiliary functions to additional commands that can be
+  // recorded in a command buffer.
+
+  /// \brief Clears a image with a specified color
+  /// Note: this command cannot be called inside a render pass. Only images with
+  /// color aspect and a color format can be cleared.
+  /// \param command_buffer **[in]**
+  /// \param image **[in]**
+  /// \param image_layout **[in]**
+  /// \param image_subresource_ranges **[in]** mipmap levels and array layers
+  /// that should also cleared
+  /// \param clear_color **[in]**
+  static void clearColorImage(
+      VkCommandBuffer command_buffer, VkImage image, VkImageLayout image_layout,
+      std::vector<VkImageSubresourceRange> const &image_subresource_ranges,
+      VkClearColorValue &clear_color);
+  /// Note: this command can only be applied to images created with a transfer
+  /// dst usage, since clearing is considered a transfer operation
+  /// \param command_buffer **[in]**
+  /// \param image **[in]**
+  /// \param image_layout **[in]**
+  /// \param image_subresource_ranges **[in]**
+  /// \param clear_value **[in]**
+  static void clearDepthStencilImage(
+      VkCommandBuffer command_buffer, VkImage image, VkImageLayout image_layout,
+      std::vector<VkImageSubresourceRange> const &image_subresource_ranges,
+      VkClearDepthStencilValue &clear_value);
+  /// \brief Clears multiple regions of given attachments
+  /// Note: this command can be called inside render passes
+  /// \param command_buffer **[in]**
+  /// \param attachments **[in]** list of attachments
+  /// \param rects **[in]** list of regions
+  static void
+  clearRenderPassAttachments(VkCommandBuffer command_buffer,
+                             std::vector<VkClearAttachment> const &attachments,
+                             std::vector<VkClearRect> const &rects);
+  /// \param command_buffer **[in]**
+  /// \param first_binding **[in]**
+  /// \param buffers_parameters **[in]**
+  static void bindVertexBuffers(
+      VkCommandBuffer command_buffer, uint32_t first_binding,
+      std::vector<VertexBufferParameters> const &buffers_parameters);
+  /// \param command_buffer **[in]**
+  /// \param buffer **[in]**
+  /// \param memory_offset **[in]**
+  /// \param index_type **[in]**
+  static void bindIndexBuffer(VkCommandBuffer command_buffer, VkBuffer buffer,
+                              VkDeviceSize memory_offset,
+                              VkIndexType index_type);
+  /// \param command_buffer **[in]**
+  /// \param pipeline_layout **[in]**
+  /// \param pipeline_stages **[in]**
+  /// \param offset **[in]**
+  /// \param size **[in]**
+  /// \param data **[in]**
+  static void provideDataToShadersThroughPushConstants(
+      VkCommandBuffer command_buffer, VkPipelineLayout pipeline_layout,
+      VkShaderStageFlags pipeline_stages, uint32_t offset, uint32_t size,
+      void *data);
+  /// \param command_buffer **[in]**
+  /// \param first_viewport **[in]**
+  /// \param viewports **[in]**
+  static void
+  setViewportStateDynamically(VkCommandBuffer command_buffer,
+                              uint32_t first_viewport,
+                              std::vector<VkViewport> const &viewports);
+  /// \param command_buffer **[in]**
+  /// \param first_scissor **[in]**
+  /// \param scissors **[in]**
+  static void setScissorStateDynamically(VkCommandBuffer command_buffer,
+                                         uint32_t first_scissor,
+                                         std::vector<VkRect2D> const &scissors);
+  /// \param command_buffer **[in]**
+  /// \param line_width **[in]**
+  static void setLineWidthStateDynamically(VkCommandBuffer command_buffer,
+                                           float line_width);
+  /// \param command_buffer **[in]**
+  /// \param constant_factor **[in]**
+  /// \param clamp **[in]**
+  /// \param slope_factor **[in]**
+  static void setDepthBiasStateDynamically(VkCommandBuffer command_buffer,
+                                           float constant_factor, float clamp,
+                                           float slope_factor);
+  /// \param command_buffer **[in]**
+  /// \param blend_constants **[in]**
+  void setBlendConstantsStateDynamically(
+      VkCommandBuffer command_buffer,
+      std::array<float, 4> const &blend_constants);
+  /// \param command_buffer **[in]**
+  /// \param vertex_count **[in]**
+  /// \param instance_count **[in]**
+  /// \param first_vertex **[in]**
+  /// \param first_instance **[in]**
+  void drawGeometry(VkCommandBuffer command_buffer, uint32_t vertex_count,
+                    uint32_t instance_count, uint32_t first_vertex,
+                    uint32_t first_instance);
+  /// \param command_buffer **[in]**
+  /// \param index_count **[in]**
+  /// \param instance_count **[in]**
+  /// \param first_index **[in]**
+  /// \param vertex_offset **[in]**
+  /// \param first_instance **[in]**
+  void drawIndexedGeometry(VkCommandBuffer command_buffer, uint32_t index_count,
+                           uint32_t instance_count, uint32_t first_index,
+                           uint32_t vertex_offset, uint32_t first_instance);
+  /// \param command_buffer **[in]**
+  /// \param x_size **[in]**
+  /// \param y_size **[in]**
+  /// \param z_size **[in]**
+  void dispatchComputeWork(VkCommandBuffer command_buffer, uint32_t x_size,
+                           uint32_t y_size, uint32_t z_size);
+  /// \param command_buffer **[in]**
+  /// \param secondary_command_buffers **[in]**
+  void executeSecondaryCommandBufferInsidePrimaryCommandBuffer(
+      VkCommandBuffer command_buffer,
+      std::vector<VkCommandBuffer> const &secondary_command_buffers);
+  /// \param threads_parameters **[in]**
+  /// \param queue **[in]**
+  /// \param wait_semaphore_infos **[in]**
+  /// \param signal_semaphores **[in]**
+  /// \param fence **[in]**
+  /// \return bool
+  bool recordCommandBuffersOnMultipleThreads(
+      std::vector<CommandBufferRecordingThreadParameters> const
+          &threads_parameters,
+      VkQueue queue, std::vector<WaitSemaphoreInfo> wait_semaphore_infos,
+      std::vector<VkSemaphore> signal_semaphores, VkFence fence);
 
   // EXAMPLES
   // --------

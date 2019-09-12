@@ -1198,7 +1198,7 @@ bool VulkanLibraryInterface::waitForAllSubmittedCommandsToBeFinished(
   return true;
 }
 
-// COMMAND BUFFER SUBMISSION ///////////////////////////////////////////////
+// PIPELINE //////////////////////////////////////////////////////////////////
 
 bool VulkanInterfaceLibrary::createShaderModule(
     VkDevice logical_device, std::vector<unsigned char> const &source_code,
@@ -1616,6 +1616,161 @@ void VulkanLibraryInterface::destroyShaderModule(
     shader_module = VK_NULL_HANDLE;
   }
 }
+
+// COMMANDS ///////////////////////////////////////////////////////////////
+
+void VulkanLibraryInterface::clearColorImage(
+    VkCommandBuffer command_buffer, VkImage image, VkImageLayout image_layout,
+    std::vector<VkImageSubresourceRange> const &image_subresource_ranges,
+    VkClearColorValue &clear_color) {
+  vkCmdClearColorImage(command_buffer, image, image_layout, &clear_color,
+                       static_cast<uint32_t>(image_subresource_ranges.size()),
+                       image_subresource_ranges.data());
+}
+
+void VulkanLibraryInterface::clearDepthStencilImage(
+    VkCommandBuffer command_buffer, VkImage image, VkImageLayout image_layout,
+    std::vector<VkImageSubresourceRange> const &image_subresource_ranges,
+    VkClearDepthStencilValue &clear_value) {
+  vkCmdClearDepthStencilImage(
+      command_buffer, image, image_layout, &clear_value,
+      static_cast<uint32_t>(image_subresource_ranges.size()),
+      image_subresource_ranges.data());
+}
+
+void VulkanLibraryInterface::clearRenderPassAttachments(
+    VkCommandBuffer command_buffer,
+    std::vector<VkClearAttachment> const &attachments,
+    std::vector<VkClearRect> const &rects) {
+  vkCmdClearAttachments(
+      command_buffer, static_cast<uint32_t>(attachments.size()),
+      attachments.data(), static_cast<uint32_t>(rects.size()), rects.data());
+}
+
+void VulkanLibraryInterface::bindVertexBuffers(
+    VkCommandBuffer command_buffer, uint32_t first_binding,
+    std::vector<VertexBufferParameters> const &buffers_parameters) {
+  if (buffers_parameters.size() > 0) {
+    std::vector<VkBuffer> buffers;
+    std::vector<VkDeviceSize> offsets;
+    for (auto &buffer_parameters : buffers_parameters) {
+      buffers.push_back(buffer_parameters.Buffer);
+      offsets.push_back(buffer_parameters.MemoryOffset);
+    }
+    vkCmdBindVertexBuffers(command_buffer, first_binding,
+                           static_cast<uint32_t>(buffers_parameters.size()),
+                           buffers.data(), offsets.data());
+  }
+}
+
+void VulkanLibraryInterface::bindIndexBuffer(VkCommandBuffer command_buffer,
+                                             VkBuffer buffer,
+                                             VkDeviceSize memory_offset,
+                                             VkIndexType index_type) {
+  vkCmdBindIndexBuffer(command_buffer, buffer, memory_offset, index_type);
+}
+
+void VulkanLibraryInterface::provideDataToShadersThroughPushConstants(
+    VkCommandBuffer command_buffer, VkPipelineLayout pipeline_layout,
+    VkShaderStageFlags pipeline_stages, uint32_t offset, uint32_t size,
+    void *data) {
+  vkCmdPushConstants(command_buffer, pipeline_layout, pipeline_stages, offset,
+                     size, data);
+}
+
+void VulkanLibraryInterface::setViewportStateDynamically(
+    VkCommandBuffer command_buffer, uint32_t first_viewport,
+    std::vector<VkViewport> const &viewports) {
+  vkCmdSetViewport(command_buffer, first_viewport,
+                   static_cast<uint32_t>(viewports.size()), viewports.data());
+}
+
+void VulkanLibraryInterface::setScissorStateDynamically(
+    VkCommandBuffer command_buffer, uint32_t first_scissor,
+    std::vector<VkRect2D> const &scissors) {
+  vkCmdSetScissor(command_buffer, first_scissor,
+                  static_cast<uint32_t>(scissors.size()), scissors.data());
+}
+
+void VulkanLibraryInterface::setLineWidthStateDynamically(
+    VkCommandBuffer command_buffer, float line_width) {
+  vkCmdSetLineWidth(command_buffer, line_width);
+}
+
+void VulkanLibraryInterface::setDepthBiasStateDynamically(
+    VkCommandBuffer command_buffer, float constant_factor, float clamp,
+    float slope_factor) {
+  vkCmdSetDepthBias(command_buffer, constant_factor, clamp, slope_factor);
+}
+
+void VulkanLibraryInterface::setBlendConstantsStateDynamically(
+    VkCommandBuffer command_buffer,
+    std::array<float, 4> const &blend_constants) {
+  vkCmdSetBlendConstants(command_buffer, blend_constants.data());
+}
+
+void VulkanLibraryInterface::drawGeometry(VkCommandBuffer command_buffer,
+                                          uint32_t vertex_count,
+                                          uint32_t instance_count,
+                                          uint32_t first_vertex,
+                                          uint32_t first_instance) {
+  vkCmdDraw(command_buffer, vertex_count, instance_count, first_vertex,
+            first_instance);
+}
+
+void VulkanLibraryInterface::drawIndexedGeometry(VkCommandBuffer command_buffer,
+                                                 uint32_t index_count,
+                                                 uint32_t instance_count,
+                                                 uint32_t first_index,
+                                                 uint32_t vertex_offset,
+                                                 uint32_t first_instance) {
+  vkCmdDrawIndexed(command_buffer, index_count, instance_count, first_index,
+                   vertex_offset, first_instance);
+}
+
+void VulkanLibraryInterface::dispatchComputeWork(VkCommandBuffer command_buffer,
+                                                 uint32_t x_size,
+                                                 uint32_t y_size,
+                                                 uint32_t z_size) {
+  vkCmdDispatch(command_buffer, x_size, y_size, z_size);
+}
+
+void VulkanLibraryInterface::
+    executeSecondaryCommandBufferInsidePrimaryCommandBuffer(
+        VkCommandBuffer command_buffer,
+        std::vector<VkCommandBuffer> const &secondary_command_buffers) {
+  if (secondary_command_buffers.size() > 0) {
+    vkCmdExecuteCommands(
+        command_buffer, static_cast<uint32_t>(secondary_command_buffers.size()),
+        secondary_command_buffers.data());
+  }
+}
+
+bool VulkanLibraryInterface::recordCommandBuffersOnMultipleThreads(
+    std::vector<CommandBufferRecordingThreadParameters> const
+        &threads_parameters,
+    VkQueue queue, std::vector<WaitSemaphoreInfo> wait_semaphore_infos,
+    std::vector<VkSemaphore> signal_semaphores, VkFence fence) {
+
+  std::vector<std::thread> threads(threads_parameters.size());
+  for (size_t i = 0; i < threads_parameters.size(); ++i) {
+    threads[i] = std::thread(threads_parameters[i].RecordingFunction,
+                             threads_parameters[i].CommandBuffer);
+  }
+
+  std::vector<VkCommandBuffer> command_buffers(threads_parameters.size());
+  for (size_t i = 0; i < threads_parameters.size(); ++i) {
+    threads[i].join();
+    command_buffers[i] = threads_parameters[i].CommandBuffer;
+  }
+
+  if (!SubmitCommandBuffersToQueue(queue, wait_semaphore_infos, command_buffers,
+                                   signal_semaphores, fence)) {
+    return false;
+  }
+  return true;
+}
+
 // UTILS
 // /////////////////////////////////////////////////////////////////////
 
