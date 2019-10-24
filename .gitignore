@@ -3,3 +3,4 @@ build_xcode
 .vscode
 /.vs
 /CMakeSettings.json
+/wbuild

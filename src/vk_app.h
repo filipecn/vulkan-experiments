@@ -29,6 +29,7 @@
 #define CIRCE_VK_APP_H
 
 #include "vk_graphics_display.h"
+#include "vulkan_instance.h"
 #include <functional>
 #include <memory>
 

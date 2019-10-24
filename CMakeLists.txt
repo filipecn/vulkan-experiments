@@ -46,7 +46,10 @@ set(SOURCES
     src/vk_graphics_display.cpp
     src/vk_image.cpp
     # src/vulkan_api.cpp 
+	src/vulkan_instance.cpp
     src/vulkan_library.cpp
+	src/vulkan_logical_device.cpp
+	src/vulkan_physical_device.cpp
     )
     set(HEADERS 
 	src/logging.h
@@ -56,7 +59,10 @@ set(SOURCES
     src/vk_image.h
     # src/vulkan_api.h
     # src/vulkan_api.inl
+	src/vulkan_instance.h
     src/vulkan_library.h
+	src/vulkan_logical_device.h
+	src/vulkan_physical_device.h
 )
 add_executable(hello_vulkan ${SOURCES} ${HEADERS})
 target_include_directories(hello_vulkan PUBLIC ${GLOG_INCLUDE_DIR} ${GLFW_INCLUDES} ${VULKAN_INCLUDES})

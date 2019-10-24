@@ -143,7 +143,7 @@ public:
         Aspect; //!< image's usage contex (color, depth or stencil)
   };
   /// Defines parameters for shader stages definitions
-  structShaderStageParameters {
+  struct ShaderStageParameters {
     VkShaderStageFlagBits ShaderStage; //!< pipeline stage
     VkShaderModule ShaderModule;       //!< module with the shader code
     char const *EntryPointName; //!< function name associated with the stage
@@ -497,7 +497,7 @@ public:
                               VkImageView &image_view);
   /// \param logical_device **[in]** logical device handle
   /// \param image_view **[in/out]** image view handle
-  static void DestroyImageView(VkDevice logical_device,
+  static void destroyImageView(VkDevice logical_device,
                                VkImageView &image_view);
 
   // VULKAN SURFACE
@@ -1366,11 +1366,11 @@ public:
   /// \param signal_semaphores **[in]**
   /// \param fence **[in]**
   /// \return bool
-  bool recordCommandBuffersOnMultipleThreads(
-      std::vector<CommandBufferRecordingThreadParameters> const
-          &threads_parameters,
-      VkQueue queue, std::vector<WaitSemaphoreInfo> wait_semaphore_infos,
-      std::vector<VkSemaphore> signal_semaphores, VkFence fence);
+  // bool recordCommandBuffersOnMultipleThreads(
+  //  std::vector<CommandBufferRecordingThreadParameters> const
+  //    &threads_parameters,
+  // VkQueue queue, std::vector<WaitSemaphoreInfo> wait_semaphore_infos,
+  // std::vector<VkSemaphore> signal_semaphores, VkFence fence);
 
   // EXAMPLES
   // --------

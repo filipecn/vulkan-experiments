@@ -26,16 +26,54 @@
 /// \brief
 
 #include "vk_image.h"
+#include "logging.h"
 #include "vulkan_debug.h"
 
 namespace circe {
 
 namespace vk {
 
-Image::Image(VkDevice logical_device, VkImageType type, VkFormat format,
-             VkExtent3D size, uint32_t num_mipmaps, uint32_t num_layers,
-             VkSampleCountFlagBits samples, VkImageUsageFlags usage_scenarios,
-             bool cubemap) {
+Image::View::View(const Image &image, VkImageViewType view_type,
+                  VkFormat format, VkImageAspectFlags aspect)
+    : image_(image) {
+  VkImageViewCreateInfo image_view_create_info = {
+      VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, // VkStructureType sType
+      nullptr,        // const void               * pNext
+      0,              // VkImageViewCreateFlags     flags
+      image.handle(), // VkImage                    image
+      view_type,      // VkImageViewType            viewType
+      format,         // VkFormat                   format
+      {
+          // VkComponentMapping         components
+          VK_COMPONENT_SWIZZLE_IDENTITY, // VkComponentSwizzle         r
+          VK_COMPONENT_SWIZZLE_IDENTITY, // VkComponentSwizzle         g
+          VK_COMPONENT_SWIZZLE_IDENTITY, // VkComponentSwizzle         b
+          VK_COMPONENT_SWIZZLE_IDENTITY  // VkComponentSwizzle         a
+      },
+      {
+          // VkImageSubresourceRange    subresourceRange
+          aspect,                   // VkImageAspectFlags         aspectMask
+          0,                        // uint32_t                   baseMipLevel
+          VK_REMAINING_MIP_LEVELS,  // uint32_t                   levelCount
+          0,                        // uint32_t                   baseArrayLayer
+          VK_REMAINING_ARRAY_LAYERS // uint32_t                   layerCount
+      }};
+
+  CHECK_VULKAN(vkCreateImageView(image.device().handle(),
+                                 &image_view_create_info, nullptr,
+                                 &vk_image_view_));
+}
+
+Image::View::~View() {
+  if (VK_NULL_HANDLE != vk_image_view_)
+    vkDestroyImageView(image_.device().handle(), vk_image_view_, nullptr);
+}
+
+Image::Image(const LogicalDevice &logical_device, VkImageType type,
+             VkFormat format, VkExtent3D size, uint32_t num_mipmaps,
+             uint32_t num_layers, VkSampleCountFlagBits samples,
+             VkImageUsageFlags usage_scenarios, bool cubemap)
+    : logical_device_(logical_device) {
   VkImageCreateInfo image_create_info = {
       VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, // VkStructureType          sType
       nullptr,                             // const void             * pNext
@@ -54,8 +92,33 @@ Image::Image(VkDevice logical_device, VkImageType type, VkFormat format,
       nullptr, // const uint32_t         * pQueueFamilyIndices
       VK_IMAGE_LAYOUT_UNDEFINED // VkImageLayout            initialLayout
   };
-  ASSERT_VULKAN(
-      vkCreateImage(logical_device, &image_create_info, nullptr, &image));
+  CHECK_VULKAN(vkCreateImage(logical_device.handle(), &image_create_info,
+                             nullptr, &vk_image_));
+  if (vk_image_ == VK_NULL_HANDLE)
+    INFO("Could not create image.");
+}
+
+Image::~Image() {
+  if (VK_NULL_HANDLE != vk_image_)
+    vkDestroyImage(logical_device_.handle(), vk_image_, nullptr);
+}
+
+VkImage Image::handle() const { return vk_image_; }
+
+const LogicalDevice &Image::device() const { return logical_device_; }
+
+bool Image::good() const { return vk_image_ != VK_NULL_HANDLE; }
+
+bool Image::subresourceLayout(VkImageAspectFlags aspect_mask,
+                              uint32_t mip_level, uint32_t array_layer,
+                              VkSubresourceLayout &subresource_layout) const {
+  VkImageSubresource subresource{};
+  subresource.aspectMask = aspect_mask;
+  subresource.mipLevel = mip_level;
+  subresource.arrayLayer = array_layer;
+  vkGetImageSubresourceLayout(logical_device_.handle(), vk_image_, &subresource,
+                              &subresource_layout);
+  return true;
 }
 
 } // namespace vk

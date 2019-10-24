@@ -23,11 +23,10 @@ int main(int argc, char const *argv[]) {
 #endif
   // The app represents the window in which we display our graphics
   circe::vk::App app(800, 800);
-  // LOG(INFO) << "Found " << " cookies";
   // In order to setup the window we first need to connect to the vulkan
   // library. Here we could pass a list of vulkan instance extensions needed by
-  // the application. Since the App automatically handles the basic extensions
-  // required by the glfw library, we don't need any extra extension.
+  // the application. The App automatically handles the basic extensions
+  // required by the glfw library, so we don't need any extra extension.
   ASSERT(app.createInstance());
   // A important step is to choose the hardware we want our application to use.
   // The pickPhysicalDevice gives us the chance to analyse the available

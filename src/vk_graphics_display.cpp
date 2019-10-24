@@ -71,7 +71,7 @@ std::vector<const char *> GraphicsDisplay::requiredVkExtensions() const {
 
 bool GraphicsDisplay::createWindowSurface(VkInstance instance,
                                           VkSurfaceKHR &surface) const {
-  CHECK_VULKAN(glfwCreateWindowSurface(instance, window_, nullptr, &surface));
+  R_CHECK_VULKAN(glfwCreateWindowSurface(instance, window_, nullptr, &surface));
   return true;
 }
 

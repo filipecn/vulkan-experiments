@@ -26,14 +26,16 @@
 /// \brief
 
 #include "vk_buffer.h"
+#include "logging.h"
 #include "vulkan_debug.h"
 
 namespace circe {
 
 namespace vk {
 
-Buffer::Buffer(VkDevice logical_device, VkDeviceSize size,
-               VkBufferUsageFlags usage, VkSharingMode sharingMode) {
+Buffer::Buffer(const LogicalDevice &logical_device, VkDeviceSize size,
+               VkBufferUsageFlags usage, VkSharingMode sharingMode)
+    : logical_device_(logical_device) {
   VkBufferCreateInfo buffer_create_info = {
       VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, // sType
       nullptr,                              // pNext
@@ -44,8 +46,46 @@ Buffer::Buffer(VkDevice logical_device, VkDeviceSize size,
       0,                                    // queue family index count
       nullptr                               // queue family indices pointer
   };
-  ASSERT_VULKAN(
-      vkCreateBuffer(logical_device, &buffer_create_info, nullptr, &buffer_));
+  CHECK_VULKAN(vkCreateBuffer(logical_device.handle(), &buffer_create_info,
+                              nullptr, &vk_buffer_));
+  if (vk_buffer_ == VK_NULL_HANDLE)
+    INFO("Could not create buffer.");
+}
+
+Buffer::~Buffer() {
+  if (VK_NULL_HANDLE != vk_buffer_)
+    vkDestroyBuffer(logical_device_.handle(), vk_buffer_, nullptr);
+}
+
+VkBuffer Buffer::handle() const { return vk_buffer_; }
+
+bool Buffer::good() const { return vk_buffer_ != VK_NULL_HANDLE; }
+
+const LogicalDevice &Buffer::device() const { return logical_device_; }
+
+Buffer::View::View(const Buffer &buffer, VkFormat format,
+                   VkDeviceSize memory_offset, VkDeviceSize memory_range)
+    : buffer_(buffer) {
+  VkBufferViewCreateInfo buffer_view_create_info = {
+      VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO, // VkStructureType sType
+      nullptr,         // const void               * pNext
+      0,               // VkBufferViewCreateFlags    flags
+      buffer.handle(), // VkBuffer                   buffer
+      format,          // VkFormat                   format
+      memory_offset,   // VkDeviceSize               offset
+      memory_range     // VkDeviceSize               range
+  };
+
+  CHECK_VULKAN(vkCreateBufferView(buffer.device().handle(),
+                                  &buffer_view_create_info, nullptr,
+                                  &vk_buffer_view_));
+  if (vk_buffer_view_ == VK_NULL_HANDLE)
+    INFO("Could not create buffer view.");
+}
+
+Buffer::View::~View() {
+  if (VK_NULL_HANDLE != vk_buffer_view_)
+    vkDestroyBufferView(buffer_.device().handle(), vk_buffer_view_, nullptr);
 }
 
 } // namespace vk

@@ -28,7 +28,7 @@
 #ifndef CIRCE_VULKAN_BUFFER_H
 #define CIRCE_VULKAN_BUFFER_H
 
-#include "vulkan_library.h"
+#include "vulkan_logical_device.h"
 
 namespace circe {
 
@@ -40,8 +40,27 @@ namespace vk {
 /// buffers, textel buffers, used as a source of data for vertex attributes, and
 /// various other purposes. The purpose of a buffer and its size are defined on
 /// its construction.
-class Buffer {
+class Buffer final {
 public:
+  /// Buffer views allow us to define how buffer's memory is accessed and
+  /// interpreted. For example, we can choose to look at the buffer as a uniform
+  /// texel buffer or as a storage texel buffer.
+  class View final {
+  public:
+    /// Creates a buffer view of a portion of the given buffer
+    /// \param buffer **[in]** buffer
+    /// \param format **[in]** how buffer contents should be interpreted
+    /// \param memory_offset **[in]** view's starting point
+    /// \param memory_range **[in]** size of the view
+    View(const Buffer &buffer, VkFormat format, VkDeviceSize memory_offset,
+         VkDeviceSize memory_range);
+    ~View();
+
+  private:
+    const Buffer &buffer_;
+    VkBufferView vk_buffer_view_ = VK_NULL_HANDLE;
+  };
+
   /// VK_BUFFER_USAGE_TRANSFER_SRC_BIT specifies that the buffer can be a source
   /// of data for copy operations
   /// VK_BUFFER_USAGE_TRANSFER_DST_BIT specifies that we can copy data to the
@@ -68,11 +87,20 @@ public:
   /// \param sharingMode **[in | optional = VK_SHARING_MODE_EXCLUSIVE]**
   /// specifies whether queues from multiple families can access the buffer at
   /// the same time.
-  Buffer(VkDevice logical_device, VkDeviceSize size, VkBufferUsageFlags usage,
+  Buffer(const LogicalDevice &logical_device, VkDeviceSize size,
+         VkBufferUsageFlags usage,
          VkSharingMode sharingMode = VK_SHARING_MODE_EXCLUSIVE);
+  ~Buffer();
+  VkBuffer handle() const;
+  ///\brief
+  ///
+  ///\return bool
+  bool good() const;
+  const LogicalDevice &device() const;
 
 private:
-  VkBuffer buffer_;
+  const LogicalDevice &logical_device_;
+  VkBuffer vk_buffer_ = VK_NULL_HANDLE;
 };
 
 } // namespace vk

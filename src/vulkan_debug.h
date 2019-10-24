@@ -164,6 +164,16 @@ inline std::string vulkanResultString(VkResult err) {
       std::cerr << "[VULKAN_ERROR] in [" << __FILE__ << "][" << __LINE__       \
                 << "]: call " << #A << std::endl;                              \
       std::cerr << ".............. " << vulkanResultString(err) << std::endl;  \
+    }                                                                          \
+  }
+///
+#define R_CHECK_VULKAN(A)                                                      \
+  {                                                                            \
+    VkResult err = (A);                                                        \
+    if (err != VK_SUCCESS) {                                                   \
+      std::cerr << "[VULKAN_ERROR] in [" << __FILE__ << "][" << __LINE__       \
+                << "]: call " << #A << std::endl;                              \
+      std::cerr << ".............. " << vulkanResultString(err) << std::endl;  \
       return false;                                                            \
     }                                                                          \
   }

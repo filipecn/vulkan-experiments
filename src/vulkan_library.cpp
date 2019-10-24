@@ -30,6 +30,7 @@
 #include "vulkan_library.h"
 #include "logging.h"
 #include "vulkan_debug.h"
+#include <array>
 #include <iostream>
 
 #if defined __APPLE__
@@ -149,12 +150,12 @@ bool VulkanLibraryInterface::loadDeviceLevelFunctions(
 bool VulkanLibraryInterface::checkAvaliableInstanceExtensions(
     std::vector<VkExtensionProperties> &extensions) {
   uint32_t extensionsCount = 0;
-  CHECK_VULKAN(vkEnumerateInstanceExtensionProperties(nullptr, &extensionsCount,
-                                                      nullptr));
+  R_CHECK_VULKAN(vkEnumerateInstanceExtensionProperties(
+      nullptr, &extensionsCount, nullptr));
   ASSERT(extensionsCount != 0);
   extensions.resize(extensionsCount);
-  CHECK_VULKAN(vkEnumerateInstanceExtensionProperties(nullptr, &extensionsCount,
-                                                      &extensions[0]));
+  R_CHECK_VULKAN(vkEnumerateInstanceExtensionProperties(
+      nullptr, &extensionsCount, &extensions[0]));
   ASSERT(extensionsCount != 0);
   return true;
 }
@@ -163,12 +164,12 @@ bool VulkanLibraryInterface::checkAvailableDeviceExtensions(
     VkPhysicalDevice physicalDevice,
     std::vector<VkExtensionProperties> &extensions) {
   uint32_t extensionsCount = 0;
-  CHECK_VULKAN(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr,
-                                                    &extensionsCount, nullptr));
+  R_CHECK_VULKAN(vkEnumerateDeviceExtensionProperties(
+      physicalDevice, nullptr, &extensionsCount, nullptr));
   if (extensionsCount == 0)
     return true;
   extensions.resize(extensionsCount);
-  CHECK_VULKAN(vkEnumerateDeviceExtensionProperties(
+  R_CHECK_VULKAN(vkEnumerateDeviceExtensionProperties(
       physicalDevice, nullptr, &extensionsCount, extensions.data()));
   return true;
 }
@@ -212,7 +213,7 @@ bool VulkanLibraryInterface::createInstance(
   createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
   createInfo.ppEnabledExtensionNames =
       (extensions.size()) ? extensions.data() : nullptr;
-  CHECK_VULKAN(vkCreateInstance(&createInfo, nullptr, &instance));
+  R_CHECK_VULKAN(vkCreateInstance(&createInfo, nullptr, &instance));
   D_RETURN_FALSE_IF_NOT(instance != VK_NULL_HANDLE,
                         "Could not create Vulkan Instance.");
   return true;
@@ -229,12 +230,12 @@ void VulkanLibraryInterface::destroyVulkanInstance(VkInstance &instance) {
 bool VulkanLibraryInterface::enumerateAvailablePhysicalDevices(
     VkInstance instance, std::vector<VkPhysicalDevice> &devices) {
   uint32_t devicesCount = 0;
-  CHECK_VULKAN(vkEnumeratePhysicalDevices(instance, &devicesCount, nullptr));
+  R_CHECK_VULKAN(vkEnumeratePhysicalDevices(instance, &devicesCount, nullptr));
   D_RETURN_FALSE_IF_NOT(
       devicesCount != 0,
       "Could not get the number of available physical devices.");
   devices.resize(devicesCount);
-  CHECK_VULKAN(
+  R_CHECK_VULKAN(
       vkEnumeratePhysicalDevices(instance, &devicesCount, devices.data()));
   D_RETURN_FALSE_IF_NOT(devicesCount != 0,
                         "Could not enumerate physical devices.");
@@ -360,8 +361,8 @@ bool VulkanLibraryInterface::createLogicalDevice(
           .data(), // const char * const             * ppEnabledExtensionNames
       desired_features // const VkPhysicalDeviceFeatures * pEnabledFeatures
   };
-  CHECK_VULKAN(vkCreateDevice(physical_device, &device_create_info, nullptr,
-                              &logical_device));
+  R_CHECK_VULKAN(vkCreateDevice(physical_device, &device_create_info, nullptr,
+                                &logical_device));
   D_RETURN_FALSE_IF_NOT(logical_device != VK_NULL_HANDLE,
                         "Could not create logical device.");
   return true;
@@ -469,7 +470,7 @@ bool VulkanLibraryInterface::allocateAndBindMemoryObjectToBuffer(
   }
   CHECK_INFO(VK_NULL_HANDLE == memory_object,
              "Could not allocate memory for a buffer.");
-  CHECK_VULKAN(vkBindBufferMemory(logical_device, buffer, memory_object, 0));
+  R_CHECK_VULKAN(vkBindBufferMemory(logical_device, buffer, memory_object, 0));
   return true;
 }
 
@@ -504,8 +505,8 @@ void VulkanLibraryInterface::setBufferMemoryBarrier(
 
 // VULKAN IMAGE //////////////////////////////////////////////////////////////
 
-void VulkanLibraryIntterface::destroyImage(VkDevice logical_device,
-                                           VkImage &image) {
+void VulkanLibraryInterface::destroyImage(VkDevice logical_device,
+                                          VkImage &image) {
   if (VK_NULL_HANDLE != image) {
     vkDestroyImage(logical_device, image, nullptr);
     image = VK_NULL_HANDLE;
@@ -538,8 +539,8 @@ bool VulkanLibraryInterface::createImageView(
           VK_REMAINING_ARRAY_LAYERS // uint32_t                   layerCount
       }};
 
-  CHECK_VULKAN(vkCreateImageView(logical_device, &image_view_create_info,
-                                 nullptr, &image_view));
+  R_CHECK_VULKAN(vkCreateImageView(logical_device, &image_view_create_info,
+                                   nullptr, &image_view));
   return true;
 }
 
@@ -587,7 +588,7 @@ bool VulkanLibraryInterface::allocateAndBindMemoryObjectToImage(
   }
   CHECK_INFO(VK_NULL_HANDLE == memory_object,
              "Could not allocate memory for an image.");
-  CHECK_VULKAN(vkBindImageMemory(logical_device, image, memory_object, 0));
+  R_CHECK_VULKAN(vkBindImageMemory(logical_device, image, memory_object, 0));
   return true;
 }
 
@@ -694,7 +695,7 @@ void VulkanLibraryInterface::destroyPresentationSurface(
 bool VulkanLibraryInterface::getCapabilitiesOfPresentationSurface(
     VkPhysicalDevice physical_device, VkSurfaceKHR presentation_surface,
     VkSurfaceCapabilitiesKHR &surface_capabilities) {
-  CHECK_VULKAN(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+  R_CHECK_VULKAN(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
       physical_device, presentation_surface, &surface_capabilities));
   return true;
 }
@@ -706,12 +707,12 @@ bool VulkanLibraryInterface::selectDesiredPresentationMode(
     VkPresentModeKHR desired_present_mode, VkPresentModeKHR &present_mode) {
   // Enumerate supported present modes
   uint32_t present_modes_count = 0;
-  CHECK_VULKAN(vkGetPhysicalDeviceSurfacePresentModesKHR(
+  R_CHECK_VULKAN(vkGetPhysicalDeviceSurfacePresentModesKHR(
       physical_device, presentation_surface, &present_modes_count, nullptr));
   D_RETURN_FALSE_IF_NOT(0 != present_modes_count,
                         "Could not get the number of supported present modes.");
   std::vector<VkPresentModeKHR> present_modes(present_modes_count);
-  CHECK_VULKAN(vkGetPhysicalDeviceSurfacePresentModesKHR(
+  R_CHECK_VULKAN(vkGetPhysicalDeviceSurfacePresentModesKHR(
       physical_device, presentation_surface, &present_modes_count,
       present_modes.data()));
   D_RETURN_FALSE_IF_NOT(0 != present_modes_count,
@@ -738,22 +739,22 @@ bool VulkanLibraryInterface::selectDesiredPresentationMode(
 bool VulkanLibraryInterface::querySwapChainSupport(
     VkPhysicalDevice physical_device, VkSurfaceKHR surface,
     SwapChainSupportDetails &details) {
-  CHECK_VULKAN(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+  R_CHECK_VULKAN(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
       physical_device, surface, &details.capabilities));
   uint32_t format_count = 0;
-  CHECK_VULKAN(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface,
-                                                    &format_count, nullptr));
+  R_CHECK_VULKAN(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface,
+                                                      &format_count, nullptr));
   if (format_count != 0) {
     details.formats.resize(format_count);
-    CHECK_VULKAN(vkGetPhysicalDeviceSurfaceFormatsKHR(
+    R_CHECK_VULKAN(vkGetPhysicalDeviceSurfaceFormatsKHR(
         physical_device, surface, &format_count, details.formats.data()));
   }
   uint32_t present_mode_count = 0;
-  CHECK_VULKAN(vkGetPhysicalDeviceSurfacePresentModesKHR(
+  R_CHECK_VULKAN(vkGetPhysicalDeviceSurfacePresentModesKHR(
       physical_device, surface, &present_mode_count, nullptr));
   if (present_mode_count != 0) {
     details.present_modes.resize(present_mode_count);
-    CHECK_VULKAN(vkGetPhysicalDeviceSurfacePresentModesKHR(
+    R_CHECK_VULKAN(vkGetPhysicalDeviceSurfacePresentModesKHR(
         physical_device, surface, &present_mode_count,
         details.present_modes.data()));
   }
@@ -822,14 +823,14 @@ bool VulkanLibraryInterface::selectFormatOfSwapchainImages(
   // Enumerate supported formats
   uint32_t formats_count = 0;
 
-  CHECK_VULKAN(vkGetPhysicalDeviceSurfaceFormatsKHR(
+  R_CHECK_VULKAN(vkGetPhysicalDeviceSurfaceFormatsKHR(
       physical_device, presentation_surface, &formats_count, nullptr));
   D_RETURN_FALSE_IF_NOT(
       0 != formats_count,
       "Could not get the number of supported surface formats.");
 
   std::vector<VkSurfaceFormatKHR> surface_formats(formats_count);
-  CHECK_VULKAN(vkGetPhysicalDeviceSurfaceFormatsKHR(
+  R_CHECK_VULKAN(vkGetPhysicalDeviceSurfaceFormatsKHR(
       physical_device, presentation_surface, &formats_count,
       surface_formats.data()));
   D_RETURN_FALSE_IF_NOT(0 != formats_count,
@@ -898,8 +899,8 @@ bool VulkanLibraryInterface::createSwapchain(
       old_swapchain // VkSwapchainKHR                   oldSwapchain
   };
 
-  CHECK_VULKAN(vkCreateSwapchainKHR(logical_device, &swapchain_create_info,
-                                    nullptr, &swapchain));
+  R_CHECK_VULKAN(vkCreateSwapchainKHR(logical_device, &swapchain_create_info,
+                                      nullptr, &swapchain));
   D_RETURN_FALSE_IF_NOT(VK_NULL_HANDLE != swapchain,
                         "Could not create a swapchain.");
   if (VK_NULL_HANDLE != old_swapchain) {
@@ -924,13 +925,13 @@ bool VulkanLibraryInterface::getHandlesOfSwapchainImages(
     VkDevice logical_device, VkSwapchainKHR swapchain,
     std::vector<VkImage> &swapchain_images) {
   uint32_t images_count = 0;
-  CHECK_VULKAN(vkGetSwapchainImagesKHR(logical_device, swapchain, &images_count,
-                                       nullptr));
+  R_CHECK_VULKAN(vkGetSwapchainImagesKHR(logical_device, swapchain,
+                                         &images_count, nullptr));
   D_RETURN_FALSE_IF_NOT(0 != images_count,
                         "Could not get the number of swapchain images.");
   swapchain_images.resize(images_count);
-  CHECK_VULKAN(vkGetSwapchainImagesKHR(logical_device, swapchain, &images_count,
-                                       swapchain_images.data()));
+  R_CHECK_VULKAN(vkGetSwapchainImagesKHR(
+      logical_device, swapchain, &images_count, swapchain_images.data()));
   D_RETURN_FALSE_IF_NOT(0 != images_count,
                         "Could not enumerate swapchain images.");
   return true;
@@ -995,8 +996,8 @@ bool VulkanLibraryInterface::createSemaphore(VkDevice logical_device,
       nullptr, // const void               * pNext
       0        // VkSemaphoreCreateFlags     flags
   };
-  CHECK_VULKAN(vkCreateSemaphore(logical_device, &semaphore_create_info,
-                                 nullptr, &semaphore));
+  R_CHECK_VULKAN(vkCreateSemaphore(logical_device, &semaphore_create_info,
+                                   nullptr, &semaphore));
   return true;
 }
 
@@ -1015,7 +1016,7 @@ bool VulkanLibraryInterface::createFence(VkDevice logical_device, bool signaled,
       nullptr,                             // const void           * pNext
       signaled ? VK_FENCE_CREATE_SIGNALED_BIT : 0u, // VkFenceCreateFlags flags
   };
-  CHECK_VULKAN(
+  R_CHECK_VULKAN(
       vkCreateFence(logical_device, &fence_create_info, nullptr, &fence));
   return true;
 }
@@ -1033,9 +1034,9 @@ bool VulkanLibraryInterface::waitForFences(VkDevice logical_device,
                                            VkBool32 wait_for_all,
                                            uint64_t timeout) {
   if (fences.size() > 0) {
-    CHECK_VULKAN(vkWaitForFences(logical_device,
-                                 static_cast<uint32_t>(fences.size()),
-                                 fences.data(), wait_for_all, timeout));
+    R_CHECK_VULKAN(vkWaitForFences(logical_device,
+                                   static_cast<uint32_t>(fences.size()),
+                                   fences.data(), wait_for_all, timeout));
     return true;
   }
   return false;
@@ -1044,7 +1045,7 @@ bool VulkanLibraryInterface::waitForFences(VkDevice logical_device,
 bool VulkanLibraryInterface::resetFences(VkDevice logical_device,
                                          std::vector<VkFence> const &fences) {
   if (fences.size() > 0) {
-    CHECK_VULKAN(vkResetFences(
+    R_CHECK_VULKAN(vkResetFences(
         logical_device, static_cast<uint32_t>(fences.size()), fences.data()));
     return true;
   }
@@ -1062,8 +1063,8 @@ bool VulkanLibraryInterface::createCommandPool(
       parameters,  // VkCommandPoolCreateFlags     flags
       queue_family // uint32_t                     queueFamilyIndex
   };
-  CHECK_VULKAN(vkCreateCommandPool(logical_device, &command_pool_create_info,
-                                   nullptr, &command_pool));
+  R_CHECK_VULKAN(vkCreateCommandPool(logical_device, &command_pool_create_info,
+                                     nullptr, &command_pool));
   return true;
 }
 
@@ -1087,7 +1088,7 @@ bool VulkanLibraryInterface::allocateCommandBuffers(
       count         // uint32_t                 commandBufferCount
   };
   command_buffers.resize(count);
-  CHECK_VULKAN(vkAllocateCommandBuffers(
+  R_CHECK_VULKAN(vkAllocateCommandBuffers(
       logical_device, &command_buffer_allocate_info, command_buffers.data()));
   return true;
 }
@@ -1102,20 +1103,20 @@ bool VulkanLibraryInterface::beginCommandBufferRecordingOperation(
       secondary_command_buffer_info // const VkCommandBufferInheritanceInfo *
                                     // pInheritanceInfo
   };
-  CHECK_VULKAN(
+  R_CHECK_VULKAN(
       vkBeginCommandBuffer(command_buffer, &command_buffer_begin_info));
   return true;
 }
 
 bool VulkanLibraryInterface::endCommandBufferRecordingOperation(
     VkCommandBuffer command_buffer) {
-  CHECK_VULKAN(vkEndCommandBuffer(command_buffer));
+  R_CHECK_VULKAN(vkEndCommandBuffer(command_buffer));
   return true;
 }
 
 bool VulkanLibraryInterface::resetCommandBuffer(VkCommandBuffer command_buffer,
                                                 bool release_resources) {
-  CHECK_VULKAN(vkResetCommandBuffer(
+  R_CHECK_VULKAN(vkResetCommandBuffer(
       command_buffer,
       release_resources ? VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT : 0));
   return true;
@@ -1124,7 +1125,7 @@ bool VulkanLibraryInterface::resetCommandBuffer(VkCommandBuffer command_buffer,
 bool VulkanLibraryInterface::resetCommandPool(VkDevice logical_device,
                                               VkCommandPool command_pool,
                                               bool release_resources) {
-  CHECK_VULKAN(vkResetCommandPool(
+  R_CHECK_VULKAN(vkResetCommandPool(
       logical_device, command_pool,
       release_resources ? VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT : 0));
   return true;
@@ -1173,7 +1174,7 @@ bool VulkanLibraryInterface::submitCommandBuffersToQueue(
           .data() // const VkSemaphore            * pSignalSemaphores
   };
 
-  CHECK_VULKAN(vkQueueSubmit(queue, 1, &submit_info, fence));
+  R_CHECK_VULKAN(vkQueueSubmit(queue, 1, &submit_info, fence));
   return true;
 }
 
@@ -1200,7 +1201,7 @@ bool VulkanLibraryInterface::waitForAllSubmittedCommandsToBeFinished(
 
 // PIPELINE //////////////////////////////////////////////////////////////////
 
-bool VulkanInterfaceLibrary::createShaderModule(
+bool VulkanLibraryInterface::createShaderModule(
     VkDevice logical_device, std::vector<unsigned char> const &source_code,
     VkShaderModule &shader_module) {
   VkShaderModuleCreateInfo shader_module_create_info = {
@@ -1211,12 +1212,12 @@ bool VulkanInterfaceLibrary::createShaderModule(
       reinterpret_cast<uint32_t const *>(
           source_code.data()) // const uint32_t             * pCode
   };
-  CHECK_VULKAN(vkCreateShaderModule(logical_device, &shader_module_create_info,
-                                    nullptr, &shader_module));
+  R_CHECK_VULKAN(vkCreateShaderModule(
+      logical_device, &shader_module_create_info, nullptr, &shader_module));
   return true;
 }
 
-void VulkanInterfaceLibrary::specifyPipelineShaderStages(
+void VulkanLibraryInterface::specifyPipelineShaderStages(
     std::vector<ShaderStageParameters> const &shader_stage_params,
     std::vector<VkPipelineShaderStageCreateInfo> &shader_stage_create_infos) {
   shader_stage_create_infos.clear();
@@ -1235,7 +1236,7 @@ void VulkanInterfaceLibrary::specifyPipelineShaderStages(
   }
 }
 
-void VulkanInterfaceLibrary::specifyPipelineVertexInputState(
+void VulkanLibraryInterface::specifyPipelineVertexInputState(
     std::vector<VkVertexInputBindingDescription> const &binding_descriptions,
     std::vector<VkVertexInputAttributeDescription> const
         &attribute_descriptions,
@@ -1258,7 +1259,7 @@ void VulkanInterfaceLibrary::specifyPipelineVertexInputState(
   };
 }
 
-void VulkanInterfaceLibrary::specifyPipelineInputAssemblyState(
+void VulkanLibraryInterface::specifyPipelineInputAssemblyState(
     VkPrimitiveTopology topology, bool primitive_restart_enable,
     VkPipelineInputAssemblyStateCreateInfo &input_assembly_state_create_info) {
   input_assembly_state_create_info = {
@@ -1271,7 +1272,7 @@ void VulkanInterfaceLibrary::specifyPipelineInputAssemblyState(
   };
 }
 
-void VulkanInterfaceLibrary::specifyPipelineTessellationState(
+void VulkanLibraryInterface::specifyPipelineTessellationState(
     uint32_t patch_control_points_count,
     VkPipelineTessellationStateCreateInfo &tessellation_state_create_info) {
   tessellation_state_create_info = {
@@ -1283,7 +1284,7 @@ void VulkanInterfaceLibrary::specifyPipelineTessellationState(
   };
 }
 
-void VulkanInterfaceLibrary::specifyPipelineViewportAndScissorTestState(
+void VulkanLibraryInterface::specifyPipelineViewportAndScissorTestState(
     ViewportInfo const &viewport_infos,
     VkPipelineViewportStateCreateInfo &viewport_state_create_info) {
   uint32_t viewport_count =
@@ -1303,7 +1304,7 @@ void VulkanInterfaceLibrary::specifyPipelineViewportAndScissorTestState(
   };
 }
 
-void VulkanInterfaceLibrary::specifyPipelineRasterizationState(
+void VulkanLibraryInterface::specifyPipelineRasterizationState(
     bool depth_clamp_enable, bool rasterizer_discard_enable,
     VkPolygonMode polygon_mode, VkCullModeFlags culling_mode,
     VkFrontFace front_face, bool depth_bias_enable,
@@ -1328,7 +1329,7 @@ void VulkanInterfaceLibrary::specifyPipelineRasterizationState(
   };
 }
 
-void VulkanInterfaceLibrary::specifyPipelineMultisampleState(
+void VulkanLibraryInterface::specifyPipelineMultisampleState(
     VkSampleCountFlagBits sample_count, bool per_sample_shading_enable,
     float min_sample_shading, VkSampleMask const *sample_masks,
     bool alpha_to_coverage_enable, bool alpha_to_one_enable,
@@ -1347,7 +1348,7 @@ void VulkanInterfaceLibrary::specifyPipelineMultisampleState(
   };
 }
 
-void VulkanInterfaceLibrary::specifyPipelineDepthAndStencilState(
+void VulkanLibraryInterface::specifyPipelineDepthAndStencilState(
     bool depth_test_enable, bool depth_write_enable,
     VkCompareOp depth_compare_op, bool depth_bounds_test_enable,
     float min_depth_bounds, float max_depth_bounds, bool stencil_test_enable,
@@ -1372,7 +1373,7 @@ void VulkanInterfaceLibrary::specifyPipelineDepthAndStencilState(
   };
 }
 
-void VulkanInterfaceLibrary::specifyPipelineBlendState(
+void VulkanLibraryInterface::specifyPipelineBlendState(
     bool logic_op_enable, VkLogicOp logic_op,
     std::vector<VkPipelineColorBlendAttachmentState> const
         &attachment_blend_states,
@@ -1394,7 +1395,7 @@ void VulkanInterfaceLibrary::specifyPipelineBlendState(
        blend_constants[3]}};
 }
 
-void VulkanInterfaceLibrary::specifyPipelineDynamicStates(
+void VulkanLibraryInterface::specifyPipelineDynamicStates(
     std::vector<VkDynamicState> const &dynamic_states,
     VkPipelineDynamicStateCreateInfo &dynamic_state_creat_info) {
   dynamic_state_creat_info = {
@@ -1409,7 +1410,7 @@ void VulkanInterfaceLibrary::specifyPipelineDynamicStates(
   };
 }
 
-bool VulkanInterfaceLibrary::createPipelineLayout(
+bool VulkanLibraryInterface::createPipelineLayout(
     VkDevice logical_device,
     std::vector<VkDescriptorSetLayout> const &descriptor_set_layouts,
     std::vector<VkPushConstantRange> const &push_constant_ranges,
@@ -1427,12 +1428,12 @@ bool VulkanInterfaceLibrary::createPipelineLayout(
       push_constant_ranges
           .data() // const VkPushConstantRange      * pPushConstantRanges
   };
-  CHECK_VULKAN(vkCreatePipelineLayout(
+  R_CHECK_VULKAN(vkCreatePipelineLayout(
       logical_device, &pipeline_layout_create_info, nullptr, &pipeline_layout));
   return true;
 }
 
-void VulkanInterfaceLibrary::specifyGraphicsPipelineCreationParameters(
+void VulkanLibraryInterface::specifyGraphicsPipelineCreationParameters(
     VkPipelineCreateFlags additional_options,
     std::vector<VkPipelineShaderStageCreateInfo> const
         &shader_stage_create_infos,
@@ -1492,7 +1493,7 @@ void VulkanInterfaceLibrary::specifyGraphicsPipelineCreationParameters(
   };
 }
 
-bool VulkanInterfaceLibrary::createPipelineCacheObject(
+bool VulkanLibraryInterface::createPipelineCacheObject(
     VkDevice logical_device, std::vector<unsigned char> const &cache_data,
     VkPipelineCache &pipeline_cache) {
   VkPipelineCacheCreateInfo pipeline_cache_create_info = {
@@ -1502,25 +1503,25 @@ bool VulkanInterfaceLibrary::createPipelineCacheObject(
       static_cast<uint32_t>(cache_data.size()), // size_t initialDataSize
       cache_data.data() // const void                   * pInitialData
   };
-  CHECK_VULKAN(vkCreatePipelineCache(
+  R_CHECK_VULKAN(vkCreatePipelineCache(
       logical_device, &pipeline_cache_create_info, nullptr, &pipeline_cache));
   return true;
 }
 
-bool VulkanInterfaceLibrary::retrieveDataFromPipelineCache(
+bool VulkanLibraryInterface::retrieveDataFromPipelineCache(
     VkDevice logical_device, VkPipelineCache pipeline_cache,
     std::vector<unsigned char> &pipeline_cache_data) {
   size_t data_size = 0;
-  CHECK_VULKAN(vkGetPipelineCacheData(logical_device, pipeline_cache,
-                                      &data_size, nullptr));
+  R_CHECK_VULKAN(vkGetPipelineCacheData(logical_device, pipeline_cache,
+                                        &data_size, nullptr));
   if (0 == data_size) {
     std::cout << "Could not get the size of the pipeline cache." << std::endl;
     return false;
   }
   pipeline_cache_data.resize(data_size);
 
-  CHECK_VULKAN(vkGetPipelineCacheData(logical_device, pipeline_cache,
-                                      &data_size, pipeline_cache_data.data()));
+  R_CHECK_VULKAN(vkGetPipelineCacheData(
+      logical_device, pipeline_cache, &data_size, pipeline_cache_data.data()));
   if (0 == data_size) {
     std::cout << "Could not acquire pipeline cache data." << std::endl;
     return false;
@@ -1528,11 +1529,11 @@ bool VulkanInterfaceLibrary::retrieveDataFromPipelineCache(
   return true;
 }
 
-bool VulkanInterfaceLibrary::mergeMultiplePipelineCacheObjects(
+bool VulkanLibraryInterface::mergeMultiplePipelineCacheObjects(
     VkDevice logical_device, VkPipelineCache target_pipeline_cache,
     std::vector<VkPipelineCache> const &source_pipeline_caches) {
   if (source_pipeline_caches.size() > 0) {
-    CHECK_VULKAN(vkMergePipelineCaches(
+    R_CHECK_VULKAN(vkMergePipelineCaches(
         logical_device, target_pipeline_cache,
         static_cast<uint32_t>(source_pipeline_caches.size()),
         source_pipeline_caches.data()));
@@ -1541,7 +1542,7 @@ bool VulkanInterfaceLibrary::mergeMultiplePipelineCacheObjects(
   return false;
 }
 
-bool VulkanInterfaceLibrary::createGraphicsPipelines(
+bool VulkanLibraryInterface::createGraphicsPipelines(
     VkDevice logical_device,
     std::vector<VkGraphicsPipelineCreateInfo> const
         &graphics_pipeline_create_infos,
@@ -1549,7 +1550,7 @@ bool VulkanInterfaceLibrary::createGraphicsPipelines(
     std::vector<VkPipeline> &graphics_pipelines) {
   if (graphics_pipeline_create_infos.size() > 0) {
     graphics_pipelines.resize(graphics_pipeline_create_infos.size());
-    CHECK_VULKAN(vkCreateGraphicsPipelines(
+    R_CHECK_VULKAN(vkCreateGraphicsPipelines(
         logical_device, pipeline_cache,
         static_cast<uint32_t>(graphics_pipeline_create_infos.size()),
         graphics_pipeline_create_infos.data(), nullptr,
@@ -1573,9 +1574,9 @@ bool VulkanLibraryInterface::createComputePipeline(
       base_pipeline_handle, // VkPipeline basePipelineHandle
       -1 // int32_t                            basePipelineIndex
   };
-  CHECK_VULKAN(vkCreateComputePipelines(logical_device, pipeline_cache, 1,
-                                        &compute_pipeline_create_info, nullptr,
-                                        &compute_pipeline));
+  R_CHECK_VULKAN(vkCreateComputePipelines(logical_device, pipeline_cache, 1,
+                                          &compute_pipeline_create_info,
+                                          nullptr, &compute_pipeline));
   return true;
 }
 
@@ -1746,7 +1747,7 @@ void VulkanLibraryInterface::
   }
 }
 
-bool VulkanLibraryInterface::recordCommandBuffersOnMultipleThreads(
+/*bool VulkanLibraryInterface::recordCommandBuffersOnMultipleThreads(
     std::vector<CommandBufferRecordingThreadParameters> const
         &threads_parameters,
     VkQueue queue, std::vector<WaitSemaphoreInfo> wait_semaphore_infos,
@@ -1769,7 +1770,7 @@ bool VulkanLibraryInterface::recordCommandBuffersOnMultipleThreads(
     return false;
   }
   return true;
-}
+}*/
 
 // UTILS
 // /////////////////////////////////////////////////////////////////////
