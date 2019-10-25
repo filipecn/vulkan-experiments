@@ -91,12 +91,19 @@ public:
          VkBufferUsageFlags usage,
          VkSharingMode sharingMode = VK_SHARING_MODE_EXCLUSIVE);
   ~Buffer();
+  ///\return VkBuffer vulkan handle object
   VkBuffer handle() const;
   ///\brief
   ///
   ///\return bool
   bool good() const;
+  ///\return const LogicalDevice& device owner of its resouce
   const LogicalDevice &device() const;
+  ///\brief Information about the type of memory and how much of it the image
+  /// resource requires.
+  ///\param memory_requirements **[out]**
+  ///\return bool true if success
+  bool memoryRequirements(VkMemoryRequirements &memory_requirements) const;
 
 private:
   const LogicalDevice &logical_device_;

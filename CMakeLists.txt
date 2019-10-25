@@ -43,6 +43,8 @@ set(SOURCES
     src/hello_vulkan.cpp 
     src/vk_app.cpp
     src/vk_buffer.cpp
+	src/vk_command_buffer.cpp
+    src/vk_device_memory.cpp
     src/vk_graphics_display.cpp
     src/vk_image.cpp
     # src/vulkan_api.cpp 
@@ -55,6 +57,8 @@ set(SOURCES
 	src/logging.h
     src/vk_app.h
     src/vk_buffer.h
+	src/vk_command_buffer.h
+    src/vk_device_memory.h
     src/vk_graphics_display.h
     src/vk_image.h
     # src/vulkan_api.h

@@ -40,7 +40,7 @@ namespace vk {
 /// can serve as source of data for copy operations and work similar to OpenGL
 /// textures.
 class Image final {
-
+public:
   /// An image view is a collection of properties and a reference to the image
   /// resouce. It allows all or part of an existing image to be seen as a
   /// different format.
@@ -92,7 +92,9 @@ class Image final {
         VkSampleCountFlagBits samples, VkImageUsageFlags usage_scenarios,
         bool cubemap);
   ~Image();
+  ///\return const LogicalDevice& device owner of its resouce
   const LogicalDevice &device() const;
+  ///\return VkImage vulkan handle object
   VkImage handle() const;
   ///\brief
   ///
@@ -113,6 +115,11 @@ class Image final {
   bool subresourceLayout(VkImageAspectFlags aspect_mask, uint32_t mip_level,
                          uint32_t array_layer,
                          VkSubresourceLayout &subresource_layout) const;
+  ///\brief Information about the type of memory and how much of it the image
+  /// resource requires.
+  ///\param memory_requirements **[out]**
+  ///\return bool true if success
+  bool memoryRequirements(VkMemoryRequirements &memory_requirements) const;
 
 private:
   const LogicalDevice &logical_device_;

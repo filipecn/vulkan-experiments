@@ -37,7 +37,8 @@ LogicalDevice::LogicalDevice(
     const PhysicalDevice &physical_device,
     std::vector<char const *> const &desired_extensions,
     VkPhysicalDeviceFeatures *desired_features,
-    const std::vector<QueueFamilyInfo> queue_infos) {
+    const std::vector<QueueFamilyInfo> queue_infos)
+    : physical_device_(physical_device) {
   for (auto &extension : desired_extensions)
     if (!physical_device.isExtensionSupported(extension)) {
       INFO(concat("Extension named '", extension,
@@ -86,6 +87,13 @@ VkDevice LogicalDevice::handle() const { return vk_device_; }
 
 bool LogicalDevice::good() const { return vk_device_ != VK_NULL_HANDLE; }
 
+uint32_t
+LogicalDevice::chooseHeap(const VkMemoryRequirements &memory_requirements,
+                          VkMemoryPropertyFlags required_flags,
+                          VkMemoryPropertyFlags preferred_flags) const {
+  return physical_device_.chooseHeap(memory_requirements, required_flags,
+                                     preferred_flags);
+}
 } // namespace vk
 
 } // namespace circe

@@ -25,6 +25,9 @@
 ///
 ///\brief
 
+#ifndef CIRCE_VULKAN_PHYSICAL_DEVICE_H
+#define CIRCE_VULKAN_PHYSICAL_DEVICE_H
+
 #include "vulkan_library.h"
 
 namespace circe {
@@ -94,6 +97,16 @@ public:
                              VkImageTiling tiling, VkImageUsageFlags usage,
                              VkImageCreateFlags flags,
                              VkImageFormatProperties &properties) const;
+  ///\brief Selects the index of memory type trying to satisfy the preferred
+  /// requirements.
+  ///\param memory_requirements **[in]** memory requirements for a particular
+  /// resource.
+  ///\param required_flags **[in]** hard requirements
+  ///\param preferred_flags **[in]** soft requirements
+  ///\return uint32_t memory type
+  uint32_t chooseHeap(const VkMemoryRequirements &memory_requirements,
+                      VkMemoryPropertyFlags required_flags,
+                      VkMemoryPropertyFlags preferred_flags) const;
 
 private:
   /// Retrieve available queue families exposed by a physical device
@@ -124,3 +137,5 @@ private:
 } // namespace vk
 
 } // namespace circe
+
+#endif

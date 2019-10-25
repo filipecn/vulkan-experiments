@@ -121,6 +121,13 @@ bool Image::subresourceLayout(VkImageAspectFlags aspect_mask,
   return true;
 }
 
+bool Image::memoryRequirements(
+    VkMemoryRequirements &memory_requirements) const {
+  vkGetImageMemoryRequirements(logical_device_.handle(), vk_image_,
+                               &memory_requirements);
+  return true;
+}
+
 } // namespace vk
 
 } // namespace circe

@@ -25,6 +25,9 @@
 ///
 ///\brief
 
+#ifndef CIRCE_VULKAN_LOGICAL_DEVICE_H
+#define CIRCE_VULKAN_LOGICAL_DEVICE_H
+
 #include "vulkan_physical_device.h"
 
 namespace circe {
@@ -65,11 +68,24 @@ public:
   /// Checks with physical device object construction succeded
   ///\return bool true if this can be used
   bool good() const;
+  ///\brief Selects the index of memory type trying to satisfy the preferred
+  /// requirements.
+  ///\param memory_requirements **[in]** memory requirements for a particular
+  /// resource.
+  ///\param required_flags **[in]** hard requirements
+  ///\param preferred_flags **[in]** soft requirements
+  ///\return uint32_t memory type
+  uint32_t chooseHeap(const VkMemoryRequirements &memory_requirements,
+                      VkMemoryPropertyFlags required_flags,
+                      VkMemoryPropertyFlags preferred_flags) const;
 
 private:
+  const PhysicalDevice &physical_device_;
   VkDevice vk_device_ = VK_NULL_HANDLE;
 };
 
 } // namespace vk
 
 } // namespace circe
+
+#endif

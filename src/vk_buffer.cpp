@@ -63,6 +63,13 @@ bool Buffer::good() const { return vk_buffer_ != VK_NULL_HANDLE; }
 
 const LogicalDevice &Buffer::device() const { return logical_device_; }
 
+bool Buffer::memoryRequirements(
+    VkMemoryRequirements &memory_requirements) const {
+  vkGetBufferMemoryRequirements(logical_device_.handle(), vk_buffer_,
+                                &memory_requirements);
+  return true;
+}
+
 Buffer::View::View(const Buffer &buffer, VkFormat format,
                    VkDeviceSize memory_offset, VkDeviceSize memory_range)
     : buffer_(buffer) {

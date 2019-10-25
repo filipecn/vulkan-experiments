@@ -125,6 +125,37 @@ bool PhysicalDevice::imageFormatProperties(
                                            usage, flags, &properties);
   return true;
 }
+
+uint32_t
+PhysicalDevice::chooseHeap(const VkMemoryRequirements &memory_requirements,
+                           VkMemoryPropertyFlags required_flags,
+                           VkMemoryPropertyFlags preferred_flags) const {
+  uint32_t selected_type = ~0u;
+  uint32_t memory_type;
+  for (memory_type = 0; memory_type < 32; ++memory_type) {
+    if (memory_requirements.memoryTypeBits & (1 << memory_type)) {
+      const VkMemoryType &type = vk_memory_properties_.memoryTypes[memory_type];
+      if ((type.propertyFlags & preferred_flags) == preferred_flags) {
+        selected_type = memory_type;
+        break;
+      }
+    }
+  }
+  if (selected_type != ~0u) {
+    for (memory_type = 0; memory_type < 32; ++memory_type) {
+      if (memory_requirements.memoryTypeBits & (1 << memory_type)) {
+        const VkMemoryType &type =
+            vk_memory_properties_.memoryTypes[memory_type];
+        if ((type.propertyFlags & required_flags) == required_flags) {
+          selected_type = memory_type;
+          break;
+        }
+      }
+    }
+  }
+  return selected_type;
+}
+
 } // namespace vk
 
 } // namespace circe
