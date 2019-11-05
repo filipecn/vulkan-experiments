@@ -107,6 +107,20 @@ public:
   uint32_t chooseHeap(const VkMemoryRequirements &memory_requirements,
                       VkMemoryPropertyFlags required_flags,
                       VkMemoryPropertyFlags preferred_flags) const;
+  /// Checks if the desired presentation mode is supported by the device, if
+  /// so, it is returned in **present_mode**. If not, VK_PRESENT_MODE_FIFO_KHR
+  /// is chosen.
+  /// \param presentation_surface **[in]** surface handle
+  /// \param desired_present_mode **[in]** described presentation mode
+  /// \param present_mode **[out]** available presentation mode
+  /// \return bool true if success
+  bool selectPresentationMode(VkSurfaceKHR presentation_surface,
+                              VkPresentModeKHR desired_present_mode,
+                              VkPresentModeKHR &present_mode) const;
+
+  bool
+  surfaceCapabilities(VkSurfaceKHR surface,
+                      VkSurfaceCapabilitiesKHR &surface_capabilities) const;
 
 private:
   /// Retrieve available queue families exposed by a physical device

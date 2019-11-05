@@ -1426,7 +1426,7 @@ bool VulkanLibraryInterface::createPipelineLayout(
       static_cast<uint32_t>(
           push_constant_ranges.size()), // uint32_t pushConstantRangeCount
       push_constant_ranges
-          .data() // const VkPushConstantRange      * pPushConstantRanges
+          .data() // const VkPushConstantRange  * pPushConstantRanges
   };
   R_CHECK_VULKAN(vkCreatePipelineLayout(
       logical_device, &pipeline_layout_create_info, nullptr, &pipeline_layout));

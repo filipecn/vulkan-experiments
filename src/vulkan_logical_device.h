@@ -78,6 +78,7 @@ public:
   uint32_t chooseHeap(const VkMemoryRequirements &memory_requirements,
                       VkMemoryPropertyFlags required_flags,
                       VkMemoryPropertyFlags preferred_flags) const;
+  bool waitIdle() const;
 
 private:
   const PhysicalDevice &physical_device_;

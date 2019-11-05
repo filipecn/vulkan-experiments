@@ -94,6 +94,12 @@ LogicalDevice::chooseHeap(const VkMemoryRequirements &memory_requirements,
   return physical_device_.chooseHeap(memory_requirements, required_flags,
                                      preferred_flags);
 }
+
+bool LogicalDevice::waitIdle() const {
+  R_CHECK_VULKAN(vkDeviceWaitIdle(vk_device_));
+  return true;
+}
+
 } // namespace vk
 
 } // namespace circe

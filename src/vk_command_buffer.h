@@ -28,6 +28,9 @@
 #ifndef CIRCE_VULKAN_COMMAND_BUFFER_H
 #define CIRCE_VULKAN_COMMAND_BUFFER_H
 
+#include "vk_buffer.h"
+#include "vk_image.h"
+#include "vk_pipeline.h"
 #include "vulkan_logical_device.h"
 
 namespace circe {
@@ -57,11 +60,162 @@ namespace vk {
 
 class CommandBuffer {
 public:
-  CommandBuffer(VkCommandBuffer vk_command_buffer);
+  ///\brief Construct a new Command Buffer object
+  ///
+  ///\param vk_command_buffer **[in]**
+  CommandBuffer(VkCommandBuffer vk_command_buffer_);
   ~CommandBuffer() = default;
+  ///\brief
+  ///
+  ///\param flags **[in]**
+  ///\return bool
+  bool begin(VkCommandBufferUsageFlags flags) const;
+  ///\brief
+  ///
+  ///\return bool
+  bool end() const;
+  ///\brief
+  ///
+  ///\param flags **[in]**
+  ///\return bool
+  bool reset(VkCommandBufferResetFlags flags) const;
+  ///\brief
+  ///
+  ///\param src_buffer **[in]**
+  ///\param src_offset **[in]**
+  ///\param dst_buffer **[in]**
+  ///\param dst_offset **[in]**
+  ///\param size **[in]**
+  ///\return bool
+  bool copy(const Buffer &src_buffer, VkDeviceSize src_offset,
+            const Buffer &dst_buffer, VkDeviceSize dst_offset,
+            VkDeviceSize size) const;
+  ///\brief
+  ///
+  ///\param src_buffer **[in]**
+  ///\param dst_image **[in/out]**
+  ///\param layout **[in]** layout that the image is expected to be in when the
+  /// copy command is executed. Accepted layouts are VK_IMAGE_LAYOUT_[GENERAL |
+  /// TRANSFER_DST_OPTIMAL]. To clear images in different layouts you need to
+  /// move them to one of these two layouts using a pipeline barrier before the
+  /// clear command.
+  ///\param regions **[in]**
+  ///\return bool
+  bool copy(const Buffer &src_buffer, Image &dst_image, VkImageLayout layout,
+            const std::vector<VkBufferImageCopy> &regions) const;
+  ///\brief
+  ///
+  ///\param src_image **[in]**
+  ///\param dst_buffer **[in/out]**
+  ///\param layout **[in]** layout that the image is expected to be in when the
+  /// copy command is executed. Accepted layouts are VK_IMAGE_LAYOUT_[GENERAL |
+  /// TRANSFER_DST_OPTIMAL]. To clear images in different layouts you need to
+  /// move them to one of these two layouts using a pipeline barrier before the
+  /// clear command.
+  ///\param regions **[in]**
+  ///\return bool
+  bool copy(const Image &src_image, VkImageLayout layout, Buffer &dst_buffer,
+            const std::vector<VkBufferImageCopy> &regions) const;
+  ///\brief
+  ///
+  ///\param src_image **[in]**
+  ///\param src_layout **[in]**
+  ///\param dst_image **[in/out]**
+  ///\param dst_layout **[in]**
+  ///\param regions **[in]**
+  ///\return bool
+  bool copy(const Image &src_image, VkImageLayout src_layout, Image &dst_image,
+            VkImageLayout dst_layout,
+            const std::vector<VkImageCopy> &regions) const;
+
+  ///\brief
+  /// Fills a buffer with a fixed value.
+  ///\tparam T
+  ///\param buffer **[in]**
+  ///\param data **[in]**
+  ///\param offset **[in]** multiple of 4
+  ///\param length **[in]**
+  ///\return bool
+  template <typename T>
+  bool fill(const Buffer &buffer, T data, VkDeviceSize offset = 0,
+            VkDeviceSize length = VK_WHOLE_SIZE) const {
+    vkCmdFillBuffer(vk_command_buffer_, buffer.handle(), offset, length,
+                    *(const uint32_t *)&data);
+    return true;
+  }
+  ///\brief
+  /// Copies data directly from host memory into a buffer oject.
+  ///\tparam T
+  ///\param buffer **[in]**
+  ///\param data **[in]**
+  ///\param offset **[in]** multiple of 4
+  ///\param length **[in]**
+  ///\return bool
+  template <typename T>
+  bool update(const Buffer &buffer, const T *data, VkDeviceSize offset,
+              VkDeviceSize length) const {
+    vkCmdUpdateBuffer(vk_command_buffer_, buffer.handle(), offset, length,
+                      (const uint32_t *)data);
+    return true;
+  }
+  ///\brief
+  /// Clears an image to a fixed color value
+  ///\param image **[in]**
+  ///\param layout **[in]** layout that the image is expected to be in when the
+  /// clear command is executed. Accepted layouts are VK_IMAGE_LAYOUT_[GENERAL |
+  /// TRANSFER_DST_OPTIMAL]. To clear images in different layouts you need to
+  /// move them to one of these two layouts using a pipeline barrier before the
+  /// clear command.
+  ///\param ranges **[in]** regions to be cleared. Note: aspectMask must be set
+  /// to VK_IMAGE_ASPECT_COLOR_BIT.
+  ///\param color **[in]** Note: it is up to the application to fill the color
+  /// union object correctly, no conversion is performed by the clear command.
+  ///\return bool true if success
+  bool clear(const Image &image, VkImageLayout layout,
+             const std::vector<VkImageSubresourceRange> &ranges,
+             const VkClearColorValue &color) const;
+  ///\brief
+  /// Clears a depth stencil image to a fixed value
+  ///\param image **[in]**
+  ///\param layout **[in]** layout that the image is expected to be in when the
+  /// clear command is executed. Accepted layouts are VK_IMAGE_LAYOUT_[GENERAL |
+  /// TRANSFER_DST_OPTIMAL]. To clear images in different layouts you need to
+  /// move them to one of these two layouts using a pipeline barrier before the
+  /// clear command.
+  ///\param ranges **[in]** regions to be cleared. Note: aspectMask must be set
+  /// to VK_IMAGE_ASPECT_[DEPTH_BIT or/and STENCIL_BIT].
+  ///\param value **[in]**
+  ///\return bool true if success
+  bool clear(const Image &image, VkImageLayout layout,
+             const std::vector<VkImageSubresourceRange> &ranges,
+             const VkClearDepthStencilValue &value) const;
+  ///\brief
+  ///
+  ///\param compute_pipeline **[in]**
+  ///\return bool
+  bool bind(const ComputePipeline &compute_pipeline) const;
+  ///\brief
+  ///
+  ///\param graphics_pipeline **[in]**
+  ///\return bool
+  bool bind(const GraphicsPipeline &graphics_pipeline) const;
+  ///\brief Dispatches a glocal work group
+  /// Note: A valid ComputePipeline must be bound to the command buffer
+  ///\param x **[in]** number of local work groups in x
+  ///\param y **[in]** number of local work groups in y
+  ///\param z **[in]** number of local work groups in z
+  ///\return bool
+  bool dispatch(uint32_t x, uint32_t y, uint32_t z) const;
+  ///\brief Performs an indirect dispatch
+  /// The size of the dispatch in work groups is sourced from a buffer object
+  ///\param buffer **[in]** buffer storing the x, y and z values contiguously
+  ///\param offset **[in]** location of the workgroup sizes in the buffer (in
+  /// bytes)
+  /// \return bool
+  bool dispatch(const Buffer &buffer, VkDeviceSize offset) const;
 
 private:
-  VkCommandBuffer vk_command_buffer = VK_NULL_HANDLE;
+  VkCommandBuffer vk_command_buffer_ = VK_NULL_HANDLE;
 };
 
 /// Command pools cannot be used concurrently, we must create a separate
@@ -77,9 +231,20 @@ public:
   CommandPool(const LogicalDevice &logical_device,
               VkCommandPoolCreateFlags parameters, uint32_t queue_family);
   ~CommandPool();
+  ///\brief
+  ///
+  ///\param level **[in]**
+  ///\param count **[in]**
+  ///\param command_buffers **[in]**
+  ///\return bool
   bool
   allocateCommandBuffers(VkCommandBufferLevel level, uint32_t count,
                          std::vector<CommandBuffer> &command_buffers) const;
+  ///\brief
+  ///
+  ///\param flags **[in]**
+  ///\return bool
+  bool reset(VkCommandPoolResetFlags flags) const;
 
 private:
   const LogicalDevice &logical_device_;

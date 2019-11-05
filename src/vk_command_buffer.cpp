@@ -33,6 +33,77 @@ namespace circe {
 
 namespace vk {
 
+CommandBuffer::CommandBuffer(VkCommandBuffer vk_command_buffer_)
+    : vk_command_buffer_(vk_command_buffer_) {}
+
+bool CommandBuffer::begin(VkCommandBufferUsageFlags flags) const {
+  VkCommandBufferBeginInfo info = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                                   nullptr, flags, nullptr};
+  R_CHECK_VULKAN(vkBeginCommandBuffer(vk_command_buffer_, &info));
+  return true;
+}
+
+bool CommandBuffer::end() const {
+  R_CHECK_VULKAN(vkEndCommandBuffer(vk_command_buffer_));
+  return true;
+}
+
+bool CommandBuffer::reset(VkCommandBufferResetFlags flags) const {
+  R_CHECK_VULKAN(vkResetCommandBuffer(vk_command_buffer_, flags));
+  return true;
+}
+
+bool CommandBuffer::copy(const Buffer &src_buffer, VkDeviceSize src_offset,
+                         const Buffer &dst_buffer, VkDeviceSize dst_offset,
+                         VkDeviceSize size) const {
+  const VkBufferCopy copy_region = {src_offset, dst_offset, size};
+  vkCmdCopyBuffer(vk_command_buffer_, src_buffer.handle(), dst_buffer.handle(),
+                  1, &copy_region);
+  return true;
+}
+
+bool CommandBuffer::copy(const Image &src_image, VkImageLayout layout,
+                         Buffer &dst_buffer,
+                         const std::vector<VkBufferImageCopy> &regions) const {
+  vkCmdCopyImageToBuffer(vk_command_buffer_, src_image.handle(), layout,
+                         dst_buffer.handle(), regions.size(), regions.data());
+  return true;
+}
+
+bool CommandBuffer::copy(const Buffer &src_buffer, Image &dst_image,
+                         VkImageLayout layout,
+                         const std::vector<VkBufferImageCopy> &regions) const {
+  vkCmdCopyBufferToImage(vk_command_buffer_, src_buffer.handle(),
+                         dst_image.handle(), layout, regions.size(),
+                         regions.data());
+  return true;
+}
+
+bool CommandBuffer::copy(const Image &src_image, VkImageLayout src_layout,
+                         Image &dst_image, VkImageLayout dst_layout,
+                         const std::vector<VkImageCopy> &regions) const {
+  vkCmdCopyImage(vk_command_buffer_, src_image.handle(), src_layout,
+                 dst_image.handle(), dst_layout, regions.size(),
+                 regions.data());
+  return true;
+}
+
+bool CommandBuffer::clear(const Image &image, VkImageLayout layout,
+                          const std::vector<VkImageSubresourceRange> &ranges,
+                          const VkClearColorValue &color) const {
+  vkCmdClearColorImage(vk_command_buffer_, image.handle(), layout, &color,
+                       ranges.size(), ranges.data());
+  return true;
+}
+
+bool CommandBuffer::clear(const Image &image, VkImageLayout layout,
+                          const std::vector<VkImageSubresourceRange> &ranges,
+                          const VkClearDepthStencilValue &value) const {
+  vkCmdClearDepthStencilImage(vk_command_buffer_, image.handle(), layout,
+                              &value, ranges.size(), ranges.data());
+  return true;
+}
+
 CommandPool::CommandPool(const LogicalDevice &logical_device,
                          VkCommandPoolCreateFlags parameters,
                          uint32_t queue_family)
@@ -72,6 +143,34 @@ bool CommandPool::allocateCommandBuffers(
   command_buffers.clear();
   for (auto cb : vk_command_buffers)
     command_buffers.emplace_back(cb);
+  return true;
+}
+
+bool CommandPool::reset(VkCommandPoolResetFlags flags) const {
+  R_CHECK_VULKAN(
+      vkResetCommandPool(logical_device_.handle(), vk_command_pool_, flags));
+  return true;
+}
+
+bool CommandBuffer::bind(const ComputePipeline &compute_pipeline) const {
+  vkCmdBindPipeline(vk_command_buffer_, VK_PIPELINE_BIND_POINT_COMPUTE,
+                    compute_pipeline.handle());
+  return true;
+}
+
+bool CommandBuffer::bind(const GraphicsPipeline &graphics_pipeline) const {
+  vkCmdBindPipeline(vk_command_buffer_, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    graphics_pipeline.handle());
+  return true;
+}
+
+bool CommandBuffer::dispatch(uint32_t x, uint32_t y, uint32_t z) const {
+  vkCmdDispatch(vk_command_buffer_, x, y, z);
+  return true;
+}
+
+bool CommandBuffer::dispatch(const Buffer &buffer, VkDeviceSize offset) const {
+  vkCmdDispatchIndirect(vk_command_buffer_, buffer.handle(), offset);
   return true;
 }
 

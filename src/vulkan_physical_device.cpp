@@ -156,6 +156,48 @@ PhysicalDevice::chooseHeap(const VkMemoryRequirements &memory_requirements,
   return selected_type;
 }
 
+bool PhysicalDevice::selectPresentationMode(
+    VkSurfaceKHR presentation_surface, VkPresentModeKHR desired_present_mode,
+    VkPresentModeKHR &present_mode) const {
+  // Enumerate supported present modes
+  uint32_t present_modes_count = 0;
+  R_CHECK_VULKAN(vkGetPhysicalDeviceSurfacePresentModesKHR(
+      vk_device_, presentation_surface, &present_modes_count, nullptr));
+  D_RETURN_FALSE_IF_NOT(0 != present_modes_count,
+                        "Could not get the number of supported present modes.");
+  std::vector<VkPresentModeKHR> present_modes(present_modes_count);
+  R_CHECK_VULKAN(vkGetPhysicalDeviceSurfacePresentModesKHR(
+      vk_device_, presentation_surface, &present_modes_count,
+      present_modes.data()));
+  D_RETURN_FALSE_IF_NOT(0 != present_modes_count,
+                        "Could not enumerate present modes.");
+  // Select present mode
+  for (auto &current_present_mode : present_modes) {
+    if (current_present_mode == desired_present_mode) {
+      present_mode = desired_present_mode;
+      return true;
+    }
+  }
+  INFO("Desired present mode is not supported. Selecting default FIFO mode.");
+  for (auto &current_present_mode : present_modes) {
+    if (current_present_mode == VK_PRESENT_MODE_FIFO_KHR) {
+      present_mode = VK_PRESENT_MODE_FIFO_KHR;
+      return true;
+    }
+  }
+  INFO("VK_PRESENT_MODE_FIFO_KHR is not supported though it's mandatory "
+       "for all drivers!");
+  return false;
+}
+
+bool PhysicalDevice::surfaceCapabilities(
+    VkSurfaceKHR surface,
+    VkSurfaceCapabilitiesKHR &surface_capabilities) const {
+  R_CHECK_VULKAN(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+      vk_device_, surface, &surface_capabilities));
+  return true;
+}
+
 } // namespace vk
 
 } // namespace circe
