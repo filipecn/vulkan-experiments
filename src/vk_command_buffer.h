@@ -199,6 +199,23 @@ public:
   ///\param graphics_pipeline **[in]**
   ///\return bool
   bool bind(const GraphicsPipeline &graphics_pipeline) const;
+  ///\brief
+  ///
+  ///\param pipeline_bind_point **[in]** VK_PIPELINE_BIND_POINT_[COMPUTE |
+  /// GRAPHICS]
+  ///\param pipeline_layout **[in]** the layout that will be used by pipelines
+  /// that will access the descriptors
+  ///\param descriptor_sets **[in]**
+  ///\param dynamic_offsets **[in | default = empty vector]** offsets used in
+  /// dynamic uniform or shader storage bindings
+  ///\param first_set **[in | default = 0]** index of the first set to bind
+  ///\param descriptor_set_count **[in | default = descriptor_sets.size()]**
+  ///\return bool
+  bool bind(VkPipelineBindPoint pipeline_bind_point,
+            PipelineLayout &pipeline_layout,
+            const std::vector<VkDescriptorSet> &descriptor_sets,
+            const std::vector<uint32_t> &dynamic_offsets, uint32_t first_set,
+            uint32_t descriptor_set_count) const;
   ///\brief Dispatches a glocal work group
   /// Note: A valid ComputePipeline must be bound to the command buffer
   ///\param x **[in]** number of local work groups in x
@@ -213,6 +230,27 @@ public:
   /// bytes)
   /// \return bool
   bool dispatch(const Buffer &buffer, VkDeviceSize offset) const;
+  ///\brief
+  /// The content of each push constant lives at an offset from the beginning of
+  /// the block.
+  ///\param pipeline_layout **[in]**
+  ///\param stage_flags **[in]** that stages that will need to see the updated
+  /// constants
+  ///\param offset **[in]**
+  ///\param size **[in]** (in bytes)
+  ///\param values **[in]**
+  ///\return bool
+  bool pushConstants(PipelineLayout &pipeline_layout,
+                     VkShaderStageFlags stage_flags, uint32_t offset,
+                     uint32_t size, const void *values) const;
+  ///\brief Generates vertices and push them into the current graphics pipeline.
+  ///\param vertex_count **[in]**
+  ///\param instance_count **[in]**
+  ///\param first_vertex **[in]**
+  ///\param first_instance **[in]**
+  ///\return bool
+  bool draw(uint32_t vertex_count, uint32_t instance_count = 1,
+            uint32_t first_vertex = 0, uint32_t first_instance = 0) const;
 
 private:
   VkCommandBuffer vk_command_buffer_ = VK_NULL_HANDLE;

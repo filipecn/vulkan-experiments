@@ -86,6 +86,14 @@ public:
   ///\param id **[in]**
   ///\return DescriptorSet&
   DescriptorSetLayout &descriptorSetLayout(uint32_t id);
+  ///\brief
+  /// A push constant is a uniform variable in a shader that can be used just
+  /// like a member of a uniform block, but has faster access.
+  ///\param stage_flags **[in]**
+  ///\param offset **[in]**
+  ///\param size **[in]**
+  void addPushConstantRange(VkShaderStageFlags stage_flags, uint32_t offset,
+                            uint32_t size);
 
 private:
   const LogicalDevice &logical_device_;

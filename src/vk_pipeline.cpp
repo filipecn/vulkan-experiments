@@ -105,6 +105,12 @@ uint32_t PipelineLayout::createLayoutSet(uint32_t id) {
   return descriptor_sets_.size() - 1;
 }
 
+void PipelineLayout::addPushConstantRange(VkShaderStageFlags stage_flags,
+                                          uint32_t offset, uint32_t size) {
+  VkPushConstantRange pc = {stage_flags, offset, size};
+  vk_push_constant_ranges_.emplace_back(pc);
+}
+
 DescriptorPool::DescriptorPool(const LogicalDevice &logical_device,
                                uint32_t max_sets)
     : max_sets_(max_sets), logical_device_(logical_device) {}

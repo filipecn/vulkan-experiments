@@ -48,6 +48,7 @@ set(SOURCES
     src/vk_graphics_display.cpp
     src/vk_image.cpp
     src/vk_pipeline.cpp
+	src/vk_renderpass.cpp
 	src/vk_swap_chain.cpp
     # src/vulkan_api.cpp 
 	src/vulkan_instance.cpp
@@ -64,6 +65,7 @@ set(SOURCES
     src/vk_graphics_display.h
     src/vk_image.h
     src/vk_pipeline.h
+	src/vk_renderpass.h
 	src/vk_swap_chain.h
     # src/vulkan_api.h
     # src/vulkan_api.inl
