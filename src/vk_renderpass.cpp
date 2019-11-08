@@ -178,6 +178,42 @@ VkRenderPass RenderPass::handle() {
   return vk_renderpass_;
 }
 
+Framebuffer::Framebuffer(const LogicalDevice &logical_device,
+                         RenderPass &renderpass, uint32_t width,
+                         uint32_t height, uint32_t layers)
+    : logical_device_(logical_device), width_(width), height_(height),
+      layers_(layers), renderpass_(renderpass) {}
+
+Framebuffer::~Framebuffer() {
+  if (vk_framebuffer_ != VK_NULL_HANDLE)
+    vkDestroyFramebuffer(logical_device_.handle(), vk_framebuffer_, nullptr);
+}
+
+void Framebuffer::addAttachment(const Image::View &image_view) {
+  attachments_.emplace_back(image_view.handle());
+}
+
+VkFramebuffer Framebuffer::handle() {
+  if (vk_framebuffer_ == VK_NULL_HANDLE) {
+    VkFramebufferCreateInfo info = {
+        VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        nullptr,
+        0,
+        renderpass_.handle(),
+        attachments_.size(),
+        (attachments_.size() ? attachments_.data() : nullptr),
+        width_,
+        height_,
+        layers_};
+    VkResult result = vkCreateFramebuffer(logical_device_.handle(), &info,
+                                          nullptr, &vk_framebuffer_);
+    CHECK_VULKAN(result);
+    if (result != VK_SUCCESS)
+      vk_framebuffer_ = VK_NULL_HANDLE;
+  }
+  return vk_framebuffer_;
+}
+
 } // namespace vk
 
 } // namespace circe

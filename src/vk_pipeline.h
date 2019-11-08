@@ -28,6 +28,7 @@
 #ifndef CIRCE_VULKAN_PIPELINE_H
 #define CIRCE_VULKAN_PIPELINE_H
 
+#include "vk_renderpass.h"
 #include "vk_shader_module.h"
 
 namespace circe {
@@ -187,7 +188,27 @@ protected:
 };
 
 class ComputePipeline : public Pipeline {};
-class GraphicsPipeline : public Pipeline {};
+
+class GraphicsPipeline : public Pipeline {
+public:
+  ///\brief Construct a new Graphics Pipeline object
+  ///
+  ///\param logical_device **[in]**
+  ///\param layout **[in]**
+  ///\param renderpass **[in]**
+  ///\param subpass **[in]**
+  ///\param flags **[in]**
+  ///\param base_pipeline **[in]**
+  ///\param base_pipeline_index **[in]**
+  GraphicsPipeline(const LogicalDevice &logical_device, PipelineLayout &layout,
+                   RenderPass &renderpass, uint32_t subpass,
+                   VkPipelineCreateFlags flags = 0,
+                   GraphicsPipeline *base_pipeline = nullptr,
+                   uint32_t base_pipeline_index = 0);
+
+private:
+  VkPipelineCreateFlags flags_ = 0;
+};
 
 } // namespace vk
 

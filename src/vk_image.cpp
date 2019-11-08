@@ -69,6 +69,8 @@ Image::View::~View() {
     vkDestroyImageView(image_.device().handle(), vk_image_view_, nullptr);
 }
 
+VkImageView Image::View::handle() const { return vk_image_view_; }
+
 Image::Image(const LogicalDevice &logical_device, VkImageType type,
              VkFormat format, VkExtent3D size, uint32_t num_mipmaps,
              uint32_t num_layers, VkSampleCountFlagBits samples,

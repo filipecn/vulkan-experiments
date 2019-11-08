@@ -55,6 +55,7 @@ public:
     View(const Image &image, VkImageViewType view_type, VkFormat format,
          VkImageAspectFlags aspect);
     ~View();
+    VkImageView handle() const;
 
   private:
     const Image &image_;

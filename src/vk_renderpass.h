@@ -28,6 +28,7 @@
 #ifndef CIRCE_VULKAN_RENDERPASS_H
 #define CIRCE_VULKAN_RENDERPASS_H
 
+#include "vk_image.h"
 #include "vulkan_logical_device.h"
 
 namespace circe {
@@ -149,6 +150,38 @@ private:
   std::vector<VkAttachmentDescription> vk_attachments_;
   std::vector<VkSubpassDependency> vk_subpass_dependencies_;
   std::vector<SubpassDescription> subpass_descriptions_;
+};
+
+/// A framebuffer is an object that represents the set of images that graphics
+/// pipelines render into. It is created by using a reference to a renderpass
+/// and can be used with any renderpass that has a similar arrengement of
+/// attachments.
+class Framebuffer {
+public:
+  ///\param logical_device **[in]**
+  ///\param renderpass **[in]** A compatible renderpass
+  ///\param width **[in]**
+  ///\param height **[in]**
+  ///\param layers **[in]**
+  Framebuffer(const LogicalDevice &logical_device, RenderPass &renderpass,
+              uint32_t width, uint32_t height, uint32_t layers);
+  ~Framebuffer();
+  ///\brief Bounds an image into the framebuffer
+  /// The passes comprising the renderpass make references to the image
+  /// attachments, and those refrences are specified as indices of the array
+  /// constructed from theses additions. In order to make the framebuffer
+  /// compatible to a renderpass, you are allowed to add image views with
+  /// a null handle (VkNullHandle).
+  ///\param image_view **[in]**
+  void addAttachment(const Image::View &image_view);
+  VkFramebuffer handle();
+
+private:
+  const LogicalDevice &logical_device_;
+  uint32_t width_, height_, layers_;
+  RenderPass &renderpass_;
+  VkFramebuffer vk_framebuffer_ = VK_NULL_HANDLE;
+  std::vector<VkImageView> attachments_;
 };
 
 } // namespace vk

@@ -212,6 +212,14 @@ bool Pipeline::saveCache(const std::string &path) {
 
 VkPipeline Pipeline::handle() const { return vk_pipeline_; }
 
+GraphicsPipeline::GraphicsPipeline(const LogicalDevice &logical_device,
+                                   PipelineLayout &layout,
+                                   RenderPass &renderpass, uint32_t subpass,
+                                   VkPipelineCreateFlags flags,
+                                   GraphicsPipeline *base_pipeline,
+                                   uint32_t base_pipeline_index)
+    : Pipeline(logical_device), flags_(flags) {}
+
 } // namespace vk
 
 } // namespace circe
