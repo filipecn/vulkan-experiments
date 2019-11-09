@@ -54,6 +54,7 @@ public:
   ShaderModule(const LogicalDevice &logical_device,
                std::vector<unsigned char> const &source_code);
   ~ShaderModule();
+  VkShaderModule handle() const;
 
 private:
   const LogicalDevice &logical_device_;

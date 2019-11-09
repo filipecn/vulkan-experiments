@@ -26,13 +26,14 @@
 ///\brief
 
 #include "vk_shader_module.h"
+#include "vulkan_debug.h"
 
 namespace circe {
 
 namespace vk {
 
-ShaderModule(const LogicalDevice &logical_device,
-             std::vector<unsigned char> const &source_code)
+ShaderModule::ShaderModule(const LogicalDevice &logical_device,
+                           std::vector<unsigned char> const &source_code)
     : logical_device_(logical_device) {
   VkShaderModuleCreateInfo shader_module_create_info = {
       VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, // VkStructureType sType
@@ -51,6 +52,8 @@ ShaderModule::~ShaderModule() {
   if (VK_NULL_HANDLE != vk_shader_module_)
     vkDestroyShaderModule(logical_device_.handle(), vk_shader_module_, nullptr);
 }
+
+VkShaderModule ShaderModule::handle() const { return vk_shader_module_; }
 
 } // namespace vk
 

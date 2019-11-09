@@ -150,6 +150,36 @@ private:
   std::vector<VkDescriptorPoolSize> pool_sizes_;
 };
 
+/// Holds information about a shader
+class PipelineShaderStage {
+public:
+  ///\param stage **[in]**
+  ///\param module **[in]**
+  ///\param name **[in]** entry point in the shader module
+  ///\param specialization_info_data **[in]**
+  ///\param specialization_info_data_size **[in]**
+  PipelineShaderStage(VkShaderStageFlagBits stage, const ShaderModule &module,
+                      std::string name, const void *specialization_info_data,
+                      size_t specialization_info_data_size);
+  ///\param constant_id **[in]** match the constant ID used in the shader module
+  ///(see constant_id layout qualifier in GLSL)
+  ///\param offset **[in]** offset of the raw data (passed in constructor)
+  ///\param size **[in]** size of the raw data (passed in constructor)
+  void addSpecializationMapEntry(uint32_t constant_id, uint32_t offset,
+                                 size_t size);
+  VkShaderStageFlagBits stage() const;
+  VkShaderModule module() const;
+  const std::string &name() const;
+  const VkSpecializationInfo *specializationInfo() const;
+
+private:
+  VkSpecializationInfo specialization_info_;
+  VkShaderStageFlagBits stage_;
+  VkShaderModule module_;
+  std::string name_;
+  std::vector<VkSpecializationMapEntry> map_entries_;
+};
+
 // The operations recorded in command buffers are processed by the hardware in
 // a pipeline. Pipeline objects control the way in which computations are
 // performed. Different from OpenGL though, the whole pipeline state is stored
@@ -175,22 +205,134 @@ private:
 
 class Pipeline {
 public:
+  ///\brief Construct a new Pipeline object
+  ///
+  ///\param logical_device **[in]**
   Pipeline(const LogicalDevice &logical_device);
   virtual ~Pipeline();
-
+  ///\brief
+  ///
+  ///\param stage **[in]**
+  void addShaderStage(const PipelineShaderStage &stage);
+  ///\brief
+  ///
+  ///\param path **[in]**
+  ///\return bool
   bool saveCache(const std::string &path);
   VkPipeline handle() const;
+  VkPipelineCache cache() const;
 
 protected:
   const LogicalDevice &logical_device_;
   VkPipeline vk_pipeline_ = VK_NULL_HANDLE;
   VkPipelineCache vk_pipeline_cache_ = VK_NULL_HANDLE;
+  std::vector<VkPipelineShaderStageCreateInfo> shader_stage_infos_;
 };
 
-class ComputePipeline : public Pipeline {};
+class ComputePipeline : public Pipeline {
+public:
+  ////\brief Construct a new Compute Pipeline object
+  ///
+  ///\param logical_device **[in]**
+  ///\param stage **[in]**
+  ///\param layout **[in]**
+  ///\param cache **[in]**
+  ///\param base_pipeline **[in]**
+  ///\param base_pipeline_index **[in]**
+  ComputePipeline(const LogicalDevice &logical_device,
+                  const PipelineShaderStage &stage, PipelineLayout &layout,
+                  Pipeline *cache = nullptr,
+                  ComputePipeline *base_pipeline = nullptr,
+                  uint32_t base_pipeline_index = 0);
+};
 
 class GraphicsPipeline : public Pipeline {
 public:
+  class VertexInputState {
+  public:
+    VertexInputState();
+    ~VertexInputState() = default;
+    ///\brief
+    ///
+    ///\param binding **[in]**
+    ///\param stride **[in]**
+    ///\param input_rate **[in]**
+    void addBindingDescription(uint32_t binding, uint32_t stride,
+                               VkVertexInputRate input_rate);
+    ///\brief
+    ///
+    ///\param location **[in]**
+    ///\param binding **[in]**
+    ///\param format **[in]**
+    ///\param offset **[in]**
+    void addAttributeDescription(uint32_t location, uint32_t binding,
+                                 VkFormat format, uint32_t offset);
+
+    const VkPipelineVertexInputStateCreateInfo *info() const;
+
+  private:
+    VkPipelineVertexInputStateCreateInfo info_;
+    std::vector<VkVertexInputBindingDescription> binding_descriptions_;
+    std::vector<VkVertexInputAttributeDescription> attribute_descriptions_;
+  };
+  class ViewportState {
+  public:
+    ViewportState();
+    ~ViewportState() = default;
+    ///\brief
+    ///
+    ///\param x **[in]**
+    ///\param y **[in]**
+    ///\param width **[in]**
+    ///\param height **[in]**
+    ///\param min_depth **[in]**
+    ///\param max_depth **[in]**
+    void addViewport(float x, float y, float width, float height,
+                     float min_depth, float max_depth);
+    ///\brief
+    ///
+    ///\param x **[in]**
+    ///\param y **[in]**
+    ///\param width **[in]**
+    ///\param height **[in]**
+    void addScissor(int32_t x, int32_t y, uint32_t width, uint32_t height);
+
+  private:
+    VkPipelineViewportStateCreateInfo info_;
+    std::vector<VkViewport> viewports_;
+    std::vector<VkRect2D> scissors_;
+  };
+  class ColorBlendState {
+  public:
+    ColorBlendState();
+    ~ColorBlendState() = default;
+
+    void setLogicOp(VkLogicOp logic_op);
+    ///\brief
+    ///
+    ///\param blend_enable **[in]**
+    ///\param src_color_blend_factor **[in]**
+    ///\param dst_color_blend_factor **[in]**
+    ///\param color_blend_op **[in]**
+    ///\param src_alpha_blend_factor **[in]**
+    ///\param dst_alpha_blend_factor **[in]**
+    ///\param alpha_blend_op **[in]**
+    ///\param color_write_mask **[in]**
+    void addAttachmentState(VkBool32 blend_enable,
+                            VkBlendFactor src_color_blend_factor,
+                            VkBlendFactor dst_color_blend_factor,
+                            VkBlendOp color_blend_op,
+                            VkBlendFactor src_alpha_blend_factor,
+                            VkBlendFactor dst_alpha_blend_factor,
+                            VkBlendOp alpha_blend_op,
+                            VkColorComponentFlags color_write_mask);
+    void setBlendConstants(float r, float g, float b, float a);
+    const VkPipelineColorBlendStateCreateInfo *info() const;
+
+  private:
+    VkPipelineColorBlendStateCreateInfo info_;
+    std::vector<VkPipelineColorBlendAttachmentState> attachments_;
+  };
   ///\brief Construct a new Graphics Pipeline object
   ///
   ///\param logical_device **[in]**
@@ -206,8 +348,85 @@ public:
                    GraphicsPipeline *base_pipeline = nullptr,
                    uint32_t base_pipeline_index = 0);
 
+  VertexInputState vertex_input_state;
+  ViewportState viewport_state;
+  ColorBlendState color_blend_state;
+  ///\brief Set the Input State object
+  ///
+  ///\param topology **[in]**
+  ///\param primitive_restart_enable **[in]**
+  void setInputState(VkPrimitiveTopology topology,
+                     VkBool32 primitive_restart_enable = VK_FALSE);
+  ///\brief Set the Tesselation State object
+  ///
+  ///\param patch_control_points **[in]**
+  void setTesselationState(uint32_t patch_control_points);
+  ///\brief Set the Rasterization State object
+  ///
+  ///\param depth_clamp_enable **[in]**
+  ///\param rasterizer_discard_enable **[in]**
+  ///\param polygon_mode **[in]**
+  ///\param cull_mode **[in]**
+  ///\param front_face **[in]**
+  ///\param depth_bias_enable **[in]**
+  ///\param depth_bias_constant_factor **[in]**
+  ///\param depth_bias_clamp **[in]**
+  ///\param depth_bias_slope_factor **[in]**
+  ///\param line_width **[in]**
+  void setRasterizationState(VkBool32 depth_clamp_enable,
+                             VkBool32 rasterizer_discard_enable,
+                             VkPolygonMode polygon_mode,
+                             VkCullModeFlags cull_mode, VkFrontFace front_face,
+                             VkBool32 depth_bias_enable,
+                             float depth_bias_constant_factor,
+                             float depth_bias_clamp,
+                             float depth_bias_slope_factor, float line_width);
+  ///\brief Set the Multisample State object
+  ///
+  ///\param rasterization_samples **[in]**
+  ///\param sample_shading_enable **[in]**
+  ///\param min_sample_shading **[in]**
+  ///\param sample_mask **[in]**
+  ///\param alpha_to_coverage_enable **[in]**
+  ///\param alpha_to_one_enable **[in]**
+  void setMultisampleState(VkSampleCountFlagBits rasterization_samples,
+                           VkBool32 sample_shading_enable,
+                           float min_sample_shading,
+                           const std::vector<VkSampleMask> &sample_mask,
+                           VkBool32 alpha_to_coverage_enable,
+                           VkBool32 alpha_to_one_enable);
+  ///\brief Set the Depth Stencil State object
+  ///
+  ///\param depth_test_enable **[in]**
+  ///\param depth_write_enable **[in]**
+  ///\param depth_compare_op **[in]**
+  ///\param depth_bounds_test_enable **[in]**
+  ///\param stencil_test_enable **[in]**
+  ///\param front **[in]**
+  ///\param back **[in]**
+  ///\param min_depth_bounds **[in]**
+  ///\param max_depth_bounds **[in]**
+  void setDepthStencilState(VkBool32 depth_test_enable,
+                            VkBool32 depth_write_enable,
+                            VkCompareOp depth_compare_op,
+                            VkBool32 depth_bounds_test_enable,
+                            VkBool32 stencil_test_enable,
+                            VkStencilOpState front, VkStencilOpState back,
+                            float min_depth_bounds, float max_depth_bounds);
+  ///\brief
+  ///
+  ///\param dynamic_state **[in]**
+  void addDynamicState(VkDynamicState dynamic_state);
+
 private:
   VkPipelineCreateFlags flags_ = 0;
+  std::unique_ptr<VkPipelineInputAssemblyStateCreateInfo> input_assembly_state_;
+  std::unique_ptr<VkPipelineTessellationStateCreateInfo> tesselation_state_;
+  std::unique_ptr<VkPipelineRasterizationStateCreateInfo> rasterization_state_;
+  std::unique_ptr<VkPipelineMultisampleStateCreateInfo> multisample_state_;
+  std::unique_ptr<VkPipelineDepthStencilStateCreateInfo> depth_stencil_state_;
+  std::unique_ptr<VkPipelineDynamicStateCreateInfo> dynamic_state_;
+  std::vector<VkDynamicState> dynamic_states_;
 };
 
 } // namespace vk

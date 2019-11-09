@@ -176,6 +176,35 @@ bool DescriptorPool::reset() {
   return true;
 }
 
+PipelineShaderStage::PipelineShaderStage(VkShaderStageFlagBits stage,
+                                         const ShaderModule &module,
+                                         std::string name,
+                                         const void *specialization_info_data,
+                                         size_t specialization_info_data_size)
+    : stage_(stage), module_(module.handle()), name_(name) {
+  specialization_info_.pData = specialization_info_data;
+  specialization_info_.dataSize = specialization_info_data_size;
+}
+
+void PipelineShaderStage::addSpecializationMapEntry(uint32_t constant_id,
+                                                    uint32_t offset,
+                                                    size_t size) {
+  VkSpecializationMapEntry map_entry = {constant_id, offset, size};
+  map_entries_.emplace_back(map_entry);
+  specialization_info_.mapEntryCount = map_entries_.size();
+  specialization_info_.pMapEntries = map_entries_.data();
+}
+
+VkShaderStageFlagBits PipelineShaderStage::stage() const { return stage_; }
+
+VkShaderModule PipelineShaderStage::module() const { return module_; }
+
+const std::string &PipelineShaderStage::name() const { return name_; }
+
+const VkSpecializationInfo *PipelineShaderStage::specializationInfo() const {
+  return &specialization_info_;
+}
+
 Pipeline::Pipeline(const LogicalDevice &logical_device)
     : logical_device_(logical_device) {}
 
@@ -210,7 +239,137 @@ bool Pipeline::saveCache(const std::string &path) {
   return result == VK_SUCCESS;
 }
 
+VkPipelineCache Pipeline::cache() const { return vk_pipeline_cache_; }
+
 VkPipeline Pipeline::handle() const { return vk_pipeline_; }
+
+void Pipeline::addShaderStage(const PipelineShaderStage &stage) {
+  VkPipelineShaderStageCreateInfo info = {
+      VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+      nullptr,
+      0,
+      stage.stage(),
+      stage.module(),
+      stage.name().c_str(),
+      stage.specializationInfo()};
+}
+
+ComputePipeline::ComputePipeline(const LogicalDevice &logical_device,
+                                 const PipelineShaderStage &stage,
+                                 PipelineLayout &layout, Pipeline *cache,
+                                 ComputePipeline *base_pipeline,
+                                 uint32_t base_pipeline_index)
+    : Pipeline(logical_device) {
+  VkComputePipelineCreateInfo info = {
+      VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+      nullptr,
+      0,
+      this->shader_stage_infos_[0],
+      layout.handle(),
+      (base_pipeline ? base_pipeline->handle() : VK_NULL_HANDLE),
+      base_pipeline_index};
+  vkCreateComputePipelines(this->logical_device_.handle(),
+                           (cache ? cache->cache() : VK_NULL_HANDLE), 1, &info,
+                           nullptr, &this->vk_pipeline_);
+}
+
+GraphicsPipeline::VertexInputState::VertexInputState() {
+  info_.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+  info_.pNext = nullptr;
+  info_.flags = 0;
+  info_.pVertexAttributeDescriptions = nullptr;
+  info_.pVertexBindingDescriptions = nullptr;
+  info_.vertexAttributeDescriptionCount = 0;
+  info_.vertexBindingDescriptionCount = 0;
+}
+
+void GraphicsPipeline::VertexInputState::addBindingDescription(
+    uint32_t binding, uint32_t stride, VkVertexInputRate input_rate) {
+  VkVertexInputBindingDescription bd = {binding, stride, input_rate};
+  binding_descriptions_.emplace_back(bd);
+  info_.vertexBindingDescriptionCount = binding_descriptions_.size();
+  info_.pVertexBindingDescriptions = binding_descriptions_.data();
+}
+
+void GraphicsPipeline::VertexInputState::addAttributeDescription(
+    uint32_t location, uint32_t binding, VkFormat format, uint32_t offset) {
+  VkVertexInputAttributeDescription ad = {location, binding, format, offset};
+  attribute_descriptions_.emplace_back(ad);
+  info_.vertexAttributeDescriptionCount = attribute_descriptions_.size();
+  info_.pVertexAttributeDescriptions = attribute_descriptions_.data();
+}
+
+const VkPipelineVertexInputStateCreateInfo *
+GraphicsPipeline::VertexInputState::info() const {
+  return &info_;
+}
+
+GraphicsPipeline::ViewportState::ViewportState() {
+  info_.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+  info_.pNext = nullptr;
+  info_.flags = 0;
+  info_.scissorCount = info_.viewportCount = 0;
+  info_.pScissors = nullptr;
+  info_.pViewports = nullptr;
+}
+
+void GraphicsPipeline::ViewportState::addViewport(float x, float y, float width,
+                                                  float height, float min_depth,
+                                                  float max_depth) {
+  VkViewport viewport = {x, y, width, height, min_depth, max_depth};
+  viewports_.emplace_back(viewport);
+  info_.pViewports = viewports_.data();
+  info_.viewportCount = viewports_.size();
+}
+
+void GraphicsPipeline::ViewportState::addScissor(int32_t x, int32_t y,
+                                                 uint32_t width,
+                                                 uint32_t height) {
+  VkRect2D scissor = {{x, y}, {width, height}};
+  info_.pScissors = scissors_.data();
+  info_.scissorCount = scissors_.size();
+}
+
+GraphicsPipeline::ColorBlendState::ColorBlendState() {
+  info_.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+  info_.pNext = nullptr;
+  info_.flags = 0;
+  info_.logicOpEnable = VK_FALSE;
+  info_.attachmentCount = 0;
+  info_.pAttachments = nullptr;
+}
+
+void GraphicsPipeline::ColorBlendState::setLogicOp(VkLogicOp logic_op) {
+  info_.logicOpEnable = VK_TRUE;
+  info_.logicOp = logic_op;
+}
+
+void GraphicsPipeline::ColorBlendState::addAttachmentState(
+    VkBool32 blend_enable, VkBlendFactor src_color_blend_factor,
+    VkBlendFactor dst_color_blend_factor, VkBlendOp color_blend_op,
+    VkBlendFactor src_alpha_blend_factor, VkBlendFactor dst_alpha_blend_factor,
+    VkBlendOp alpha_blend_op, VkColorComponentFlags color_write_mask) {
+  VkPipelineColorBlendAttachmentState as = {
+      blend_enable,   src_color_blend_factor, dst_color_blend_factor,
+      color_blend_op, src_alpha_blend_factor, dst_alpha_blend_factor,
+      alpha_blend_op, color_write_mask};
+  attachments_.emplace_back(as);
+  info_.pAttachments = attachments_.data();
+  info_.attachmentCount = attachments_.size();
+}
+
+void GraphicsPipeline::ColorBlendState::setBlendConstants(float r, float g,
+                                                          float b, float a) {
+  info_.blendConstants[0] = r;
+  info_.blendConstants[1] = g;
+  info_.blendConstants[2] = b;
+  info_.blendConstants[3] = a;
+}
+
+const VkPipelineColorBlendStateCreateInfo *
+GraphicsPipeline::ColorBlendState::info() const {
+  return &info_;
+}
 
 GraphicsPipeline::GraphicsPipeline(const LogicalDevice &logical_device,
                                    PipelineLayout &layout,
@@ -219,6 +378,105 @@ GraphicsPipeline::GraphicsPipeline(const LogicalDevice &logical_device,
                                    GraphicsPipeline *base_pipeline,
                                    uint32_t base_pipeline_index)
     : Pipeline(logical_device), flags_(flags) {}
+
+void GraphicsPipeline::setInputState(VkPrimitiveTopology topology,
+                                     VkBool32 primitive_restart_enable) {
+  input_assembly_state_ =
+      std::make_unique<VkPipelineInputAssemblyStateCreateInfo>();
+  input_assembly_state_->sType =
+      VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+  input_assembly_state_->pNext = nullptr;
+  input_assembly_state_->flags = 0;
+  input_assembly_state_->topology = topology;
+  input_assembly_state_->primitiveRestartEnable = primitive_restart_enable;
+}
+
+void GraphicsPipeline::setTesselationState(uint32_t patch_control_points) {
+  tesselation_state_ =
+      std::make_unique<VkPipelineTessellationStateCreateInfo>();
+  tesselation_state_->sType =
+      VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+  tesselation_state_->pNext = nullptr;
+  tesselation_state_->flags = 0;
+  tesselation_state_->patchControlPoints = patch_control_points;
+}
+
+void GraphicsPipeline::setRasterizationState(
+    VkBool32 depth_clamp_enable, VkBool32 rasterizer_discard_enable,
+    VkPolygonMode polygon_mode, VkCullModeFlags cull_mode,
+    VkFrontFace front_face, VkBool32 depth_bias_enable,
+    float depth_bias_constant_factor, float depth_bias_clamp,
+    float depth_bias_slope_factor, float line_width) {
+  rasterization_state_ =
+      std::make_unique<VkPipelineRasterizationStateCreateInfo>();
+  rasterization_state_->sType =
+      VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+  rasterization_state_->pNext = nullptr;
+  rasterization_state_->flags = 0;
+  rasterization_state_->depthClampEnable = depth_clamp_enable;
+  rasterization_state_->rasterizerDiscardEnable = rasterizer_discard_enable;
+  rasterization_state_->polygonMode = polygon_mode;
+  rasterization_state_->cullMode = cull_mode;
+  rasterization_state_->frontFace = front_face;
+  rasterization_state_->depthBiasEnable = depth_bias_enable;
+  rasterization_state_->depthBiasConstantFactor = depth_bias_constant_factor;
+  rasterization_state_->depthBiasClamp = depth_bias_clamp;
+  rasterization_state_->depthBiasSlopeFactor = depth_bias_slope_factor;
+  rasterization_state_->lineWidth = line_width;
+}
+
+void GraphicsPipeline::setMultisampleState(
+    VkSampleCountFlagBits rasterization_samples, VkBool32 sample_shading_enable,
+    float min_sample_shading, const std::vector<VkSampleMask> &sample_mask,
+    VkBool32 alpha_to_coverage_enable, VkBool32 alpha_to_one_enable) {
+  multisample_state_ = std::make_unique<VkPipelineMultisampleStateCreateInfo>();
+  multisample_state_->sType =
+      VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+  multisample_state_->pNext = nullptr;
+  multisample_state_->flags = 0;
+  multisample_state_->rasterizationSamples = rasterization_samples;
+  multisample_state_->sampleShadingEnable = sample_shading_enable;
+  multisample_state_->minSampleShading = min_sample_shading;
+  multisample_state_->pSampleMask = sample_mask.data();
+  multisample_state_->alphaToCoverageEnable = alpha_to_coverage_enable;
+  multisample_state_->alphaToOneEnable = alpha_to_one_enable;
+}
+
+void GraphicsPipeline::setDepthStencilState(
+    VkBool32 depth_test_enable, VkBool32 depth_write_enable,
+    VkCompareOp depth_compare_op, VkBool32 depth_bounds_test_enable,
+    VkBool32 stencil_test_enable, VkStencilOpState front, VkStencilOpState back,
+    float min_depth_bounds, float max_depth_bounds) {
+  depth_stencil_state_ =
+      std::make_unique<VkPipelineDepthStencilStateCreateInfo>();
+  depth_stencil_state_->sType =
+      VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+  depth_stencil_state_->pNext = nullptr;
+  depth_stencil_state_->flags = 0;
+  depth_stencil_state_->depthTestEnable = depth_test_enable;
+  depth_stencil_state_->depthWriteEnable = depth_write_enable;
+  depth_stencil_state_->depthCompareOp = depth_compare_op;
+  depth_stencil_state_->depthBoundsTestEnable = depth_bounds_test_enable;
+  depth_stencil_state_->stencilTestEnable = stencil_test_enable;
+  depth_stencil_state_->front = front;
+  depth_stencil_state_->back = back;
+  depth_stencil_state_->minDepthBounds = min_depth_bounds;
+  depth_stencil_state_->maxDepthBounds = max_depth_bounds;
+}
+
+void GraphicsPipeline::addDynamicState(VkDynamicState dynamic_state) {
+  if (!dynamic_state_) {
+    dynamic_state_ = std::make_unique<VkPipelineDynamicStateCreateInfo>();
+    dynamic_state_->sType =
+        VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamic_state_->pNext = nullptr;
+    dynamic_state_->flags = 0;
+  }
+
+  dynamic_states_.emplace_back(dynamic_state);
+  dynamic_state_->dynamicStateCount = dynamic_states_.size();
+  dynamic_state_->pDynamicStates = dynamic_states_.data();
+}
 
 } // namespace vk
 
