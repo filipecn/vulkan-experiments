@@ -74,6 +74,8 @@ bool Swapchain::nextImage(VkSemaphore semaphore, VkFence fence,
   }
 }
 
+const std::vector<Image> &Swapchain::images() const { return images_; }
+
 bool Swapchain::create(VkSurfaceKHR presentation_surface, uint32_t image_count,
                        VkSurfaceFormatKHR surface_format, VkExtent2D image_size,
                        VkImageUsageFlags image_usage,
@@ -106,18 +108,22 @@ bool Swapchain::create(VkSurfaceKHR presentation_surface, uint32_t image_count,
   CHECK_INFO(VK_NULL_HANDLE == vk_swapchain_, "Could not create a swapchain.");
 
   {
+    std::vector<VkImage> images;
     uint32_t images_count = 0;
     R_CHECK_VULKAN(vkGetSwapchainImagesKHR(
         logical_device_.handle(), vk_swapchain_, &images_count, nullptr));
     D_RETURN_FALSE_IF_NOT(0 != images_count,
                           "Could not get the number of swapchain images.");
-    images_.resize(images_count);
-    R_CHECK_VULKAN(vkGetSwapchainImagesKHR(logical_device_.handle(),
-                                           vk_swapchain_, &images_count,
-                                           images_.data()));
+    images.resize(images_count);
+    R_CHECK_VULKAN(vkGetSwapchainImagesKHR(
+        logical_device_.handle(), vk_swapchain_, &images_count, images.data()));
     D_RETURN_FALSE_IF_NOT(0 != images_count,
                           "Could not enumerate swapchain images.");
+    for (auto &image : images)
+      images_.emplace_back(logical_device_, image);
   }
+
+  image_size_ = image_size;
 
   return true;
 }

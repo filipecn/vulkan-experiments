@@ -26,7 +26,9 @@
 /// \brief
 
 #include "vk_app.h"
+#include "logging.h"
 #include "vulkan_library.h"
+#include <map>
 
 namespace circe {
 
@@ -37,132 +39,169 @@ App::App(uint32_t w, uint32_t h, const std::string &name)
       graphics_display_(new GraphicsDisplay(w, h, name)) {}
 
 App::~App() {
-  for (auto image_view : swap_chain_image_views_) {
+  /*for (auto image_view : swap_chain_image_views_) {
     vkDestroyImageView(device_, image_view, nullptr);
   }
   VulkanLibraryInterface::destroySwapchain(device_, swap_chain_);
   VulkanLibraryInterface::destroyLogicalDevice(device_);
   VulkanLibraryInterface::destroyPresentationSurface(instance_, surface_);
-  VulkanLibraryInterface::destroyVulkanInstance(instance_);
+  VulkanLibraryInterface::destroyVulkanInstance(instance_);*/
 }
 
-void App::run() { graphics_display_->open(); }
+void App::run() {
+  if (!instance_)
+    setInstance();
+
+  graphics_display_->open();
+}
 
 void App::exit() { graphics_display_->close(); }
 
-bool App::createInstance(const std::vector<const char *> &extensions) {
+bool App::setInstance(const std::vector<const char *> &extensions) {
   auto es = extensions;
   auto window_extensions = graphics_display_->requiredVkExtensions();
   for (auto e : window_extensions)
     es.emplace_back(e);
-  if (!VulkanLibraryInterface::createInstance(es, application_name_, instance_))
-    return false;
-  if (!VulkanLibraryInterface::loadInstanceLevelFunctions(instance_, es))
-    return false;
-  return graphics_display_->createWindowSurface(instance_, surface_);
+  instance_ = std::make_unique<Instance>(application_name_, es);
+  graphics_display_->createWindowSurface(*instance_.get(), surface_);
+  return instance_->good();
 }
 
-void App::pickPhysicalDevice(
-    const std::function<bool(const VulkanLibraryInterface::PhysicalDevice &)>
-        &f) {
-  std::vector<VkPhysicalDevice> physical_devices;
-  VulkanLibraryInterface::enumerateAvailablePhysicalDevices(instance_,
-                                                            physical_devices);
-  for (auto &physical_device : physical_devices) {
-    VkPhysicalDeviceFeatures device_features;
-    VkPhysicalDeviceProperties device_properties;
-    VulkanLibraryInterface::getFeaturesAndPropertiesOfPhysicalDevice(
-        physical_device, device_features, device_properties);
-    std::vector<VkQueueFamilyProperties> queue_families;
-    VulkanLibraryInterface::checkAvailableQueueFamiliesAndTheirProperties(
-        physical_device, queue_families);
-    VulkanLibraryInterface::PhysicalDevice p_device = {
-        physical_device, device_features, device_properties, queue_families};
-    // find a present family
-    uint32_t family_index = 0;
-    if (VulkanLibraryInterface::
-            selectQueueFamilyThatSupportsPresentationToGivenSurface(
-                physical_device, surface_, family_index))
-      if (f(p_device)) {
-        present_family_.family_index = family_index;
-        present_family_.priorities = {1.f};
-        physical_device_ = physical_device;
-        return;
-      }
+bool App::pickPhysicalDevice(
+    const std::function<uint32_t(const PhysicalDevice &, QueueFamilies &)> &f) {
+  if (!instance_)
+    RETURN_FALSE_IF_NOT(setInstance());
+  std::vector<PhysicalDevice> physical_devices;
+  instance_->enumerateAvailablePhysicalDevices(physical_devices);
+  // ordered map of <score, device index>
+  std::multimap<uint32_t, uint32_t> candidates;
+  std::vector<QueueFamilies> queue_families(physical_devices.size());
+  for (uint32_t i = 0; i < physical_devices.size(); ++i) {
+    uint32_t presentation_family = 0;
+    uint32_t graphics_family = 0;
+    // find a family that supports presentation and graphics
+    if (physical_devices[i].selectIndexOfQueueFamily(surface_,
+                                                     presentation_family) &&
+        physical_devices[i].selectIndexOfQueueFamily(VK_QUEUE_GRAPHICS_BIT,
+                                                     graphics_family)) {
+      queue_families[i].add(graphics_family);
+      queue_families[i].add(presentation_family);
+      candidates.insert(
+          std::make_pair(f(physical_devices[i], queue_families[i]), i));
+    }
   }
+  CHECK_INFO(candidates.size() && candidates.rbegin()->first > 0,
+             "failed to find a suitable GPU!");
+  uint32_t selected_index = candidates.rbegin()->second;
+  physical_device_ =
+      std::make_unique<PhysicalDevice>(physical_devices[selected_index]);
+  queue_families_ = queue_families[selected_index];
+  return true;
 }
 
 bool App::createLogicalDevice(
-    const std::vector<VulkanLibraryInterface::QueueFamilyInfo> &queue_infos,
     const std::vector<const char *> &desired_extensions,
     VkPhysicalDeviceFeatures *desired_features) {
+  if (!physical_device_)
+    pickPhysicalDevice([&](const circe::vk::PhysicalDevice &d,
+                           circe::vk::QueueFamilies &q) -> uint32_t {
+      if (d.properties().deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+        return 1000;
+      return 1;
+    });
   auto extensions = desired_extensions;
   extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-  return VulkanLibraryInterface::createLogicalDevice(
-      physical_device_, queue_infos, extensions, desired_features, device_);
+  logical_device_ = std::make_unique<LogicalDevice>(
+      *physical_device_.get(), extensions, desired_features, queue_families_);
+  return logical_device_->good();
 }
 
 bool App::setupSwapChain(VkFormat desired_format,
                          VkColorSpaceKHR desired_color_space) {
+  if (!logical_device_)
+    createLogicalDevice();
   // PRESENTATION MODE
-  VkPresentModeKHR desired_present_mode;
-  if (!VulkanLibraryInterface::selectDesiredPresentationMode(
-          physical_device_, surface_, VK_PRESENT_MODE_MAILBOX_KHR,
-          desired_present_mode))
+  VkPresentModeKHR present_mode;
+  if (!physical_device_->selectPresentationMode(
+          surface_, VK_PRESENT_MODE_MAILBOX_KHR, present_mode))
     return false;
   // CHECK SURFACE CAPABILITIES
   VkSurfaceCapabilitiesKHR surface_capabilities;
-  if (!VulkanLibraryInterface::getCapabilitiesOfPresentationSurface(
-          physical_device_, surface_, surface_capabilities))
+  if (!physical_device_->surfaceCapabilities(surface_, surface_capabilities))
     return false;
-  // GET NUMBER OF IMAGES
-  uint32_t number_of_images;
-  if (!VulkanLibraryInterface::selectNumberOfSwapchainImages(
-          surface_capabilities, number_of_images))
-    return false;
+  // GET NUMBER OF SWAPCHAIN IMAGES
+  uint32_t number_of_images = 0;
+  selectNumberOfSwapchainImages(surface_capabilities, number_of_images);
   // QUERY IMAGE SIZE
-  if (!VulkanLibraryInterface::chooseSizeOfSwapchainImages(
-          surface_capabilities, swap_chain_image_size_))
+  VkExtent2D swap_chain_image_size;
+  if (!chooseSizeOfSwapchainImages(surface_capabilities, swap_chain_image_size))
     return false;
-  if ((0 == swap_chain_image_size_.width) ||
-      (0 == swap_chain_image_size_.height))
+  if ((0 == swap_chain_image_size.width) || (0 == swap_chain_image_size.height))
     return false;
   // USAGE
-  VkImageUsageFlags image_usage;
-  if (!VulkanLibraryInterface::selectDesiredUsageScenariosOfSwapchainImages(
-          surface_capabilities, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-          image_usage))
+  VkImageUsageFlags image_usage = surface_capabilities.supportedUsageFlags &
+                                  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  if (image_usage != VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
     return false;
   // IMAGE TRANSFORM
-  VkSurfaceTransformFlagBitsKHR surface_transform;
-  if (!VulkanLibraryInterface::selectTransformationOfSwapchainImages(
-          surface_capabilities, VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR,
-          surface_transform))
-    return false;
+  VkSurfaceTransformFlagBitsKHR surface_transform =
+      surface_capabilities.currentTransform;
+  if (surface_capabilities.supportedTransforms &
+      VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
+    surface_transform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
   // COLOR SPACE
+  VkFormat image_format;
   VkColorSpaceKHR image_color_space;
-  if (!VulkanLibraryInterface::selectFormatOfSwapchainImages(
-          physical_device_, surface_, {desired_format, desired_color_space},
-          swap_chain_image_format_, image_color_space))
+  if (!physical_device_->selectFormatOfSwapchainImages(
+          surface_, {desired_format, desired_color_space}, image_format,
+          image_color_space))
     return false;
   // SWAP CHAIN
-  if (!VulkanLibraryInterface::createSwapchain(
-          device_, surface_, number_of_images,
-          {swap_chain_image_format_, image_color_space}, swap_chain_image_size_,
-          image_usage, surface_transform, desired_present_mode, old_swap_chain_,
-          swap_chain_))
-    return false;
-  if (!VulkanLibraryInterface::getHandlesOfSwapchainImages(device_, swap_chain_,
-                                                           swap_chain_images_))
-    return false;
+  VkSurfaceFormatKHR surface_format = {image_format, image_color_space};
+  swapchain_ = std::make_unique<Swapchain>(
+      *logical_device_.get(), surface_, number_of_images, surface_format,
+      swap_chain_image_size, image_usage, surface_transform, present_mode);
   // CREATE IMAGE VIEWS
-  swap_chain_image_views_.resize(swap_chain_images_.size());
-  for (uint32_t i = 0; i < swap_chain_image_views_.size(); i++) {
-    if (!VulkanLibraryInterface::createImageView(
-            device_, swap_chain_images_[i], VK_IMAGE_VIEW_TYPE_2D,
-            swap_chain_image_format_, VK_IMAGE_ASPECT_COLOR_BIT,
-            swap_chain_image_views_[i]))
-      return false;
+  auto swap_chain_images = swapchain_->images();
+  for (uint32_t i = 0; i < swap_chain_images.size(); i++)
+    swap_chain_image_views_.emplace_back(swap_chain_images[i],
+                                         VK_IMAGE_VIEW_TYPE_2D, image_format,
+                                         VK_IMAGE_ASPECT_COLOR_BIT);
+  return true;
+}
+
+bool App::selectNumberOfSwapchainImages(
+    VkSurfaceCapabilitiesKHR const &surface_capabilities,
+    uint32_t &number_of_images) const {
+  number_of_images = surface_capabilities.minImageCount + 1;
+  if ((surface_capabilities.maxImageCount > 0) &&
+      (number_of_images > surface_capabilities.maxImageCount)) {
+    number_of_images = surface_capabilities.maxImageCount;
+  }
+  return true;
+}
+
+bool App::chooseSizeOfSwapchainImages(
+    VkSurfaceCapabilitiesKHR const &surface_capabilities,
+    VkExtent2D &size_of_images) const {
+  if (0xFFFFFFFF == surface_capabilities.currentExtent.width) {
+    size_of_images = {640, 480};
+
+    if (size_of_images.width < surface_capabilities.minImageExtent.width) {
+      size_of_images.width = surface_capabilities.minImageExtent.width;
+    } else if (size_of_images.width >
+               surface_capabilities.maxImageExtent.width) {
+      size_of_images.width = surface_capabilities.maxImageExtent.width;
+    }
+
+    if (size_of_images.height < surface_capabilities.minImageExtent.height) {
+      size_of_images.height = surface_capabilities.minImageExtent.height;
+    } else if (size_of_images.height >
+               surface_capabilities.maxImageExtent.height) {
+      size_of_images.height = surface_capabilities.maxImageExtent.height;
+    }
+  } else {
+    size_of_images = surface_capabilities.currentExtent;
   }
   return true;
 }

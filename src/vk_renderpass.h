@@ -175,6 +175,9 @@ public:
   ///\param image_view **[in]**
   void addAttachment(const Image::View &image_view);
   VkFramebuffer handle();
+  uint32_t width() const;
+  uint32_t height() const;
+  uint32_t layers() const;
 
 private:
   const LogicalDevice &logical_device_;

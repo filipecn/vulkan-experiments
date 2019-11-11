@@ -28,6 +28,7 @@
 #ifndef CIRCE_VULKAN_SWAP_CHAIN_H
 #define CIRCE_VULKAN_SWAP_CHAIN_H
 
+#include "vk_image.h"
 #include "vulkan_logical_device.h"
 
 namespace circe {
@@ -119,6 +120,7 @@ public:
   /// \param image_index **[out]** acquired image index
   /// \return bool true if success
   bool nextImage(VkSemaphore semaphore, VkFence fence, uint32_t &image_index);
+  const std::vector<Image> &images() const;
 
 private:
   bool create(VkSurfaceKHR presentation_surface, uint32_t image_count,
@@ -129,7 +131,8 @@ private:
 
   const LogicalDevice &logical_device_;
   VkSwapchainKHR vk_swapchain_;
-  std::vector<VkImage> images_;
+  std::vector<Image> images_;
+  VkExtent2D image_size_;
 };
 
 } // namespace vk

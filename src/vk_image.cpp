@@ -75,7 +75,7 @@ Image::Image(const LogicalDevice &logical_device, VkImageType type,
              VkFormat format, VkExtent3D size, uint32_t num_mipmaps,
              uint32_t num_layers, VkSampleCountFlagBits samples,
              VkImageUsageFlags usage_scenarios, bool cubemap)
-    : logical_device_(logical_device) {
+    : logical_device_(logical_device), do_not_destroy_(false) {
   VkImageCreateInfo image_create_info = {
       VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, // VkStructureType          sType
       nullptr,                             // const void             * pNext
@@ -99,6 +99,10 @@ Image::Image(const LogicalDevice &logical_device, VkImageType type,
   if (vk_image_ == VK_NULL_HANDLE)
     INFO("Could not create image.");
 }
+
+Image::Image(const LogicalDevice &logical_device, VkImage handle)
+    : logical_device_(logical_device), vk_image_(handle),
+      do_not_destroy_(true) {}
 
 Image::~Image() {
   if (VK_NULL_HANDLE != vk_image_)

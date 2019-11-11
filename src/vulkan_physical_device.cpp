@@ -190,12 +190,70 @@ bool PhysicalDevice::selectPresentationMode(
   return false;
 }
 
+bool PhysicalDevice::selectFormatOfSwapchainImages(
+    VkSurfaceKHR presentation_surface,
+    VkSurfaceFormatKHR desired_surface_format, VkFormat &image_format,
+    VkColorSpaceKHR &image_color_space) const {
+  // Enumerate supported formats
+  uint32_t formats_count = 0;
+
+  R_CHECK_VULKAN(vkGetPhysicalDeviceSurfaceFormatsKHR(
+      vk_device_, presentation_surface, &formats_count, nullptr));
+  D_RETURN_FALSE_IF_NOT(
+      0 != formats_count,
+      "Could not get the number of supported surface formats.");
+
+  std::vector<VkSurfaceFormatKHR> surface_formats(formats_count);
+  R_CHECK_VULKAN(vkGetPhysicalDeviceSurfaceFormatsKHR(
+      vk_device_, presentation_surface, &formats_count,
+      surface_formats.data()));
+  D_RETURN_FALSE_IF_NOT(0 != formats_count,
+                        "Could not enumerate supported surface formats.");
+
+  // Select surface format
+  if ((1 == surface_formats.size()) &&
+      (VK_FORMAT_UNDEFINED == surface_formats[0].format)) {
+    image_format = desired_surface_format.format;
+    image_color_space = desired_surface_format.colorSpace;
+    return true;
+  }
+
+  for (auto &surface_format : surface_formats) {
+    if (desired_surface_format.format == surface_format.format &&
+        desired_surface_format.colorSpace == surface_format.colorSpace) {
+      image_format = desired_surface_format.format;
+      image_color_space = desired_surface_format.colorSpace;
+      return true;
+    }
+  }
+
+  for (auto &surface_format : surface_formats) {
+    if (desired_surface_format.format == surface_format.format) {
+      image_format = desired_surface_format.format;
+      image_color_space = surface_format.colorSpace;
+      INFO("Desired combination of format and colorspace is not "
+           "supported. Selecting other colorspace.");
+      return true;
+    }
+  }
+
+  image_format = surface_formats[0].format;
+  image_color_space = surface_formats[0].colorSpace;
+  INFO("Desired format is not supported. Selecting available format - "
+       "colorspace combination.");
+  return true;
+}
+
 bool PhysicalDevice::surfaceCapabilities(
     VkSurfaceKHR surface,
     VkSurfaceCapabilitiesKHR &surface_capabilities) const {
   R_CHECK_VULKAN(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
       vk_device_, surface, &surface_capabilities));
   return true;
+}
+
+const VkPhysicalDeviceProperties &PhysicalDevice::properties() const {
+  return vk_properties_;
 }
 
 } // namespace vk

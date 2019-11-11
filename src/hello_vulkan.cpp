@@ -27,31 +27,25 @@ int main(int argc, char const *argv[]) {
   // library. Here we could pass a list of vulkan instance extensions needed by
   // the application. The App automatically handles the basic extensions
   // required by the glfw library, so we don't need any extra extension.
-  ASSERT(app.createInstance());
+  // app.setInstance(...);
   // A important step is to choose the hardware we want our application to use.
   // The pickPhysicalDevice gives us the chance to analyse the available
   // hardware and to pick the one that suits best to our needs. This is done by
   // checking the available vulkan queue families that present the features we
-  // need, in this example we need just want a queue with graphics and
+  // need, in this example we need just a queue with graphics and
   // presentation capabilities. The presentation capabilities is already checked
   // automatically, so we just need to check graphics.
-  std::vector<circe::vk::VulkanLibraryInterface::QueueFamilyInfo> queue_infos;
-  app.pickPhysicalDevice(
-      [&](const circe::vk::VulkanLibraryInterface::PhysicalDevice &d) -> bool {
-        uint32_t graphics_family_index = 0;
-        if (circe::vk::VulkanLibraryInterface::
-                selectIndexOfQueueFamilyWithDesiredCapabilities(
-                    d.handle, VK_QUEUE_GRAPHICS_BIT, graphics_family_index)) {
-          queue_infos.push_back({graphics_family_index, {1.f}});
-          return true;
-        }
-        return false;
-      });
+  app.pickPhysicalDevice([&](const circe::vk::PhysicalDevice &d,
+                             circe::vk::QueueFamilies &q) -> uint32_t {
+    if (d.properties().deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+      return 1000;
+    return 1;
+  });
   // After picking the hardware, we can create its digital representation. As
   // creating the vulkan instance, here we can also choose extra logical device
   // extensions our application need. The swap chain extension is added
   // automatically, so we need no extra extension.
-  ASSERT(app.createLogicalDevice(queue_infos));
+  // ASSERT(app.createLogicalDevice());
   // The swapchain is the mechanism responsible for representing images in our
   // display, here we also need to configure it by choosing image format and
   // color space.

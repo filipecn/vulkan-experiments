@@ -31,11 +31,37 @@
 #include "vk_buffer.h"
 #include "vk_image.h"
 #include "vk_pipeline.h"
+#include "vk_renderpass.h"
 #include "vulkan_logical_device.h"
 
 namespace circe {
 
 namespace vk {
+
+class RenderPassBeginInfo {
+public:
+  ///\brief Construct a new Render Pass Begin Info object
+  ///
+  ///\param renderpass **[in]**
+  ///\param framebuffer **[in]**
+  RenderPassBeginInfo(RenderPass &renderpass, Framebuffer &framebuffer);
+  ///\brief Set the Render Area object
+  ///
+  ///\param x **[in]**
+  ///\param y **[in]**
+  ///\param width **[in]**
+  ///\param height **[in]**
+  void setRenderArea(int32_t x, int32_t y, uint32_t width, uint32_t height);
+  void addClearColorValuef(float r, float g, float b, float a);
+  void addClearColorValuei(int32_t r, int32_t g, int32_t b, int32_t a);
+  void addClearColorValueu(uint32_t r, uint32_t g, uint32_t b, uint32_t a);
+  void addClearDepthStencilValue(float depth, uint32_t stencil);
+  const VkRenderPassBeginInfo *info() const;
+
+private:
+  VkRenderPassBeginInfo info_;
+  std::vector<VkClearValue> clear_values_;
+};
 
 // Command buffers record operations and are submitted to the hardware. They
 // can be recorded in multiple threads and also can be saved and reused.
@@ -243,6 +269,25 @@ public:
   bool pushConstants(PipelineLayout &pipeline_layout,
                      VkShaderStageFlags stage_flags, uint32_t offset,
                      uint32_t size, const void *values) const;
+  ///\brief Sets the current renderpass object and configures the set of output
+  /// images that will be drawn into.
+  ///\param info **[in]** Parameters describing the renderpass
+  ///\param contents **[in]**
+  ///\return bool
+  bool beginRenderPass(const RenderPassBeginInfo &info,
+                       VkSubpassContents contents) const;
+  ///\brief Finalize rendering contained in the renderpass
+  ///\return bool
+  bool endRenderPass() const;
+  ///\brief
+  ///
+  ///\param first_binding **[in]**
+  ///\param buffers **[in]**
+  ///\param offsets **[in]**
+  ///\return bool
+  bool bindVertexBuffers(uint32_t first_binding,
+                         const std::vector<VkBuffer> &buffers,
+                         const std::vector<VkDeviceSize> &offsets) const;
   ///\brief Generates vertices and push them into the current graphics pipeline.
   ///\param vertex_count **[in]**
   ///\param instance_count **[in]**

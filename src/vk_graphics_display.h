@@ -28,7 +28,7 @@
 #ifndef CIRCE_VK_GRAPHICS_DISPLAY_H
 #define CIRCE_VK_GRAPHICS_DISPLAY_H
 
-#include "vulkan_library.h"
+#include "vulkan_instance.h"
 // #define GLFW_INCLUDE_VULKAN
 // #include <GLFW/glfw3.h>
 
@@ -65,7 +65,8 @@ public:
   /// \param instance **[in]** vulkan instance handle
   /// \param surface **[out]** surface handle
   /// \return bool true if success
-  bool createWindowSurface(VkInstance instance, VkSurfaceKHR &surface) const;
+  bool createWindowSurface(const Instance &instance,
+                           VkSurfaceKHR &surface) const;
 
 private:
   uint32_t width_;

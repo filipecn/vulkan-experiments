@@ -25,6 +25,9 @@
 ///
 ///\brief
 
+#ifndef CIRCE_VULKAN_INSTANCE_H
+#define CIRCE_VULKAN_INSTANCE_H
+
 #include "vulkan_physical_device.h"
 #include <string>
 #include <vector>
@@ -54,6 +57,7 @@ public:
                std::vector<const char *>());
   ///\brief Default destructor
   ~Instance();
+  VkInstance handle() const;
   /// Checks with instance object construction succeded
   ///\return bool true if this can be used
   bool good() const;
@@ -76,3 +80,5 @@ private:
 } // namespace vk
 
 } // namespace circe
+
+#endif

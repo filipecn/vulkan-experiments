@@ -29,7 +29,9 @@
 #define CIRCE_VK_APP_H
 
 #include "vk_graphics_display.h"
-#include "vulkan_instance.h"
+#include "vk_image.h"
+#include "vk_swap_chain.h"
+#include "vulkan_logical_device.h"
 #include <functional>
 #include <memory>
 
@@ -44,7 +46,7 @@ public:
   /// \brief Construct a new App object
   /// \param w **[in]** window width (in pixels)
   /// \param h **[in]** window height (in pixels)
-  /// \param title **[in]** window title text
+  /// \param title **[in | optional]** window title text
   App(uint32_t w, uint32_t h,
       const std::string &title = std::string("Vulkan Application"));
   /// \brief Destroy the App object
@@ -55,20 +57,21 @@ public:
   void exit();
   /// Internally creates the Vulkan Instance from information about the
   /// application and desired extensions.
-  /// \param extensions **[in | optional]** list of extension names
-  /// \return bool true if success
-  bool createInstance(const std::vector<const char *> &extensions =
-                          std::vector<const char *>());
+  /// \param extensions **[in | optional]** list of instance extension names
+  /// \return true on success
+  bool setInstance(const std::vector<const char *> &extensions =
+                       std::vector<const char *>());
   /// Iterates over physical devices. This can be used to check which device
   /// suits the application's needs.
   /// Note: It only iterates over devices that have support for presentation.
   /// There is no need for checking for the queue family with support for
   /// presentation of the application surface.
-  /// \param f **[in]** callback for device
+  /// \param f **[in]** callback for device. Return the score of the device, the
+  /// device with highest score will be picked. Devices with score 0 are
+  /// discarted.
   /// \return bool
-  void pickPhysicalDevice(
-      const std::function<bool(const VulkanLibraryInterface::PhysicalDevice &)>
-          &f);
+  bool pickPhysicalDevice(const std::function<uint32_t(const PhysicalDevice &,
+                                                       QueueFamilies &)> &f);
   /// \brief Create a Logical Device object
   /// There is no need to append the swapchain extension, this method already
   /// does it.
@@ -76,11 +79,9 @@ public:
   /// \param desired_extensions **[in]** desired device extensions list
   /// \param desired_features **[in]** desired features list
   /// \return bool true if success
-  bool createLogicalDevice(
-      const std::vector<VulkanLibraryInterface::QueueFamilyInfo> &queue_infos,
-      const std::vector<const char *> &desired_extensions =
-          std::vector<char const *>(),
-      VkPhysicalDeviceFeatures *desired_features = {});
+  bool createLogicalDevice(const std::vector<const char *> &desired_extensions =
+                               std::vector<char const *>(),
+                           VkPhysicalDeviceFeatures *desired_features = {});
   /// Setups the swapchain structure, that is responsible for image presentation
   /// on screen. It is configured with image format, color space and other
   /// settings. If the swap chain is succefully created, the method retrieves
@@ -91,19 +92,23 @@ public:
   bool setupSwapChain(VkFormat format, VkColorSpaceKHR color_space);
 
 private:
-  VkSwapchainKHR swap_chain_ = VK_NULL_HANDLE, old_swap_chain_ = VK_NULL_HANDLE;
-  std::vector<VkImage> swap_chain_images_;
-  std::vector<VkImageView> swap_chain_image_views_;
-  VkExtent2D swap_chain_image_size_;
-  VkFormat swap_chain_image_format_;
-  std::string application_name_;
+  bool selectNumberOfSwapchainImages(
+      VkSurfaceCapabilitiesKHR const &surface_capabilities,
+      uint32_t &number_of_images) const;
+  bool chooseSizeOfSwapchainImages(
+      VkSurfaceCapabilitiesKHR const &surface_capabilities,
+      VkExtent2D &size_of_images) const;
+
   std::unique_ptr<GraphicsDisplay> graphics_display_;
-  VkInstance instance_ = VK_NULL_HANDLE;
-  VkPhysicalDevice physical_device_ = VK_NULL_HANDLE;
-  VkDevice device_ = VK_NULL_HANDLE;
+  std::unique_ptr<Instance> instance_;
+  std::unique_ptr<PhysicalDevice> physical_device_;
+  std::unique_ptr<LogicalDevice> logical_device_;
+  std::unique_ptr<Swapchain> swapchain_;
+  std::vector<Image::View> swap_chain_image_views_;
+  QueueFamilies queue_families_;
+
+  std::string application_name_;
   VkSurfaceKHR surface_ = VK_NULL_HANDLE;
-  VulkanLibraryInterface::QueueFamilyInfo present_family_;
-  VkQueue present_queue_;
 };
 
 } // namespace vk

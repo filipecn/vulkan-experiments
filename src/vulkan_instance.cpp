@@ -84,6 +84,8 @@ Instance::~Instance() {
     vkDestroyInstance(vk_instance_, nullptr);
 }
 
+VkInstance Instance::handle() const { return vk_instance_; }
+
 bool Instance::good() const { return vk_instance_ != VK_NULL_HANDLE; }
 
 bool Instance::isExtensionSupported(

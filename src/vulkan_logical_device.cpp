@@ -37,7 +37,7 @@ LogicalDevice::LogicalDevice(
     const PhysicalDevice &physical_device,
     std::vector<char const *> const &desired_extensions,
     VkPhysicalDeviceFeatures *desired_features,
-    const std::vector<QueueFamilyInfo> queue_infos)
+    const QueueFamilies &queue_infos)
     : physical_device_(physical_device) {
   for (auto &extension : desired_extensions)
     if (!physical_device.isExtensionSupported(extension)) {
@@ -46,7 +46,7 @@ LogicalDevice::LogicalDevice(
       return;
     }
   std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
-  for (auto &info : queue_infos) {
+  for (auto &info : queue_infos.families()) {
     queue_create_infos.push_back({
         VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, // VkStructureType sType
         nullptr,                   // const void                     * pNext

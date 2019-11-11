@@ -117,10 +117,24 @@ public:
   bool selectPresentationMode(VkSurfaceKHR presentation_surface,
                               VkPresentModeKHR desired_present_mode,
                               VkPresentModeKHR &present_mode) const;
+  /// Clamps the desired image format to the supported format by the
+  /// device. The format defines the number of color components, the number of
+  /// bits for each component and data type. Also, we must specify the color
+  /// space to be used for encoding color.
+  /// \param presentation_surface **[in]** surface handle
+  /// \param desired_surface_format **[in]** desired image format
+  /// \param image_format **[out]** available image format
+  /// \param image_color_space **[out]** available color space
+  /// \return bool true if success
+  bool selectFormatOfSwapchainImages(VkSurfaceKHR presentation_surface,
+                                     VkSurfaceFormatKHR desired_surface_format,
+                                     VkFormat &image_format,
+                                     VkColorSpaceKHR &image_color_space) const;
 
   bool
   surfaceCapabilities(VkSurfaceKHR surface,
                       VkSurfaceCapabilitiesKHR &surface_capabilities) const;
+  const VkPhysicalDeviceProperties &properties() const;
 
 private:
   /// Retrieve available queue families exposed by a physical device

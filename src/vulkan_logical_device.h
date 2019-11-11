@@ -33,7 +33,23 @@
 namespace circe {
 
 namespace vk {
+/// Stores information about queues requested to a logical device and the list
+/// of priorities assifned to each queue
+struct QueueFamilyInfo {
+  std::optional<uint32_t> family_index; //!< queue family index
+  std::vector<float> priorities;        //!< list of queue priorities, [0.0,1.0]
+};
+struct QueueFamilies {
+  void add(uint32_t family_index, const std::vector<float> priorities = {1.f}) {
+    families_.emplace_back();
+    families_[families_.size() - 1].family_index = family_index;
+    families_[families_.size() - 1].priorities = priorities;
+  }
+  const std::vector<QueueFamilyInfo> &families() const { return families_; }
 
+private:
+  std::vector<QueueFamilyInfo> families_;
+};
 /// The logical device makes the interface of the application and the physical
 /// device. Represents the hardware, along with the extensions and features
 /// enabled for it and all the queues requested from it. The logical device
@@ -44,12 +60,6 @@ namespace vk {
 /// creation/destruction.
 class LogicalDevice {
 public:
-  /// Stores information about queues requested to a logical device and the list
-  /// of priorities assifned to each queue
-  struct QueueFamilyInfo {
-    std::optional<uint32_t> family_index; //!< queue family index
-    std::vector<float> priorities; //!< list of queue priorities, [0.0,1.0]
-  };
   ///\brief Construct a new Logical Device object
   ///\param physical_device **[in]** physical device object
   /// \param desired_extensions **[in]** desired extensions
@@ -58,7 +68,7 @@ public:
   LogicalDevice(const PhysicalDevice &physical_device,
                 std::vector<char const *> const &desired_extensions,
                 VkPhysicalDeviceFeatures *desired_features,
-                const std::vector<QueueFamilyInfo> queue_infos);
+                const QueueFamilies &queue_infos);
   ///\brief Default destructor
   ~LogicalDevice();
   ///\brief

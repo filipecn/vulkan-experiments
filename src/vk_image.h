@@ -92,6 +92,7 @@ public:
         VkExtent3D size, uint32_t num_mipmaps, uint32_t num_layers,
         VkSampleCountFlagBits samples, VkImageUsageFlags usage_scenarios,
         bool cubemap);
+  Image(const LogicalDevice &logical_device, VkImage handle);
   ~Image();
   ///\return const LogicalDevice& device owner of its resouce
   const LogicalDevice &device() const;
@@ -125,6 +126,7 @@ public:
 private:
   const LogicalDevice &logical_device_;
   VkImage vk_image_ = VK_NULL_HANDLE;
+  bool do_not_destroy_ = false;
 };
 
 } // namespace vk

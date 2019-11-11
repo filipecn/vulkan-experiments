@@ -193,6 +193,12 @@ void Framebuffer::addAttachment(const Image::View &image_view) {
   attachments_.emplace_back(image_view.handle());
 }
 
+uint32_t Framebuffer::width() const { return width_; }
+
+uint32_t Framebuffer::height() const { return height_; }
+
+uint32_t Framebuffer::layers() const { return layers_; }
+
 VkFramebuffer Framebuffer::handle() {
   if (vk_framebuffer_ == VK_NULL_HANDLE) {
     VkFramebufferCreateInfo info = {

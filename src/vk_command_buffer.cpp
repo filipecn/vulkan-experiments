@@ -33,6 +33,77 @@ namespace circe {
 
 namespace vk {
 
+RenderPassBeginInfo::RenderPassBeginInfo(RenderPass &renderpass,
+                                         Framebuffer &framebuffer) {
+  info_.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+  info_.pNext = nullptr;
+  info_.renderPass = renderpass.handle();
+  info_.framebuffer = framebuffer.handle();
+  info_.renderArea.offset.x = info_.renderArea.offset.y = 0;
+  info_.renderArea.extent.width = framebuffer.width();
+  info_.renderArea.extent.height = framebuffer.height();
+  info_.clearValueCount = 0;
+  info_.pClearValues = nullptr;
+}
+
+void RenderPassBeginInfo::setRenderArea(int32_t x, int32_t y, uint32_t width,
+                                        uint32_t height) {
+  info_.renderArea.offset.x = x;
+  info_.renderArea.offset.y = y;
+  info_.renderArea.extent.width = width;
+  info_.renderArea.extent.height = height;
+}
+
+void RenderPassBeginInfo::addClearColorValuef(float r, float g, float b,
+                                              float a) {
+  VkClearValue v;
+  v.color.float32[0] = r;
+  v.color.float32[1] = g;
+  v.color.float32[2] = b;
+  v.color.float32[3] = a;
+  clear_values_.emplace_back(v);
+  info_.clearValueCount = clear_values_.size();
+  info_.pClearValues = clear_values_.data();
+}
+
+void RenderPassBeginInfo::addClearColorValuei(int32_t r, int32_t g, int32_t b,
+                                              int32_t a) {
+  VkClearValue v;
+  v.color.int32[0] = r;
+  v.color.int32[1] = g;
+  v.color.int32[2] = b;
+  v.color.int32[3] = a;
+  clear_values_.emplace_back(v);
+  info_.clearValueCount = clear_values_.size();
+  info_.pClearValues = clear_values_.data();
+}
+
+void RenderPassBeginInfo::addClearColorValueu(uint32_t r, uint32_t g,
+                                              uint32_t b, uint32_t a) {
+  VkClearValue v;
+  v.color.uint32[0] = r;
+  v.color.uint32[0] = g;
+  v.color.uint32[0] = b;
+  v.color.uint32[0] = a;
+  clear_values_.emplace_back(v);
+  info_.clearValueCount = clear_values_.size();
+  info_.pClearValues = clear_values_.data();
+}
+
+void RenderPassBeginInfo::addClearDepthStencilValue(float depth,
+                                                    uint32_t stencil) {
+  VkClearValue v;
+  v.depthStencil.depth = depth;
+  v.depthStencil.stencil = stencil;
+  clear_values_.emplace_back(v);
+  info_.clearValueCount = clear_values_.size();
+  info_.pClearValues = clear_values_.data();
+}
+
+const VkRenderPassBeginInfo *RenderPassBeginInfo::info() const {
+  return &info_;
+}
+
 CommandBuffer::CommandBuffer(VkCommandBuffer vk_command_buffer_)
     : vk_command_buffer_(vk_command_buffer_) {}
 
@@ -147,6 +218,25 @@ bool CommandBuffer::pushConstants(PipelineLayout &pipeline_layout,
                                   const void *values) const {
   vkCmdPushConstants(vk_command_buffer_, pipeline_layout.handle(), stage_flags,
                      offset, size, values);
+  return true;
+}
+
+bool CommandBuffer::beginRenderPass(const RenderPassBeginInfo &info,
+                                    VkSubpassContents contents) const {
+  vkCmdBeginRenderPass(vk_command_buffer_, info.info(), contents);
+  return true;
+}
+
+bool CommandBuffer::endRenderPass() const {
+  vkCmdEndRenderPass(vk_command_buffer_);
+  return true;
+}
+
+bool CommandBuffer::bindVertexBuffers(
+    uint32_t first_binding, const std::vector<VkBuffer> &buffers,
+    const std::vector<VkDeviceSize> &offsets) const {
+  vkCmdBindVertexBuffers(vk_command_buffer_, first_binding, buffers.size(),
+                         buffers.data(), offsets.data());
   return true;
 }
 
