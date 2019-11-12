@@ -37,6 +37,7 @@ int main(int argc, char const *argv[]) {
   // automatically, so we just need to check graphics.
   app.pickPhysicalDevice([&](const circe::vk::PhysicalDevice &d,
                              circe::vk::QueueFamilies &q) -> uint32_t {
+    std::cerr << d;
     if (d.properties().deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
       return 1000;
     return 1;
@@ -49,8 +50,8 @@ int main(int argc, char const *argv[]) {
   // The swapchain is the mechanism responsible for representing images in our
   // display, here we also need to configure it by choosing image format and
   // color space.
-  ASSERT(app.setupSwapChain(VK_FORMAT_R8G8B8A8_UNORM,
-                            VK_COLOR_SPACE_SRGB_NONLINEAR_KHR));
+  // ASSERT(app.setupSwapChain(VK_FORMAT_R8G8B8A8_UNORM,
+  //                          VK_COLOR_SPACE_SRGB_NONLINEAR_KHR));
   app.run();
   return 0;
 }

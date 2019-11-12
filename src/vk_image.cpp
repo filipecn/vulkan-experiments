@@ -64,6 +64,11 @@ Image::View::View(const Image &image, VkImageViewType view_type,
                                  &vk_image_view_));
 }
 
+Image::View::View(Image::View &&other) : image_(other.image_) {
+  vk_image_view_ = other.vk_image_view_;
+  other.vk_image_view_ = VK_NULL_HANDLE;
+}
+
 Image::View::~View() {
   if (VK_NULL_HANDLE != vk_image_view_)
     vkDestroyImageView(image_.device().handle(), vk_image_view_, nullptr);
@@ -105,7 +110,7 @@ Image::Image(const LogicalDevice &logical_device, VkImage handle)
       do_not_destroy_(true) {}
 
 Image::~Image() {
-  if (VK_NULL_HANDLE != vk_image_)
+  if (VK_NULL_HANDLE != vk_image_ && !do_not_destroy_)
     vkDestroyImage(logical_device_.handle(), vk_image_, nullptr);
 }
 

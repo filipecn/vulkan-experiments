@@ -40,6 +40,7 @@ PhysicalDevice::PhysicalDevice(VkPhysicalDevice device_handle)
   vkGetPhysicalDeviceFeatures(vk_device_, &vk_features_);
   vkGetPhysicalDeviceProperties(vk_device_, &vk_properties_);
   vkGetPhysicalDeviceMemoryProperties(vk_device_, &vk_memory_properties_);
+  checkAvailableQueueFamilies();
 }
 
 VkPhysicalDevice PhysicalDevice::handle() const { return vk_device_; }
@@ -254,6 +255,37 @@ bool PhysicalDevice::surfaceCapabilities(
 
 const VkPhysicalDeviceProperties &PhysicalDevice::properties() const {
   return vk_properties_;
+}
+
+std::ostream &operator<<(std::ostream &os, VkPhysicalDeviceType e) {
+#define PRINT_IF_ENUM(E)                                                       \
+  if (e == E)                                                                  \
+    os << #E;
+  PRINT_IF_ENUM(VK_PHYSICAL_DEVICE_TYPE_OTHER);
+  PRINT_IF_ENUM(VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);
+  PRINT_IF_ENUM(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
+  PRINT_IF_ENUM(VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU);
+  PRINT_IF_ENUM(VK_PHYSICAL_DEVICE_TYPE_CPU);
+  PRINT_IF_ENUM(VK_PHYSICAL_DEVICE_TYPE_BEGIN_RANGE);
+  PRINT_IF_ENUM(VK_PHYSICAL_DEVICE_TYPE_END_RANGE);
+  PRINT_IF_ENUM(VK_PHYSICAL_DEVICE_TYPE_RANGE_SIZE);
+#undef PRINT_IF_ENUM
+  return os;
+}
+
+std::ostream &operator<<(std::ostream &os, const PhysicalDevice &d) {
+  auto properties = d.properties();
+  os << "PHYSICAL DEVICE INFO =====================" << std::endl;
+#define PRINT_FIELD(F) std::cerr << #F << " = " << F << std::endl;
+  PRINT_FIELD(properties.deviceName);
+  PRINT_FIELD(properties.deviceType);
+  PRINT_FIELD(properties.deviceID);
+  PRINT_FIELD(properties.vendorID);
+  PRINT_FIELD(properties.apiVersion);
+  PRINT_FIELD(properties.driverVersion);
+#undef PRINT_FIELD
+  os << "==========================================" << std::endl;
+  return os;
 }
 
 } // namespace vk

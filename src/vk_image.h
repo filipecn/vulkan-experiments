@@ -54,6 +54,8 @@ public:
     /// \return bool true if success
     View(const Image &image, VkImageViewType view_type, VkFormat format,
          VkImageAspectFlags aspect);
+    View(const View &&other) = delete;
+    View(View &&other);
     ~View();
     VkImageView handle() const;
 

@@ -98,14 +98,14 @@ bool Swapchain::create(VkSurfaceKHR presentation_surface, uint32_t image_count,
       surface_transform, // VkSurfaceTransformFlagBitsKHR    preTransform
       VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR, // VkCompositeAlphaFlagBitsKHR
                                          // compositeAlpha
-      present_mode, // VkPresentModeKHR                 presentMode
-      VK_TRUE,      // VkBool32                         clipped
-      vk_swapchain_ // VkSwapchainKHR                   oldSwapchain
+      present_mode,  // VkPresentModeKHR                 presentMode
+      VK_TRUE,       // VkBool32                         clipped
+      VK_NULL_HANDLE // VkSwapchainKHR oldSwapchain
   };
   R_CHECK_VULKAN(vkCreateSwapchainKHR(logical_device_.handle(),
                                       &swapchain_create_info, nullptr,
                                       &vk_swapchain_));
-  CHECK_INFO(VK_NULL_HANDLE == vk_swapchain_, "Could not create a swapchain.");
+  CHECK_INFO(VK_NULL_HANDLE != vk_swapchain_, "Could not create a swapchain.");
 
   {
     std::vector<VkImage> images;

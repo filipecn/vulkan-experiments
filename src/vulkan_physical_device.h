@@ -29,6 +29,7 @@
 #define CIRCE_VULKAN_PHYSICAL_DEVICE_H
 
 #include "vulkan_library.h"
+#include <iostream>
 
 namespace circe {
 
@@ -161,6 +162,8 @@ private:
                              //!< number of heaps, sizes, types and etc.
   std::vector<VkQueueFamilyProperties> vk_queue_families_;
 };
+
+std::ostream &operator<<(std::ostream &os, const PhysicalDevice &d);
 
 } // namespace vk
 

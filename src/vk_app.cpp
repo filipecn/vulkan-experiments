@@ -49,9 +49,8 @@ App::~App() {
 }
 
 void App::run() {
-  if (!instance_)
-    setInstance();
-
+  if (!swapchain_)
+    setupSwapChain(VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
   graphics_display_->open();
 }
 
