@@ -33,7 +33,7 @@ namespace circe {
 
 namespace vk {
 
-Swapchain::Swapchain(const LogicalDevice &logical_device,
+Swapchain::Swapchain(const LogicalDevice *logical_device,
                      VkSurfaceKHR presentation_surface, uint32_t image_count,
                      VkSurfaceFormatKHR surface_format, VkExtent2D image_size,
                      VkImageUsageFlags image_usage,
@@ -46,8 +46,8 @@ Swapchain::Swapchain(const LogicalDevice &logical_device,
 
 Swapchain::~Swapchain() {
   if (vk_swapchain_) {
-    vkDeviceWaitIdle(logical_device_.handle());
-    vkDestroySwapchainKHR(logical_device_.handle(), vk_swapchain_, nullptr);
+    vkDeviceWaitIdle(logical_device_->handle());
+    vkDestroySwapchainKHR(logical_device_->handle(), vk_swapchain_, nullptr);
   }
 }
 
@@ -63,7 +63,7 @@ bool Swapchain::set(VkSurfaceKHR presentation_surface, uint32_t image_count,
 bool Swapchain::nextImage(VkSemaphore semaphore, VkFence fence,
                           uint32_t &image_index) {
   VkResult result;
-  result = vkAcquireNextImageKHR(logical_device_.handle(), vk_swapchain_,
+  result = vkAcquireNextImageKHR(logical_device_->handle(), vk_swapchain_,
                                  2000000000, semaphore, fence, &image_index);
   switch (result) {
   case VK_SUCCESS:
@@ -102,7 +102,7 @@ bool Swapchain::create(VkSurfaceKHR presentation_surface, uint32_t image_count,
       VK_TRUE,       // VkBool32                         clipped
       VK_NULL_HANDLE // VkSwapchainKHR oldSwapchain
   };
-  R_CHECK_VULKAN(vkCreateSwapchainKHR(logical_device_.handle(),
+  R_CHECK_VULKAN(vkCreateSwapchainKHR(logical_device_->handle(),
                                       &swapchain_create_info, nullptr,
                                       &vk_swapchain_));
   CHECK_INFO(VK_NULL_HANDLE != vk_swapchain_, "Could not create a swapchain.");
@@ -111,12 +111,13 @@ bool Swapchain::create(VkSurfaceKHR presentation_surface, uint32_t image_count,
     std::vector<VkImage> images;
     uint32_t images_count = 0;
     R_CHECK_VULKAN(vkGetSwapchainImagesKHR(
-        logical_device_.handle(), vk_swapchain_, &images_count, nullptr));
+        logical_device_->handle(), vk_swapchain_, &images_count, nullptr));
     D_RETURN_FALSE_IF_NOT(0 != images_count,
                           "Could not get the number of swapchain images.");
     images.resize(images_count);
-    R_CHECK_VULKAN(vkGetSwapchainImagesKHR(
-        logical_device_.handle(), vk_swapchain_, &images_count, images.data()));
+    R_CHECK_VULKAN(vkGetSwapchainImagesKHR(logical_device_->handle(),
+                                           vk_swapchain_, &images_count,
+                                           images.data()));
     D_RETURN_FALSE_IF_NOT(0 != images_count,
                           "Could not enumerate swapchain images.");
     for (auto &image : images)

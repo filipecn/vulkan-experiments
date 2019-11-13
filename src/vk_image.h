@@ -52,7 +52,7 @@ public:
     /// \param aspect **[in]** context: color, depth or stencil
     /// \param image_view **[out]** image view object
     /// \return bool true if success
-    View(const Image &image, VkImageViewType view_type, VkFormat format,
+    View(const Image *image, VkImageViewType view_type, VkFormat format,
          VkImageAspectFlags aspect);
     View(const View &&other) = delete;
     View(View &&other);
@@ -60,7 +60,7 @@ public:
     VkImageView handle() const;
 
   private:
-    const Image &image_;
+    const Image *image_ = nullptr;
     VkImageView vk_image_view_ = VK_NULL_HANDLE;
   };
 
@@ -90,14 +90,16 @@ public:
   /// \param samples **[in]** number of samples
   /// \param usage_scenarios **[in]**
   /// \param cubemap **[in]**
-  Image(const LogicalDevice &logical_device, VkImageType type, VkFormat format,
+  Image(const LogicalDevice *logical_device, VkImageType type, VkFormat format,
         VkExtent3D size, uint32_t num_mipmaps, uint32_t num_layers,
         VkSampleCountFlagBits samples, VkImageUsageFlags usage_scenarios,
         bool cubemap);
-  Image(const LogicalDevice &logical_device, VkImage handle);
+  Image(const LogicalDevice *logical_device, VkImage handle);
+  Image(const Image &&other) = delete;
+  Image(Image &&other);
   ~Image();
   ///\return const LogicalDevice& device owner of its resouce
-  const LogicalDevice &device() const;
+  const LogicalDevice *device() const;
   ///\return VkImage vulkan handle object
   VkImage handle() const;
   ///\brief
@@ -126,7 +128,7 @@ public:
   bool memoryRequirements(VkMemoryRequirements &memory_requirements) const;
 
 private:
-  const LogicalDevice &logical_device_;
+  const LogicalDevice *logical_device_ = nullptr;
   VkImage vk_image_ = VK_NULL_HANDLE;
   bool do_not_destroy_ = false;
 };

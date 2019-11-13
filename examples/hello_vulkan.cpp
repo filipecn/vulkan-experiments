@@ -1,8 +1,25 @@
 #include "logging.h"
 #include "vk_app.h"
+#include <fstream>
 #include <iostream>
 
-// #include <dlfcn.h>
+static std::vector<char> readFile(const std::string &filename) {
+  std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+  if (!file.is_open()) {
+    throw std::runtime_error("failed to open file!");
+  }
+
+  size_t fileSize = (size_t)file.tellg();
+  std::vector<char> buffer(fileSize);
+
+  file.seekg(0);
+  file.read(buffer.data(), fileSize);
+
+  file.close();
+
+  return buffer;
+}
 
 int main(int argc, char const *argv[]) {
 #ifndef GLFW_INCLUDE_VULKAN

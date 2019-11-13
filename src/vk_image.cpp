@@ -33,16 +33,16 @@ namespace circe {
 
 namespace vk {
 
-Image::View::View(const Image &image, VkImageViewType view_type,
+Image::View::View(const Image *image, VkImageViewType view_type,
                   VkFormat format, VkImageAspectFlags aspect)
     : image_(image) {
   VkImageViewCreateInfo image_view_create_info = {
       VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, // VkStructureType sType
-      nullptr,        // const void               * pNext
-      0,              // VkImageViewCreateFlags     flags
-      image.handle(), // VkImage                    image
-      view_type,      // VkImageViewType            viewType
-      format,         // VkFormat                   format
+      nullptr,         // const void               * pNext
+      0,               // VkImageViewCreateFlags     flags
+      image->handle(), // VkImage                    image
+      view_type,       // VkImageViewType            viewType
+      format,          // VkFormat                   format
       {
           // VkComponentMapping         components
           VK_COMPONENT_SWIZZLE_IDENTITY, // VkComponentSwizzle         r
@@ -59,7 +59,7 @@ Image::View::View(const Image &image, VkImageViewType view_type,
           VK_REMAINING_ARRAY_LAYERS // uint32_t                   layerCount
       }};
 
-  CHECK_VULKAN(vkCreateImageView(image.device().handle(),
+  CHECK_VULKAN(vkCreateImageView(image->device()->handle(),
                                  &image_view_create_info, nullptr,
                                  &vk_image_view_));
 }
@@ -70,13 +70,13 @@ Image::View::View(Image::View &&other) : image_(other.image_) {
 }
 
 Image::View::~View() {
-  if (VK_NULL_HANDLE != vk_image_view_)
-    vkDestroyImageView(image_.device().handle(), vk_image_view_, nullptr);
+  if (image_ && VK_NULL_HANDLE != vk_image_view_)
+    vkDestroyImageView(image_->device()->handle(), vk_image_view_, nullptr);
 }
 
 VkImageView Image::View::handle() const { return vk_image_view_; }
 
-Image::Image(const LogicalDevice &logical_device, VkImageType type,
+Image::Image(const LogicalDevice *logical_device, VkImageType type,
              VkFormat format, VkExtent3D size, uint32_t num_mipmaps,
              uint32_t num_layers, VkSampleCountFlagBits samples,
              VkImageUsageFlags usage_scenarios, bool cubemap)
@@ -99,24 +99,30 @@ Image::Image(const LogicalDevice &logical_device, VkImageType type,
       nullptr, // const uint32_t         * pQueueFamilyIndices
       VK_IMAGE_LAYOUT_UNDEFINED // VkImageLayout            initialLayout
   };
-  CHECK_VULKAN(vkCreateImage(logical_device.handle(), &image_create_info,
+  CHECK_VULKAN(vkCreateImage(logical_device->handle(), &image_create_info,
                              nullptr, &vk_image_));
   if (vk_image_ == VK_NULL_HANDLE)
     INFO("Could not create image.");
 }
 
-Image::Image(const LogicalDevice &logical_device, VkImage handle)
+Image::Image(const LogicalDevice *logical_device, VkImage handle)
     : logical_device_(logical_device), vk_image_(handle),
       do_not_destroy_(true) {}
 
+Image::Image(Image &&other)
+    : logical_device_(other.logical_device_), vk_image_(other.vk_image_),
+      do_not_destroy_(other.do_not_destroy_) {
+  other.vk_image_ = VK_NULL_HANDLE;
+}
+
 Image::~Image() {
-  if (VK_NULL_HANDLE != vk_image_ && !do_not_destroy_)
-    vkDestroyImage(logical_device_.handle(), vk_image_, nullptr);
+  if (logical_device_ && VK_NULL_HANDLE != vk_image_ && !do_not_destroy_)
+    vkDestroyImage(logical_device_->handle(), vk_image_, nullptr);
 }
 
 VkImage Image::handle() const { return vk_image_; }
 
-const LogicalDevice &Image::device() const { return logical_device_; }
+const LogicalDevice *Image::device() const { return logical_device_; }
 
 bool Image::good() const { return vk_image_ != VK_NULL_HANDLE; }
 
@@ -127,14 +133,14 @@ bool Image::subresourceLayout(VkImageAspectFlags aspect_mask,
   subresource.aspectMask = aspect_mask;
   subresource.mipLevel = mip_level;
   subresource.arrayLayer = array_layer;
-  vkGetImageSubresourceLayout(logical_device_.handle(), vk_image_, &subresource,
-                              &subresource_layout);
+  vkGetImageSubresourceLayout(logical_device_->handle(), vk_image_,
+                              &subresource, &subresource_layout);
   return true;
 }
 
 bool Image::memoryRequirements(
     VkMemoryRequirements &memory_requirements) const {
-  vkGetImageMemoryRequirements(logical_device_.handle(), vk_image_,
+  vkGetImageMemoryRequirements(logical_device_->handle(), vk_image_,
                                &memory_requirements);
   return true;
 }

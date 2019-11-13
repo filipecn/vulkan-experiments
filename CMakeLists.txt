@@ -40,7 +40,6 @@ endif()
 # find_package(vulkan REQUIRED)
 
 set(SOURCES
-    src/hello_vulkan.cpp 
     src/vk_app.cpp
     src/vk_buffer.cpp
 	src/vk_command_buffer.cpp
@@ -57,7 +56,7 @@ set(SOURCES
 	src/vulkan_logical_device.cpp
 	src/vulkan_physical_device.cpp
     )
-    set(HEADERS 
+set(HEADERS 
 	src/logging.h
     src/vk_app.h
     src/vk_buffer.h
@@ -75,16 +74,18 @@ set(SOURCES
 	src/vulkan_logical_device.h
 	src/vulkan_physical_device.h
 )
-add_executable(hello_vulkan ${SOURCES} ${HEADERS})
-target_include_directories(hello_vulkan PUBLIC ${GLOG_INCLUDE_DIR} ${GLFW_INCLUDES} ${VULKAN_INCLUDES})
-add_dependencies(hello_vulkan 
-glfw 
-)
-target_link_libraries(hello_vulkan 
+
+add_library(vk STATIC ${SOURCES} ${HEADERS})
+set_target_properties(vk PROPERTIES
+        OUTPUT_NAME "vk"
+        FOLDER "VK")
+target_include_directories(vk PUBLIC ${GLOG_INCLUDE_DIR} ${GLFW_INCLUDES} ${VULKAN_INCLUDES})
+target_link_libraries(vk
 # Vulkan::Vulkan
  ${GLFW_LIBRARIES} 
  ${VULKAN_LIBRARIES}
  )
+
 
 if(APPLE)
 add_custom_command(TARGET hello_vulkan POST_BUILD        
@@ -92,3 +93,5 @@ add_custom_command(TARGET hello_vulkan POST_BUILD
         "/Users/filipecn/Documents/vulkansdk-macos-1.1.114.0/macOS/lib/libvulkan.1.1.114.dylib"
         $<TARGET_FILE_DIR:hello_vulkan>)                 
 endif()
+
+add_subdirectory(examples)

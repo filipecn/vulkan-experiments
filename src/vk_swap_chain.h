@@ -84,7 +84,7 @@ public:
   /// rendering direct to the image, use ..._STORAGE_BIT)
   /// \param surface_transform **[in]** surface transform
   /// \param present_mode **[in]** presentation mode
-  Swapchain(const LogicalDevice &logical_device,
+  Swapchain(const LogicalDevice *logical_device,
             VkSurfaceKHR presentation_surface, uint32_t image_count,
             VkSurfaceFormatKHR surface_format, VkExtent2D image_size,
             VkImageUsageFlags image_usage,
@@ -129,7 +129,7 @@ private:
               VkSurfaceTransformFlagBitsKHR surface_transform,
               VkPresentModeKHR present_mode);
 
-  const LogicalDevice &logical_device_;
+  const LogicalDevice *logical_device_ = nullptr;
   VkSwapchainKHR vk_swapchain_;
   std::vector<Image> images_;
   VkExtent2D image_size_;

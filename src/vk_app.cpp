@@ -158,12 +158,12 @@ bool App::setupSwapChain(VkFormat desired_format,
   // SWAP CHAIN
   VkSurfaceFormatKHR surface_format = {image_format, image_color_space};
   swapchain_ = std::make_unique<Swapchain>(
-      *logical_device_.get(), surface_, number_of_images, surface_format,
+      logical_device_.get(), surface_, number_of_images, surface_format,
       swap_chain_image_size, image_usage, surface_transform, present_mode);
   // CREATE IMAGE VIEWS
-  auto swap_chain_images = swapchain_->images();
+  const auto &swap_chain_images = swapchain_->images();
   for (uint32_t i = 0; i < swap_chain_images.size(); i++)
-    swap_chain_image_views_.emplace_back(swap_chain_images[i],
+    swap_chain_image_views_.emplace_back(&swap_chain_images[i],
                                          VK_IMAGE_VIEW_TYPE_2D, image_format,
                                          VK_IMAGE_ASPECT_COLOR_BIT);
   return true;
