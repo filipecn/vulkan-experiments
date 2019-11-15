@@ -42,14 +42,19 @@ uint32_t SubpassDescription::addInputAttachmentRef(uint32_t attachment,
   return vk_input_attachments_.size() - 1;
 }
 
-uint32_t SubpassDescription::addColorAttachmentRef(
-    uint32_t attachment, VkImageLayout layout, uint32_t resolve_attachment,
-    VkImageLayout resolve_layout) {
+uint32_t SubpassDescription::addColorAttachmentRef(uint32_t attachment,
+                                                   VkImageLayout layout) {
   VkAttachmentReference ar = {attachment, layout};
   vk_color_attachments_.emplace_back(ar);
+  return vk_color_attachments_.size() - 1;
+}
+
+uint32_t
+SubpassDescription::addResolveAttachmentRef(uint32_t resolve_attachment,
+                                            VkImageLayout resolve_layout) {
   VkAttachmentReference rar = {resolve_attachment, resolve_layout};
   vk_resolve_attachments_.emplace_back(rar);
-  return vk_color_attachments_.size() - 1;
+  return vk_resolve_attachments_.size() - 1;
 }
 
 void SubpassDescription::setDepthStencilAttachmentRef(uint32_t attachment,
@@ -92,12 +97,12 @@ bool SubpassDescription::hasDepthStencilAttachmentRef() const {
   return depth_stencil_attachment_set_;
 }
 
-RenderPass::RenderPass(const LogicalDevice &logical_device)
+RenderPass::RenderPass(const LogicalDevice *logical_device)
     : logical_device_(logical_device) {}
 
 RenderPass::~RenderPass() {
   if (vk_renderpass_ != VK_NULL_HANDLE)
-    vkDestroyRenderPass(logical_device_.handle(), vk_renderpass_, nullptr);
+    vkDestroyRenderPass(logical_device_->handle(), vk_renderpass_, nullptr);
 }
 
 void RenderPass::addAttachement(VkFormat format, VkSampleCountFlagBits samples,
@@ -169,7 +174,7 @@ VkRenderPass RenderPass::handle() {
                                    subpass_descriptions.data(),
                                    vk_subpass_dependencies_.size(),
                                    vk_subpass_dependencies_.data()};
-    VkResult result = vkCreateRenderPass(logical_device_.handle(), &info,
+    VkResult result = vkCreateRenderPass(logical_device_->handle(), &info,
                                          nullptr, &vk_renderpass_);
     CHECK_VULKAN(result);
     if (result != VK_SUCCESS)

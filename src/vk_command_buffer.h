@@ -224,7 +224,7 @@ public:
   ///
   ///\param graphics_pipeline **[in]**
   ///\return bool
-  bool bind(const GraphicsPipeline &graphics_pipeline) const;
+  bool bind(GraphicsPipeline &graphics_pipeline) const;
   ///\brief
   ///
   ///\param pipeline_bind_point **[in]** VK_PIPELINE_BIND_POINT_[COMPUTE |

@@ -125,9 +125,14 @@ bool Swapchain::create(VkSurfaceKHR presentation_surface, uint32_t image_count,
   }
 
   image_size_ = image_size;
+  surface_format_ = surface_format;
 
   return true;
 }
+
+VkExtent2D Swapchain::imageSize() const { return image_size_; }
+
+VkSurfaceFormatKHR Swapchain::surfaceFormat() const { return surface_format_; }
 
 } // namespace vk
 

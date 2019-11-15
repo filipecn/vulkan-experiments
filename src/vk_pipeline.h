@@ -43,7 +43,7 @@ public:
   ///\brief Construct a new Descriptor Set object
   ///
   ///\param logical_device **[in]**
-  DescriptorSetLayout(const LogicalDevice &logical_device);
+  DescriptorSetLayout(const LogicalDevice *logical_device);
   ~DescriptorSetLayout();
 
   ///\brief
@@ -63,7 +63,7 @@ public:
                         VkShaderStageFlags stage_flags);
 
 private:
-  const LogicalDevice &logical_device_;
+  const LogicalDevice *logical_device_ = nullptr;
   VkDescriptorSetLayout vk_descriptor_set_layout_ = VK_NULL_HANDLE;
   std::vector<VkDescriptorSetLayoutBinding> bindings_;
 };
@@ -74,7 +74,7 @@ public:
   ///\brief Construct a new Pipeline Layout object
   ///
   ///\param logical_device **[in]**
-  PipelineLayout(const LogicalDevice &logical_device);
+  PipelineLayout(const LogicalDevice *logical_device);
   ~PipelineLayout();
   VkPipelineLayout handle();
   ///\brief Create a Layout Set object
@@ -97,7 +97,7 @@ public:
                             uint32_t size);
 
 private:
-  const LogicalDevice &logical_device_;
+  const LogicalDevice *logical_device_ = nullptr;
   VkPipelineLayout vk_pipeline_layout_ = VK_NULL_HANDLE;
   std::vector<DescriptorSetLayout> descriptor_sets_;
   std::vector<VkPushConstantRange> vk_push_constant_ranges_;
@@ -208,7 +208,7 @@ public:
   ///\brief Construct a new Pipeline object
   ///
   ///\param logical_device **[in]**
-  Pipeline(const LogicalDevice &logical_device);
+  Pipeline(const LogicalDevice *logical_device);
   virtual ~Pipeline();
   ///\brief
   ///
@@ -223,7 +223,7 @@ public:
   VkPipelineCache cache() const;
 
 protected:
-  const LogicalDevice &logical_device_;
+  const LogicalDevice *logical_device_ = nullptr;
   VkPipeline vk_pipeline_ = VK_NULL_HANDLE;
   VkPipelineCache vk_pipeline_cache_ = VK_NULL_HANDLE;
   std::vector<VkPipelineShaderStageCreateInfo> shader_stage_infos_;
@@ -239,7 +239,7 @@ public:
   ///\param cache **[in]**
   ///\param base_pipeline **[in]**
   ///\param base_pipeline_index **[in]**
-  ComputePipeline(const LogicalDevice &logical_device,
+  ComputePipeline(const LogicalDevice *logical_device,
                   const PipelineShaderStage &stage, PipelineLayout &layout,
                   Pipeline *cache = nullptr,
                   ComputePipeline *base_pipeline = nullptr,
@@ -296,6 +296,7 @@ public:
     ///\param width **[in]**
     ///\param height **[in]**
     void addScissor(int32_t x, int32_t y, uint32_t width, uint32_t height);
+    const VkPipelineViewportStateCreateInfo *info() const;
 
   private:
     VkPipelineViewportStateCreateInfo info_;
@@ -342,15 +343,14 @@ public:
   ///\param flags **[in]**
   ///\param base_pipeline **[in]**
   ///\param base_pipeline_index **[in]**
-  GraphicsPipeline(const LogicalDevice &logical_device, PipelineLayout &layout,
+  GraphicsPipeline(const LogicalDevice *logical_device, PipelineLayout &layout,
                    RenderPass &renderpass, uint32_t subpass,
                    VkPipelineCreateFlags flags = 0,
                    GraphicsPipeline *base_pipeline = nullptr,
                    uint32_t base_pipeline_index = 0);
 
-  VertexInputState vertex_input_state;
-  ViewportState viewport_state;
-  ColorBlendState color_blend_state;
+  VkPipeline handle();
+
   ///\brief Set the Input State object
   ///
   ///\param topology **[in]**
@@ -418,6 +418,10 @@ public:
   ///\param dynamic_state **[in]**
   void addDynamicState(VkDynamicState dynamic_state);
 
+  VertexInputState vertex_input_state;
+  ViewportState viewport_state;
+  ColorBlendState color_blend_state;
+
 private:
   VkPipelineCreateFlags flags_ = 0;
   std::unique_ptr<VkPipelineInputAssemblyStateCreateInfo> input_assembly_state_;
@@ -427,6 +431,7 @@ private:
   std::unique_ptr<VkPipelineDepthStencilStateCreateInfo> depth_stencil_state_;
   std::unique_ptr<VkPipelineDynamicStateCreateInfo> dynamic_state_;
   std::vector<VkDynamicState> dynamic_states_;
+  VkGraphicsPipelineCreateInfo info_ = {};
 };
 
 } // namespace vk

@@ -169,6 +169,18 @@ bool App::setupSwapChain(VkFormat desired_format,
   return true;
 }
 
+const LogicalDevice *App::logicalDevice() {
+  if (!logical_device_)
+    createLogicalDevice();
+  return logical_device_.get();
+}
+
+const Swapchain *App::swapchain() {
+  if (!swapchain_)
+    setupSwapChain(VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
+  return swapchain_.get();
+}
+
 bool App::selectNumberOfSwapchainImages(
     VkSurfaceCapabilitiesKHR const &surface_capabilities,
     uint32_t &number_of_images) const {

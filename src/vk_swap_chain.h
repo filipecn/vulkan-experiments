@@ -121,6 +121,8 @@ public:
   /// \return bool true if success
   bool nextImage(VkSemaphore semaphore, VkFence fence, uint32_t &image_index);
   const std::vector<Image> &images() const;
+  VkExtent2D imageSize() const;
+  VkSurfaceFormatKHR surfaceFormat() const;
 
 private:
   bool create(VkSurfaceKHR presentation_surface, uint32_t image_count,
@@ -133,6 +135,7 @@ private:
   VkSwapchainKHR vk_swapchain_;
   std::vector<Image> images_;
   VkExtent2D image_size_;
+  VkSurfaceFormatKHR surface_format_;
 };
 
 } // namespace vk

@@ -58,6 +58,7 @@ set(SOURCES
     )
 set(HEADERS 
 	src/logging.h
+	src/vk.h
     src/vk_app.h
     src/vk_buffer.h
 	src/vk_command_buffer.h

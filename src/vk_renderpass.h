@@ -58,14 +58,15 @@ public:
   /// the RenderPass object
   ///\param layout **[in]** image layout that the attachment is expected to be
   /// in at this subpass
+  ///\return uint32_t index of the added attachment reference
+  uint32_t addColorAttachmentRef(uint32_t attachment, VkImageLayout layout);
   ///\param resolve_attachment **[in]** index into the array of attachments
   /// created in the RenderPass object
   ///\param resolve_layout **[in]** image layout that the attachment is expected
   /// to be in at this subpass
   ///\return uint32_t index of the added attachment reference
-  uint32_t addColorAttachmentRef(uint32_t attachment, VkImageLayout layout,
-                                 uint32_t resolve_attachment,
-                                 VkImageLayout resolve_layout);
+  uint32_t addResolveAttachmentRef(uint32_t resolve_attachment,
+                                   VkImageLayout resolve_layout);
   ///\brief Sets the depth-stencil attachment reference
   /// The depth/stencil attachment is the attachment used as a depth and stencil
   /// buffer.
@@ -104,7 +105,7 @@ private:
 /// subpass reads data back). Then dependencies must be explicitly defined.
 class RenderPass {
 public:
-  RenderPass(const LogicalDevice &logical_device);
+  RenderPass(const LogicalDevice *logical_device);
   ~RenderPass();
   ///\brief
   /// The load/store ops parameters specify what to do with the attachment at
@@ -145,7 +146,7 @@ public:
   VkRenderPass handle();
 
 private:
-  const LogicalDevice &logical_device_;
+  const LogicalDevice *logical_device_ = nullptr;
   VkRenderPass vk_renderpass_ = CALLBACK_NULL;
   std::vector<VkAttachmentDescription> vk_attachments_;
   std::vector<VkSubpassDependency> vk_subpass_dependencies_;

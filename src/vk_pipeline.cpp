@@ -33,12 +33,12 @@ namespace circe {
 
 namespace vk {
 
-DescriptorSetLayout::DescriptorSetLayout(const LogicalDevice &logical_device)
+DescriptorSetLayout::DescriptorSetLayout(const LogicalDevice *logical_device)
     : logical_device_(logical_device) {}
 
 DescriptorSetLayout::~DescriptorSetLayout() {
   if (vk_descriptor_set_layout_ != VK_NULL_HANDLE)
-    vkDestroyDescriptorSetLayout(logical_device_.handle(),
+    vkDestroyDescriptorSetLayout(logical_device_->handle(),
                                  vk_descriptor_set_layout_, nullptr);
 }
 
@@ -46,9 +46,9 @@ VkDescriptorSetLayout DescriptorSetLayout::handle() {
   if (vk_descriptor_set_layout_) {
     VkDescriptorSetLayoutCreateInfo info = {
         VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, nullptr, 0,
-        bindings_.size(), bindings_.data()};
+        bindings_.size(), (bindings_.size()) ? bindings_.data() : nullptr};
     VkResult result = vkCreateDescriptorSetLayout(
-        logical_device_.handle(), &info, nullptr, &vk_descriptor_set_layout_);
+        logical_device_->handle(), &info, nullptr, &vk_descriptor_set_layout_);
     CHECK_VULKAN(result);
     if (result != VK_SUCCESS)
       vk_descriptor_set_layout_ = VK_NULL_HANDLE;
@@ -69,12 +69,12 @@ DescriptorSetLayout &PipelineLayout::descriptorSetLayout(uint32_t id) {
   return descriptor_sets_[id];
 }
 
-PipelineLayout::PipelineLayout(const LogicalDevice &logical_device)
+PipelineLayout::PipelineLayout(const LogicalDevice *logical_device)
     : logical_device_(logical_device) {}
 
 PipelineLayout::~PipelineLayout() {
   if (vk_pipeline_layout_ != VK_NULL_HANDLE)
-    vkDestroyPipelineLayout(logical_device_.handle(), vk_pipeline_layout_,
+    vkDestroyPipelineLayout(logical_device_->handle(), vk_pipeline_layout_,
                             nullptr);
 }
 
@@ -91,7 +91,7 @@ VkPipelineLayout PipelineLayout::handle() {
         layout_handles.data(),
         vk_push_constant_ranges_.size(),
         vk_push_constant_ranges_.data()};
-    VkResult result = vkCreatePipelineLayout(logical_device_.handle(), &info,
+    VkResult result = vkCreatePipelineLayout(logical_device_->handle(), &info,
                                              nullptr, &vk_pipeline_layout_);
     CHECK_VULKAN(result);
     if (result != VK_SUCCESS)
@@ -184,6 +184,8 @@ PipelineShaderStage::PipelineShaderStage(VkShaderStageFlagBits stage,
     : stage_(stage), module_(module.handle()), name_(name) {
   specialization_info_.pData = specialization_info_data;
   specialization_info_.dataSize = specialization_info_data_size;
+  specialization_info_.mapEntryCount = 0;
+  specialization_info_.pMapEntries = nullptr;
 }
 
 void PipelineShaderStage::addSpecializationMapEntry(uint32_t constant_id,
@@ -205,26 +207,28 @@ const VkSpecializationInfo *PipelineShaderStage::specializationInfo() const {
   return &specialization_info_;
 }
 
-Pipeline::Pipeline(const LogicalDevice &logical_device)
+Pipeline::Pipeline(const LogicalDevice *logical_device)
     : logical_device_(logical_device) {}
 
 Pipeline::~Pipeline() {
   if (vk_pipeline_ != VK_NULL_HANDLE)
-    vkDestroyPipeline(logical_device_.handle(), vk_pipeline_, nullptr);
+    vkDestroyPipeline(logical_device_->handle(), vk_pipeline_, nullptr);
 }
 
 bool Pipeline::saveCache(const std::string &path) {
   size_t cache_data_size;
   // Determine the size of the cache data
-  R_CHECK_VULKAN(vkGetPipelineCacheData(
-      logical_device_.handle(), vk_pipeline_cache_, &cache_data_size, nullptr));
+  R_CHECK_VULKAN(vkGetPipelineCacheData(logical_device_->handle(),
+                                        vk_pipeline_cache_, &cache_data_size,
+                                        nullptr));
   VkResult result = VK_ERROR_OUT_OF_HOST_MEMORY;
   if (cache_data_size != 0) {
     void *data = new char[cache_data_size];
     if (data) {
       // Retrieve the actual data from the cache
-      result = vkGetPipelineCacheData(
-          logical_device_.handle(), vk_pipeline_cache_, &cache_data_size, data);
+      result =
+          vkGetPipelineCacheData(logical_device_->handle(), vk_pipeline_cache_,
+                                 &cache_data_size, data);
       CHECK_VULKAN(result);
       if (result == VK_SUCCESS) {
         std::ofstream ofile(path, std::ios::binary);
@@ -252,9 +256,10 @@ void Pipeline::addShaderStage(const PipelineShaderStage &stage) {
       stage.module(),
       stage.name().c_str(),
       stage.specializationInfo()};
+  shader_stage_infos_.emplace_back(info);
 }
 
-ComputePipeline::ComputePipeline(const LogicalDevice &logical_device,
+ComputePipeline::ComputePipeline(const LogicalDevice *logical_device,
                                  const PipelineShaderStage &stage,
                                  PipelineLayout &layout, Pipeline *cache,
                                  ComputePipeline *base_pipeline,
@@ -268,7 +273,7 @@ ComputePipeline::ComputePipeline(const LogicalDevice &logical_device,
       layout.handle(),
       (base_pipeline ? base_pipeline->handle() : VK_NULL_HANDLE),
       base_pipeline_index};
-  vkCreateComputePipelines(this->logical_device_.handle(),
+  vkCreateComputePipelines(this->logical_device_->handle(),
                            (cache ? cache->cache() : VK_NULL_HANDLE), 1, &info,
                            nullptr, &this->vk_pipeline_);
 }
@@ -330,6 +335,11 @@ void GraphicsPipeline::ViewportState::addScissor(int32_t x, int32_t y,
   info_.scissorCount = scissors_.size();
 }
 
+const VkPipelineViewportStateCreateInfo *
+GraphicsPipeline::ViewportState::info() const {
+  return &info_;
+}
+
 GraphicsPipeline::ColorBlendState::ColorBlendState() {
   info_.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
   info_.pNext = nullptr;
@@ -371,13 +381,49 @@ GraphicsPipeline::ColorBlendState::info() const {
   return &info_;
 }
 
-GraphicsPipeline::GraphicsPipeline(const LogicalDevice &logical_device,
+GraphicsPipeline::GraphicsPipeline(const LogicalDevice *logical_device,
                                    PipelineLayout &layout,
                                    RenderPass &renderpass, uint32_t subpass,
                                    VkPipelineCreateFlags flags,
                                    GraphicsPipeline *base_pipeline,
                                    uint32_t base_pipeline_index)
-    : Pipeline(logical_device), flags_(flags) {}
+    : Pipeline(logical_device), flags_(flags) {
+  info_.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+  info_.flags = flags;
+  info_.layout = layout.handle();
+  info_.renderPass = renderpass.handle();
+  info_.subpass = subpass;
+  info_.basePipelineHandle =
+      base_pipeline ? base_pipeline->handle() : VK_NULL_HANDLE;
+  info_.basePipelineIndex = base_pipeline_index;
+}
+
+VkPipeline GraphicsPipeline::handle() {
+  if (this->vk_pipeline_ == VK_NULL_HANDLE) {
+    info_.stageCount = this->shader_stage_infos_.size();
+    info_.pStages = this->shader_stage_infos_.data();
+    info_.pVertexInputState = vertex_input_state.info();
+    info_.pInputAssemblyState = input_assembly_state_.get();
+    info_.pTessellationState = tesselation_state_.get();
+    info_.pViewportState = viewport_state.info();
+    info_.pRasterizationState = rasterization_state_.get();
+    info_.pMultisampleState = multisample_state_.get();
+    info_.pDepthStencilState = depth_stencil_state_.get();
+    info_.pColorBlendState = color_blend_state.info();
+    VkPipelineDynamicStateCreateInfo d_info = {
+        VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO, // VkStructureType
+        nullptr,                                              // pNext
+        0,                      // VkPipelineDynamicStateCreateFlags
+        dynamic_states_.size(), // dynamicStateCount;
+        (dynamic_states_.size()) ? dynamic_states_.data() : nullptr};
+    info_.pDynamicState = &d_info;
+
+    VkResult result = vkCreateGraphicsPipelines(this->logical_device_->handle(),
+                                                VK_NULL_HANDLE, 1, &info_,
+                                                nullptr, &this->vk_pipeline_);
+  }
+  return this->vk_pipeline_;
+} // namespace vk
 
 void GraphicsPipeline::setInputState(VkPrimitiveTopology topology,
                                      VkBool32 primitive_restart_enable) {

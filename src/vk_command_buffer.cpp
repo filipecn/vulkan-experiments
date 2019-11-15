@@ -181,7 +181,7 @@ bool CommandBuffer::bind(const ComputePipeline &compute_pipeline) const {
   return true;
 }
 
-bool CommandBuffer::bind(const GraphicsPipeline &graphics_pipeline) const {
+bool CommandBuffer::bind(GraphicsPipeline &graphics_pipeline) const {
   vkCmdBindPipeline(vk_command_buffer_, VK_PIPELINE_BIND_POINT_GRAPHICS,
                     graphics_pipeline.handle());
   return true;

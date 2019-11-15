@@ -51,25 +51,27 @@ private:
 // stages.
 class ShaderModule {
 public:
-  ShaderModule(const LogicalDevice &logical_device,
-               std::vector<unsigned char> const &source_code);
+  ShaderModule(const LogicalDevice *logical_device,
+               const std::string &filename);
+  ShaderModule(const LogicalDevice *logical_device,
+               std::vector<char> const &source_code);
   ~ShaderModule();
   VkShaderModule handle() const;
 
 private:
-  const LogicalDevice &logical_device_;
+  const LogicalDevice *logical_device_ = nullptr;
   VkShaderModule vk_shader_module_ = VK_NULL_HANDLE;
 };
 
 /// Defines parameters for shader stages definitions
-struct ShaderStageDescriptor {
-  VkShaderStageFlagBits shader_stage; //!< pipeline stage
-  VkShaderModule shader_module;       //!< module with the shader code
-  char const *entry_point_name; //!< function name associated with the stage
-  VkSpecializationInfo const
-      *specialization_info; //!< allows modification of constant variables
-                            //!< defined in shader
-};
+// struct ShaderStageDescriptor {
+//  VkShaderStageFlagBits shader_stage; //!< pipeline stage
+//  VkShaderModule shader_module;       //!< module with the shader code
+//  char const *entry_point_name; //!< function name associated with the stage
+//  VkSpecializationInfo const
+//      *specialization_info; //!< allows modification of constant variables
+//!< defined in shader
+//};
 
 } // namespace vk
 

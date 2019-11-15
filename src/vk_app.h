@@ -90,6 +90,8 @@ public:
   /// \param color_space **[in]** desired color space
   /// \return bool true if success
   bool setupSwapChain(VkFormat format, VkColorSpaceKHR color_space);
+  const LogicalDevice *logicalDevice();
+  const Swapchain *swapchain();
 
 private:
   bool selectNumberOfSwapchainImages(
