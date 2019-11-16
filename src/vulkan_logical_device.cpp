@@ -36,7 +36,8 @@ namespace vk {
 LogicalDevice::LogicalDevice(
     const PhysicalDevice &physical_device,
     std::vector<char const *> const &desired_extensions,
-    VkPhysicalDeviceFeatures *desired_features, QueueFamilies &queue_infos)
+    VkPhysicalDeviceFeatures *desired_features, QueueFamilies &queue_infos,
+    const std::vector<const char *> &validation_layers)
     : physical_device_(physical_device) {
   for (auto &extension : desired_extensions)
     if (!physical_device.isExtensionSupported(extension)) {
@@ -63,8 +64,10 @@ LogicalDevice::LogicalDevice(
           queue_create_infos.size()), // uint32_t queueCreateInfoCount
       queue_create_infos
           .data(), // const VkDeviceQueueCreateInfo  * pQueueCreateInfos
-      0,           // uint32_t                         enabledLayerCount
-      nullptr,     // const char * const             * ppEnabledLayerNames
+      validation_layers.size(), // uint32_t enabledLayerCount
+      (validation_layers.size())
+          ? validation_layers.data()
+          : nullptr, // const char * const             * ppEnabledLayerNames
       static_cast<uint32_t>(
           desired_extensions.size()), // uint32_t enabledExtensionCount
       desired_extensions

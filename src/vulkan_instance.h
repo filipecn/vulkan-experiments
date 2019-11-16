@@ -36,24 +36,43 @@ namespace circe {
 
 namespace vk {
 
+class SupportInfo {
+public:
+  SupportInfo();
+  bool isValidationLayerSupported(const char *validation_layer) const;
+  /// Checks if extension is supported by the instance
+  ///\param desired_instance_extension **[in]** extension name (ex: )
+  ///\return bool true if extension is supported
+  bool
+  isInstanceExtensionSupported(const char *desired_instance_extension) const;
+
+private:
+  /// Gets the list of the properties of supported instance extensions on the
+  /// current hardware platform.
+  /// \param extensions **[out]** list of extensions
+  /// \return bool true if success
+  bool checkAvailableExtensions(std::vector<VkExtensionProperties> &extensions);
+  bool checkAvailableValidationLayers(
+      std::vector<VkLayerProperties> &validation_layers);
+
+  static bool first_build_flag;
+  static std::vector<VkExtensionProperties> vk_extensions_;
+  static std::vector<VkLayerProperties> vk_validation_layers_;
+};
+
 ///\brief Vulkan Instance object handle
 /// The Vulkan Instance holds all kinds of information about the application,
 /// such as application name, version, etc. The instance is the interface
 /// between the application and the Vulkan Library.
 class Instance final {
 public:
-  /// Gets the list of the properties of supported instance extensions on the
-  /// current hardware platform.
-  /// \param extensions **[out]** list of extensions
-  /// \return bool true if success
-  static bool
-  checkAvailableExtensions(std::vector<VkExtensionProperties> &extensions);
-
   ///\brief Construct a new Instance object
   ///\param application_name **[in]**
   ///\param desired_instance_extensions **[in | default = {}]**
   Instance(std::string application_name,
            const std::vector<const char *> &desired_instance_extensions =
+               std::vector<const char *>(),
+           const std::vector<const char *> &validation_layers =
                std::vector<const char *>());
   ///\brief Default destructor
   ~Instance();
@@ -61,10 +80,6 @@ public:
   /// Checks with instance object construction succeded
   ///\return bool true if this can be used
   bool good() const;
-  /// Checks if extension is supported by the instance
-  ///\param desired_instance_extension **[in]** extension name (ex: )
-  ///\return bool true if extension is supported
-  bool isExtensionSupported(const char *desired_instance_extension) const;
   ///\brief
   ///
   ///\param physical_devices **[in]**
@@ -74,7 +89,7 @@ public:
 
 private:
   VkInstance vk_instance_ = VK_NULL_HANDLE;
-  std::vector<VkExtensionProperties> vk_extensions_;
+  VkDebugUtilsMessengerEXT vk_debug_messenger_;
 };
 
 } // namespace vk

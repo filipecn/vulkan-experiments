@@ -56,12 +56,19 @@ void App::run(const std::function<void()> &render_callback) {
 
 void App::exit() { graphics_display_->close(); }
 
+void App::setValidationLayers(
+    const std::vector<const char *> &validation_layer_names,
+    bool instance_level, bool device_level) {
+  validation_layer_names_ = validation_layer_names;
+}
+
 bool App::setInstance(const std::vector<const char *> &extensions) {
   auto es = extensions;
   auto window_extensions = graphics_display_->requiredVkExtensions();
   for (auto e : window_extensions)
     es.emplace_back(e);
-  instance_ = std::make_unique<Instance>(application_name_, es);
+  instance_ = std::make_unique<Instance>(application_name_, es,
+                                         validation_layer_names_);
   graphics_display_->createWindowSurface(*instance_.get(), surface_);
   return instance_->good();
 }
@@ -111,7 +118,8 @@ bool App::createLogicalDevice(
   auto extensions = desired_extensions;
   extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
   logical_device_ = std::make_unique<LogicalDevice>(
-      *physical_device_.get(), extensions, desired_features, queue_families_);
+      *physical_device_.get(), extensions, desired_features, queue_families_,
+      validation_layer_names_);
   return logical_device_->good();
 }
 
@@ -187,7 +195,7 @@ const std::vector<Image::View> &App::swapchainImageViews() {
   return swap_chain_image_views_;
 }
 
-const QueueFamilies &App::queueFamilies() const { return queue_families_; }
+QueueFamilies &App::queueFamilies() { return queue_families_; }
 
 bool App::selectNumberOfSwapchainImages(
     VkSurfaceCapabilitiesKHR const &surface_capabilities,

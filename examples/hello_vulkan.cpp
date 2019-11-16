@@ -20,6 +20,7 @@ int main(int argc, char const *argv[]) {
 #endif
   // The app represents the window in which we display our graphics
   circe::vk::App app(800, 800);
+  app.setValidationLayers({"VK_LAYER_KHRONOS_validation"});
   // In order to setup the window we first need to connect to the vulkan
   // library. Here we could pass a list of vulkan instance extensions needed by
   // the application. The App automatically handles the basic extensions
@@ -100,8 +101,8 @@ int main(int argc, char const *argv[]) {
       VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD,
       VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
           VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
-  pipeline.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
-  pipeline.addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
+  // pipeline.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
+  // pipeline.addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
   pipeline.handle();
   // The attachments specified during render pass creation are bound by wrapping
   // them into a Framebuffer object. A framebuffer object references all of the

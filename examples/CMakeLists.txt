@@ -13,6 +13,20 @@ target_link_libraries(hello_vulkan vk
 
 include_directories("${VULKAN_EXPERIMENTS_SOURCE_DIR}/src")
 
+add_executable(vulkan_tutorial vulkan_tutorial.cpp)
+target_compile_definitions(vulkan_tutorial PUBLIC -DSHADERS_PATH="${VULKAN_EXPERIMENTS_SOURCE_DIR}/examples")
+target_include_directories(vulkan_tutorial PUBLIC ${GLOG_INCLUDE_DIR} ${GLFW_INCLUDES} ${VULKAN_INCLUDES})
+add_dependencies(vulkan_tutorial
+glfw 
+)
+target_link_libraries(vulkan_tutorial vk
+# Vulkan::Vulkan
+ ${GLFW_LIBRARIES} 
+ ${VULKAN_LIBRARIES}
+ )
+
+
+
 # set(WINDOWS_BINARIES main)
 
 #if (MSVC)

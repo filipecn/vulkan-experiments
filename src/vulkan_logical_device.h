@@ -29,6 +29,7 @@
 #define CIRCE_VULKAN_LOGICAL_DEVICE_H
 
 #include "vulkan_physical_device.h"
+#include <map>
 
 namespace circe {
 
@@ -44,23 +45,35 @@ struct QueueFamilyInfo {
 struct QueueFamilies {
   void add(uint32_t family_index, std::string name,
            std::vector<float> priorities = {1.f}) {
+    for (size_t i = 0; i < families_.size(); ++i)
+      if (families_[i].family_index == family_index) {
+        family_info_indices_[name] = i;
+        for (auto p : priorities) {
+          families_[i].priorities.emplace_back(p);
+          families_[i].vk_queues.push_back(VK_NULL_HANDLE);
+        }
+        return;
+      }
+    size_t family_info_index = families_.size();
+    family_info_indices_[name] = family_info_index;
     families_.emplace_back();
-    families_[families_.size() - 1].family_index = family_index;
-    families_[families_.size() - 1].priorities = priorities;
-    families_[families_.size() - 1].name = name;
-    families_[families_.size() - 1].vk_queues.resize(priorities.size(),
-                                                     VK_NULL_HANDLE);
+    families_[family_info_index].family_index = family_index;
+    families_[family_info_index].priorities = priorities;
+    families_[family_info_index].name = name;
+    families_[family_info_index].vk_queues.resize(priorities.size(),
+                                                  VK_NULL_HANDLE);
   }
   const std::vector<QueueFamilyInfo> &families() const { return families_; }
   std::vector<QueueFamilyInfo> &families() { return families_; }
-  const QueueFamilyInfo &family(std::string name) const {
-    for (const auto &f : families_)
-      if (f.name == name)
-        return f;
+  const QueueFamilyInfo &family(std::string name) {
+    auto it = family_info_indices_.find(name);
+    if (it != family_info_indices_.end())
+      return families_[family_info_indices_[name]];
     return families_[0];
   }
 
 private:
+  std::map<std::string, size_t> family_info_indices_;
   std::vector<QueueFamilyInfo> families_;
 };
 /// The logical device makes the interface of the application and the physical
@@ -81,7 +94,9 @@ public:
   LogicalDevice(const PhysicalDevice &physical_device,
                 std::vector<char const *> const &desired_extensions,
                 VkPhysicalDeviceFeatures *desired_features,
-                QueueFamilies &queue_infos);
+                QueueFamilies &queue_infos,
+                const std::vector<const char *> &validation_layers =
+                    std::vector<const char *>());
   ///\brief Default destructor
   ~LogicalDevice();
   ///\brief

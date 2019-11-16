@@ -331,6 +331,7 @@ void GraphicsPipeline::ViewportState::addScissor(int32_t x, int32_t y,
                                                  uint32_t width,
                                                  uint32_t height) {
   VkRect2D scissor = {{x, y}, {width, height}};
+  scissors_.emplace_back(scissor);
   info_.pScissors = scissors_.data();
   info_.scissorCount = scissors_.size();
 }

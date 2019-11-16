@@ -55,6 +55,9 @@ public:
   void run(const std::function<void()> &render_callback = []() {});
   /// Stops application loop
   void exit();
+  void
+  setValidationLayers(const std::vector<const char *> &validation_layer_names,
+                      bool instance_level = true, bool device_level = true);
   /// Internally creates the Vulkan Instance from information about the
   /// application and desired extensions.
   /// \param extensions **[in | optional]** list of instance extension names
@@ -93,7 +96,7 @@ public:
   const LogicalDevice *logicalDevice();
   const Swapchain *swapchain();
   const std::vector<Image::View> &swapchainImageViews();
-  const QueueFamilies &queueFamilies() const;
+  QueueFamilies &queueFamilies();
 
 private:
   bool selectNumberOfSwapchainImages(
@@ -111,6 +114,7 @@ private:
   std::vector<Image::View> swap_chain_image_views_;
   QueueFamilies queue_families_;
 
+  std::vector<const char *> validation_layer_names_;
   std::string application_name_;
   VkSurfaceKHR surface_ = VK_NULL_HANDLE;
 };
