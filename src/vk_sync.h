@@ -25,8 +25,8 @@
 ///
 ///\brief
 
-#ifndef CIRCE_VULKAN_FENCE_H
-#define CIRCE_VULKAN_FENCE_H
+#ifndef CIRCE_VULKAN_SYNC_H
+#define CIRCE_VULKAN_SYNC_H
 
 #include "vulkan_logical_device.h"
 
@@ -57,14 +57,38 @@ namespace vk {
 // finished.
 class Fence {
 public:
-  Fence(const LogicalDevice &logical_device, VkFenceCreateFlags flags);
+  Fence(const LogicalDevice *logical_device, VkFenceCreateFlags flags);
+  Fence(const Fence &other) = delete;
+  Fence(const Fence &&other) = delete;
+  Fence(Fence &other);
+  Fence(Fence &&other);
   ~Fence();
-
+  VkFence handle() const;
   VkResult status() const;
+  void wait() const;
+  void reset() const;
 
 private:
-  const LogicalDevice &logical_device_;
+  const LogicalDevice *logical_device_ = nullptr;
   VkFence vk_fence_ = VK_NULL_HANDLE;
+};
+
+/// Semaphores cannot be explicitly signaled or wated by the device. Rather,
+/// they are signaled by queues.
+class Semaphore {
+public:
+  Semaphore(const LogicalDevice *logical_device,
+            VkSemaphoreCreateFlags flags = 0);
+  Semaphore(const Semaphore &other) = delete;
+  Semaphore(const Semaphore &&other) = delete;
+  Semaphore(Semaphore &other);
+  Semaphore(Semaphore &&other);
+  ~Semaphore();
+  VkSemaphore handle() const;
+
+private:
+  const LogicalDevice *logical_device_ = nullptr;
+  VkSemaphore vk_semaphore_ = VK_NULL_HANDLE;
 };
 
 } // namespace vk

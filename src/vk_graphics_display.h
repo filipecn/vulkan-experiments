@@ -29,6 +29,7 @@
 #define CIRCE_VK_GRAPHICS_DISPLAY_H
 
 #include "vulkan_instance.h"
+#include <functional>
 // #define GLFW_INCLUDE_VULKAN
 // #include <GLFW/glfw3.h>
 
@@ -52,7 +53,7 @@ public:
   uint32_t width() const;
   uint32_t height() const;
   /// Runs window loop
-  void open();
+  void open(const std::function<void()> & = []() {});
   /// Stops window loop
   void close();
   /// \return bool true if window is running

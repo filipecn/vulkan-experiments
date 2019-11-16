@@ -91,11 +91,12 @@ public:
   ///\param vk_command_buffer **[in]**
   CommandBuffer(VkCommandBuffer vk_command_buffer_);
   ~CommandBuffer() = default;
+  VkCommandBuffer handle() const;
   ///\brief
   ///
   ///\param flags **[in]**
   ///\return bool
-  bool begin(VkCommandBufferUsageFlags flags) const;
+  bool begin(VkCommandBufferUsageFlags flags = 0) const;
   ///\brief
   ///
   ///\return bool
@@ -311,7 +312,7 @@ public:
   /// handle command buffer creation, memory, life span, etc.
   /// \param queue_family **[in]** queue family to which command buffers will
   /// be submitted.
-  CommandPool(const LogicalDevice &logical_device,
+  CommandPool(const LogicalDevice *logical_device,
               VkCommandPoolCreateFlags parameters, uint32_t queue_family);
   ~CommandPool();
   ///\brief
@@ -330,7 +331,7 @@ public:
   bool reset(VkCommandPoolResetFlags flags) const;
 
 private:
-  const LogicalDevice &logical_device_;
+  const LogicalDevice *logical_device_ = nullptr;
   VkCommandPool vk_command_pool_ = VK_NULL_HANDLE;
 };
 

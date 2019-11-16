@@ -52,7 +52,7 @@ public:
   /// \brief Destroy the App object
   ~App();
   /// Runs application loop
-  void run();
+  void run(const std::function<void()> &render_callback = []() {});
   /// Stops application loop
   void exit();
   /// Internally creates the Vulkan Instance from information about the
@@ -92,6 +92,8 @@ public:
   bool setupSwapChain(VkFormat format, VkColorSpaceKHR color_space);
   const LogicalDevice *logicalDevice();
   const Swapchain *swapchain();
+  const std::vector<Image::View> &swapchainImageViews();
+  const QueueFamilies &queueFamilies() const;
 
 private:
   bool selectNumberOfSwapchainImages(

@@ -63,16 +63,6 @@ private:
   VkShaderModule vk_shader_module_ = VK_NULL_HANDLE;
 };
 
-/// Defines parameters for shader stages definitions
-// struct ShaderStageDescriptor {
-//  VkShaderStageFlagBits shader_stage; //!< pipeline stage
-//  VkShaderModule shader_module;       //!< module with the shader code
-//  char const *entry_point_name; //!< function name associated with the stage
-//  VkSpecializationInfo const
-//      *specialization_info; //!< allows modification of constant variables
-//!< defined in shader
-//};
-
 } // namespace vk
 
 } // namespace circe

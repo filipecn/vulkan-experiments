@@ -48,10 +48,10 @@ App::~App() {
   VulkanLibraryInterface::destroyVulkanInstance(instance_);*/
 }
 
-void App::run() {
+void App::run(const std::function<void()> &render_callback) {
   if (!swapchain_)
     setupSwapChain(VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
-  graphics_display_->open();
+  graphics_display_->open(render_callback);
 }
 
 void App::exit() { graphics_display_->close(); }
@@ -83,8 +83,8 @@ bool App::pickPhysicalDevice(
                                                      presentation_family) &&
         physical_devices[i].selectIndexOfQueueFamily(VK_QUEUE_GRAPHICS_BIT,
                                                      graphics_family)) {
-      queue_families[i].add(graphics_family);
-      queue_families[i].add(presentation_family);
+      queue_families[i].add(graphics_family, "graphics");
+      queue_families[i].add(presentation_family, "presentation");
       candidates.insert(
           std::make_pair(f(physical_devices[i], queue_families[i]), i));
     }
@@ -180,6 +180,14 @@ const Swapchain *App::swapchain() {
     setupSwapChain(VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
   return swapchain_.get();
 }
+
+const std::vector<Image::View> &App::swapchainImageViews() {
+  if (!swapchain_)
+    setupSwapChain(VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
+  return swap_chain_image_views_;
+}
+
+const QueueFamilies &App::queueFamilies() const { return queue_families_; }
 
 bool App::selectNumberOfSwapchainImages(
     VkSurfaceCapabilitiesKHR const &surface_capabilities,

@@ -121,11 +121,11 @@ public:
   ///\param initial_layout **[in]** what layout to expect the image to be in
   /// when the renderpass begins
   ///\param final_layout **[in]** what layout to leave when the renderpass ends
-  void addAttachement(VkFormat format, VkSampleCountFlagBits samples,
-                      VkAttachmentLoadOp load_op, VkAttachmentStoreOp store_op,
-                      VkAttachmentLoadOp stencil_load_op,
-                      VkAttachmentStoreOp stencil_store_op,
-                      VkImageLayout initial_layout, VkImageLayout final_layout);
+  void addAttachment(VkFormat format, VkSampleCountFlagBits samples,
+                     VkAttachmentLoadOp load_op, VkAttachmentStoreOp store_op,
+                     VkAttachmentLoadOp stencil_load_op,
+                     VkAttachmentStoreOp stencil_store_op,
+                     VkImageLayout initial_layout, VkImageLayout final_layout);
   ///\brief Defines a dependency between subpasses.
   ///\param src_subpass **[in]** source index in the subpass array
   ///\param dst_subpass **[in]** destination index in the subpass array
@@ -164,8 +164,12 @@ public:
   ///\param width **[in]**
   ///\param height **[in]**
   ///\param layers **[in]**
-  Framebuffer(const LogicalDevice &logical_device, RenderPass &renderpass,
+  Framebuffer(const LogicalDevice *logical_device, RenderPass *renderpass,
               uint32_t width, uint32_t height, uint32_t layers);
+  Framebuffer(const Framebuffer &&other) = delete;
+  Framebuffer(const Framebuffer &other) = delete;
+  Framebuffer(Framebuffer &other);
+  Framebuffer(Framebuffer &&other);
   ~Framebuffer();
   ///\brief Bounds an image into the framebuffer
   /// The passes comprising the renderpass make references to the image
@@ -181,9 +185,9 @@ public:
   uint32_t layers() const;
 
 private:
-  const LogicalDevice &logical_device_;
+  const LogicalDevice *logical_device_ = nullptr;
   uint32_t width_, height_, layers_;
-  RenderPass &renderpass_;
+  RenderPass *renderpass_ = nullptr;
   VkFramebuffer vk_framebuffer_ = VK_NULL_HANDLE;
   std::vector<VkImageView> attachments_;
 };

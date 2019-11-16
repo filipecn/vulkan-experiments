@@ -36,16 +36,29 @@ namespace vk {
 /// Stores information about queues requested to a logical device and the list
 /// of priorities assifned to each queue
 struct QueueFamilyInfo {
+  std::string name;
   std::optional<uint32_t> family_index; //!< queue family index
   std::vector<float> priorities;        //!< list of queue priorities, [0.0,1.0]
+  std::vector<VkQueue> vk_queues;
 };
 struct QueueFamilies {
-  void add(uint32_t family_index, const std::vector<float> priorities = {1.f}) {
+  void add(uint32_t family_index, std::string name,
+           std::vector<float> priorities = {1.f}) {
     families_.emplace_back();
     families_[families_.size() - 1].family_index = family_index;
     families_[families_.size() - 1].priorities = priorities;
+    families_[families_.size() - 1].name = name;
+    families_[families_.size() - 1].vk_queues.resize(priorities.size(),
+                                                     VK_NULL_HANDLE);
   }
   const std::vector<QueueFamilyInfo> &families() const { return families_; }
+  std::vector<QueueFamilyInfo> &families() { return families_; }
+  const QueueFamilyInfo &family(std::string name) const {
+    for (const auto &f : families_)
+      if (f.name == name)
+        return f;
+    return families_[0];
+  }
 
 private:
   std::vector<QueueFamilyInfo> families_;
@@ -68,7 +81,7 @@ public:
   LogicalDevice(const PhysicalDevice &physical_device,
                 std::vector<char const *> const &desired_extensions,
                 VkPhysicalDeviceFeatures *desired_features,
-                const QueueFamilies &queue_infos);
+                QueueFamilies &queue_infos);
   ///\brief Default destructor
   ~LogicalDevice();
   ///\brief

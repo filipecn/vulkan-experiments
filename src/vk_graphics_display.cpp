@@ -51,9 +51,10 @@ uint32_t GraphicsDisplay::width() const { return width_; }
 
 uint32_t GraphicsDisplay::height() const { return height_; }
 
-void GraphicsDisplay::open() {
+void GraphicsDisplay::open(const std::function<void()> &f) {
   while (!glfwWindowShouldClose(window_)) {
     glfwPollEvents();
+    f();
   }
 }
 

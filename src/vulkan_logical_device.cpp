@@ -36,8 +36,7 @@ namespace vk {
 LogicalDevice::LogicalDevice(
     const PhysicalDevice &physical_device,
     std::vector<char const *> const &desired_extensions,
-    VkPhysicalDeviceFeatures *desired_features,
-    const QueueFamilies &queue_infos)
+    VkPhysicalDeviceFeatures *desired_features, QueueFamilies &queue_infos)
     : physical_device_(physical_device) {
   for (auto &extension : desired_extensions)
     if (!physical_device.isExtensionSupported(extension)) {
@@ -76,7 +75,16 @@ LogicalDevice::LogicalDevice(
                               nullptr, &vk_device_));
   if (vk_device_ == VK_NULL_HANDLE)
     INFO("Could not create logical device.");
-}
+
+  for (auto &info : queue_infos.families()) {
+    for (size_t i = 0; i < info.priorities.size(); ++i) {
+      vkGetDeviceQueue(vk_device_, info.family_index.value(), i,
+                       &info.vk_queues[i]);
+      if (info.vk_queues[i] == VK_NULL_HANDLE)
+        INFO("Could not get device queue");
+    }
+  }
+} // namespace vk
 
 LogicalDevice::~LogicalDevice() {
   if (vk_device_)

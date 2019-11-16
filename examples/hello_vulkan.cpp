@@ -69,9 +69,8 @@ int main(int argc, char const *argv[]) {
   // An important part is to describe the resources that will be used by the
   // shaders, which is done via a pipeline layout.
   circe::vk::PipelineLayout layout(app.logicalDevice());
-  // The render pass object comprises all the information about the framebuffers
   circe::vk::RenderPass renderpass(app.logicalDevice());
-  renderpass.addAttachement(
+  renderpass.addAttachment(
       app.swapchain()->surfaceFormat().format, VK_SAMPLE_COUNT_1_BIT,
       VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE,
       VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -79,6 +78,11 @@ int main(int argc, char const *argv[]) {
   auto &subpass_desc = renderpass.newSubpassDescription();
   subpass_desc.addColorAttachmentRef(0,
                                      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+  renderpass.addSubpassDependency(
+      VK_SUBPASS_EXTERNAL, 0, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
+      VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
   circe::vk::GraphicsPipeline pipeline(app.logicalDevice(), layout, renderpass,
                                        0);
   pipeline.addShaderStage(vert_shader_stage_info);
@@ -99,6 +103,107 @@ int main(int argc, char const *argv[]) {
   pipeline.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
   pipeline.addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
   pipeline.handle();
-  app.run();
+  // The attachments specified during render pass creation are bound by wrapping
+  // them into a Framebuffer object. A framebuffer object references all of the
+  // VkImageView objects that represent the attachments. We need one framebuffer
+  // per swapchain image.
+  std::vector<circe::vk::Framebuffer> framebuffers;
+  auto &swapchain_image_views = app.swapchainImageViews();
+  for (auto &image_view : swapchain_image_views) {
+    circe::vk::Framebuffer framebuffer(app.logicalDevice(), &renderpass,
+                                       app.swapchain()->imageSize().width,
+                                       app.swapchain()->imageSize().height, 1);
+    framebuffer.addAttachment(image_view);
+    framebuffers.emplace_back(framebuffer);
+  }
+  circe::vk::CommandPool command_pool(
+      app.logicalDevice(), 0,
+      app.queueFamilies().family("graphics").family_index.value());
+  std::vector<circe::vk::CommandBuffer> command_buffers;
+  command_pool.allocateCommandBuffers(VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                                      framebuffers.size(), command_buffers);
+  for (size_t i = 0; i < command_buffers.size(); ++i) {
+    command_buffers[i].begin();
+    circe::vk::RenderPassBeginInfo renderpass_begin_info(renderpass,
+                                                         framebuffers[i]);
+    renderpass_begin_info.setRenderArea(0, 0, framebuffers[i].width(),
+                                        framebuffers[i].height());
+    renderpass_begin_info.addClearColorValuef(0.f, 0.f, 0.f, 1.f);
+    command_buffers[i].beginRenderPass(renderpass_begin_info,
+                                       VK_SUBPASS_CONTENTS_INLINE);
+    command_buffers[i].bind(pipeline);
+    command_buffers[i].draw(3);
+    command_buffers[i].endRenderPass();
+    command_buffers[i].end();
+  }
+  const int MAX_FRAMES_IN_FLIGHT = 2;
+  std::vector<circe::vk::Semaphore> render_finished_semaphores,
+      image_available_semaphores;
+  std::vector<circe::vk::Fence> in_flight_fences;
+  std::vector<VkFence> images_in_flight(framebuffers.size(), VK_NULL_HANDLE);
+  for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    in_flight_fences.emplace_back(app.logicalDevice(),
+                                  VK_FENCE_CREATE_SIGNALED_BIT);
+    image_available_semaphores.emplace_back(app.logicalDevice());
+    render_finished_semaphores.emplace_back(app.logicalDevice());
+  }
+  size_t current_frame = 0;
+  app.run([&]() {
+    in_flight_fences[current_frame].wait();
+    uint32_t image_index = 0;
+    app.swapchain()->nextImage(
+        image_available_semaphores[current_frame].handle(), VK_NULL_HANDLE,
+        image_index);
+    if (images_in_flight[image_index] != VK_NULL_HANDLE)
+      vkWaitForFences(app.logicalDevice()->handle(), 1,
+                      &images_in_flight[image_index], VK_TRUE, UINT64_MAX);
+    images_in_flight[image_index] = in_flight_fences[current_frame].handle();
+
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+    VkCommandBuffer command_buffer = command_buffers[image_index].handle();
+    VkSemaphore waitSemaphores[] = {
+        image_available_semaphores[current_frame].handle()};
+    VkPipelineStageFlags waitStages[] = {
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = waitSemaphores;
+    submitInfo.pWaitDstStageMask = waitStages;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &command_buffer;
+
+    VkSemaphore signalSemaphores[] = {
+        render_finished_semaphores[current_frame].handle()};
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = signalSemaphores;
+
+    in_flight_fences[current_frame].reset();
+
+    VkResult result =
+        vkQueueSubmit(app.queueFamilies().family("graphics").vk_queues[0], 1,
+                      &submitInfo, in_flight_fences[current_frame].handle());
+    if (VK_SUCCESS != result)
+      std::cerr << "osp\n";
+
+    VkPresentInfoKHR presentInfo = {};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = signalSemaphores;
+
+    VkSwapchainKHR swapChains[] = {app.swapchain()->handle()};
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = swapChains;
+
+    presentInfo.pImageIndices = &image_index;
+
+    vkQueuePresentKHR(app.queueFamilies().family("presentation").vk_queues[0],
+                      &presentInfo);
+
+    vkQueueWaitIdle(app.queueFamilies().family("presentation").vk_queues[0]);
+
+    current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+  });
   return 0;
 }

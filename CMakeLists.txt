@@ -44,7 +44,7 @@ set(SOURCES
     src/vk_buffer.cpp
 	src/vk_command_buffer.cpp
     src/vk_device_memory.cpp
-	src/vk_fence.cpp
+	src/vk_sync.cpp
     src/vk_graphics_display.cpp
     src/vk_image.cpp
     src/vk_pipeline.cpp
@@ -63,7 +63,7 @@ set(HEADERS
     src/vk_buffer.h
 	src/vk_command_buffer.h
     src/vk_device_memory.h
-	src/vk_fence.h
+	src/vk_sync.h
     src/vk_graphics_display.h
     src/vk_image.h
     src/vk_pipeline.h

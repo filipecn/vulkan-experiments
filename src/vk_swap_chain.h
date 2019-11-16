@@ -91,6 +91,7 @@ public:
             VkSurfaceTransformFlagBitsKHR surface_transform,
             VkPresentModeKHR present_mode);
   ~Swapchain();
+  VkSwapchainKHR handle() const;
   /// \param presentation_surface **[in]** surface to which the swap chain will
   /// present
   /// \param image_count **[in]** swapchain image count (ex: 2 = double
@@ -119,7 +120,9 @@ public:
   /// \param fence **[in]** fence handle
   /// \param image_index **[out]** acquired image index
   /// \return bool true if success
-  bool nextImage(VkSemaphore semaphore, VkFence fence, uint32_t &image_index);
+  bool nextImage(VkSemaphore semaphore, VkFence fence,
+                 uint32_t &image_index) const;
+
   const std::vector<Image> &images() const;
   VkExtent2D imageSize() const;
   VkSurfaceFormatKHR surfaceFormat() const;

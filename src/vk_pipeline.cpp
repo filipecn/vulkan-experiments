@@ -421,6 +421,7 @@ VkPipeline GraphicsPipeline::handle() {
     VkResult result = vkCreateGraphicsPipelines(this->logical_device_->handle(),
                                                 VK_NULL_HANDLE, 1, &info_,
                                                 nullptr, &this->vk_pipeline_);
+    CHECK_VULKAN(result);
   }
   return this->vk_pipeline_;
 } // namespace vk

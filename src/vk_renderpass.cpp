@@ -105,13 +105,13 @@ RenderPass::~RenderPass() {
     vkDestroyRenderPass(logical_device_->handle(), vk_renderpass_, nullptr);
 }
 
-void RenderPass::addAttachement(VkFormat format, VkSampleCountFlagBits samples,
-                                VkAttachmentLoadOp load_op,
-                                VkAttachmentStoreOp store_op,
-                                VkAttachmentLoadOp stencil_load_op,
-                                VkAttachmentStoreOp stencil_store_op,
-                                VkImageLayout initial_layout,
-                                VkImageLayout final_layout) {
+void RenderPass::addAttachment(VkFormat format, VkSampleCountFlagBits samples,
+                               VkAttachmentLoadOp load_op,
+                               VkAttachmentStoreOp store_op,
+                               VkAttachmentLoadOp stencil_load_op,
+                               VkAttachmentStoreOp stencil_store_op,
+                               VkImageLayout initial_layout,
+                               VkImageLayout final_layout) {
   VkAttachmentDescription d = {
       0,           format,          samples,          load_op,
       store_op,    stencil_load_op, stencil_store_op, initial_layout,
@@ -183,15 +183,31 @@ VkRenderPass RenderPass::handle() {
   return vk_renderpass_;
 }
 
-Framebuffer::Framebuffer(const LogicalDevice &logical_device,
-                         RenderPass &renderpass, uint32_t width,
+Framebuffer::Framebuffer(const LogicalDevice *logical_device,
+                         RenderPass *renderpass, uint32_t width,
                          uint32_t height, uint32_t layers)
     : logical_device_(logical_device), width_(width), height_(height),
       layers_(layers), renderpass_(renderpass) {}
 
+Framebuffer::Framebuffer(Framebuffer &other)
+    : Framebuffer(other.logical_device_, other.renderpass_, other.width_,
+                  other.height_, other.layers_) {
+  attachments_ = std::move(other.attachments_);
+  vk_framebuffer_ = other.vk_framebuffer_;
+  other.vk_framebuffer_ = VK_NULL_HANDLE;
+}
+
+Framebuffer::Framebuffer(Framebuffer &&other)
+    : Framebuffer(other.logical_device_, other.renderpass_, other.width_,
+                  other.height_, other.layers_) {
+  attachments_ = std::move(other.attachments_);
+  vk_framebuffer_ = other.vk_framebuffer_;
+  other.vk_framebuffer_ = VK_NULL_HANDLE;
+}
+
 Framebuffer::~Framebuffer() {
   if (vk_framebuffer_ != VK_NULL_HANDLE)
-    vkDestroyFramebuffer(logical_device_.handle(), vk_framebuffer_, nullptr);
+    vkDestroyFramebuffer(logical_device_->handle(), vk_framebuffer_, nullptr);
 }
 
 void Framebuffer::addAttachment(const Image::View &image_view) {
@@ -210,13 +226,13 @@ VkFramebuffer Framebuffer::handle() {
         VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         nullptr,
         0,
-        renderpass_.handle(),
+        renderpass_->handle(),
         attachments_.size(),
         (attachments_.size() ? attachments_.data() : nullptr),
         width_,
         height_,
         layers_};
-    VkResult result = vkCreateFramebuffer(logical_device_.handle(), &info,
+    VkResult result = vkCreateFramebuffer(logical_device_->handle(), &info,
                                           nullptr, &vk_framebuffer_);
     CHECK_VULKAN(result);
     if (result != VK_SUCCESS)

@@ -51,6 +51,8 @@ Swapchain::~Swapchain() {
   }
 }
 
+VkSwapchainKHR Swapchain::handle() const { return vk_swapchain_; }
+
 bool Swapchain::set(VkSurfaceKHR presentation_surface, uint32_t image_count,
                     VkSurfaceFormatKHR surface_format, VkExtent2D image_size,
                     VkImageUsageFlags image_usage,
@@ -61,7 +63,7 @@ bool Swapchain::set(VkSurfaceKHR presentation_surface, uint32_t image_count,
 }
 
 bool Swapchain::nextImage(VkSemaphore semaphore, VkFence fence,
-                          uint32_t &image_index) {
+                          uint32_t &image_index) const {
   VkResult result;
   result = vkAcquireNextImageKHR(logical_device_->handle(), vk_swapchain_,
                                  2000000000, semaphore, fence, &image_index);

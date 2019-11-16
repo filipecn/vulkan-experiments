@@ -107,6 +107,8 @@ const VkRenderPassBeginInfo *RenderPassBeginInfo::info() const {
 CommandBuffer::CommandBuffer(VkCommandBuffer vk_command_buffer_)
     : vk_command_buffer_(vk_command_buffer_) {}
 
+VkCommandBuffer CommandBuffer::handle() const { return vk_command_buffer_; }
+
 bool CommandBuffer::begin(VkCommandBufferUsageFlags flags) const {
   VkCommandBufferBeginInfo info = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
                                    nullptr, flags, nullptr};
@@ -247,7 +249,7 @@ bool CommandBuffer::draw(uint32_t vertex_count, uint32_t instance_count,
   return true;
 }
 
-CommandPool::CommandPool(const LogicalDevice &logical_device,
+CommandPool::CommandPool(const LogicalDevice *logical_device,
                          VkCommandPoolCreateFlags parameters,
                          uint32_t queue_family)
     : logical_device_(logical_device) {
@@ -257,7 +259,7 @@ CommandPool::CommandPool(const LogicalDevice &logical_device,
       parameters,  // VkCommandPoolCreateFlags     flags
       queue_family // uint32_t                     queueFamilyIndex
   };
-  CHECK_VULKAN(vkCreateCommandPool(logical_device.handle(),
+  CHECK_VULKAN(vkCreateCommandPool(logical_device->handle(),
                                    &command_pool_create_info, nullptr,
                                    &vk_command_pool_));
   if (vk_command_pool_ == VK_NULL_HANDLE)
@@ -266,7 +268,7 @@ CommandPool::CommandPool(const LogicalDevice &logical_device,
 
 CommandPool::~CommandPool() {
   if (vk_command_pool_ != VK_NULL_HANDLE)
-    vkDestroyCommandPool(logical_device_.handle(), vk_command_pool_, nullptr);
+    vkDestroyCommandPool(logical_device_->handle(), vk_command_pool_, nullptr);
 }
 
 bool CommandPool::allocateCommandBuffers(
@@ -280,7 +282,7 @@ bool CommandPool::allocateCommandBuffers(
       count             // uint32_t                 commandBufferCount
   };
   std::vector<VkCommandBuffer> vk_command_buffers(count);
-  R_CHECK_VULKAN(vkAllocateCommandBuffers(logical_device_.handle(),
+  R_CHECK_VULKAN(vkAllocateCommandBuffers(logical_device_->handle(),
                                           &command_buffer_allocate_info,
                                           vk_command_buffers.data()));
   command_buffers.clear();
@@ -291,7 +293,7 @@ bool CommandPool::allocateCommandBuffers(
 
 bool CommandPool::reset(VkCommandPoolResetFlags flags) const {
   R_CHECK_VULKAN(
-      vkResetCommandPool(logical_device_.handle(), vk_command_pool_, flags));
+      vkResetCommandPool(logical_device_->handle(), vk_command_pool_, flags));
   return true;
 }
 
