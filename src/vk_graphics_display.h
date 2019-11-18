@@ -66,8 +66,7 @@ public:
   /// \param instance **[in]** vulkan instance handle
   /// \param surface **[out]** surface handle
   /// \return bool true if success
-  bool createWindowSurface(const Instance &instance,
-                           VkSurfaceKHR &surface) const;
+  bool createWindowSurface(const Instance *instance, VkSurfaceKHR &surface);
 
 private:
   uint32_t width_;

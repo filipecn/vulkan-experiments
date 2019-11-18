@@ -72,10 +72,14 @@ DescriptorSetLayout &PipelineLayout::descriptorSetLayout(uint32_t id) {
 PipelineLayout::PipelineLayout(const LogicalDevice *logical_device)
     : logical_device_(logical_device) {}
 
-PipelineLayout::~PipelineLayout() {
-  if (vk_pipeline_layout_ != VK_NULL_HANDLE)
+PipelineLayout::~PipelineLayout() { destroy(); }
+
+void PipelineLayout::destroy() {
+  if (vk_pipeline_layout_ != VK_NULL_HANDLE) {
     vkDestroyPipelineLayout(logical_device_->handle(), vk_pipeline_layout_,
                             nullptr);
+    vk_pipeline_layout_ = VK_NULL_HANDLE;
+  }
 }
 
 VkPipelineLayout PipelineLayout::handle() {
@@ -210,9 +214,13 @@ const VkSpecializationInfo *PipelineShaderStage::specializationInfo() const {
 Pipeline::Pipeline(const LogicalDevice *logical_device)
     : logical_device_(logical_device) {}
 
-Pipeline::~Pipeline() {
-  if (vk_pipeline_ != VK_NULL_HANDLE)
+Pipeline::~Pipeline() { destroy(); }
+
+void Pipeline::destroy() {
+  if (vk_pipeline_ != VK_NULL_HANDLE) {
     vkDestroyPipeline(logical_device_->handle(), vk_pipeline_, nullptr);
+    vk_pipeline_ = VK_NULL_HANDLE;
+  }
 }
 
 bool Pipeline::saveCache(const std::string &path) {
@@ -383,16 +391,15 @@ GraphicsPipeline::ColorBlendState::info() const {
 }
 
 GraphicsPipeline::GraphicsPipeline(const LogicalDevice *logical_device,
-                                   PipelineLayout &layout,
-                                   RenderPass &renderpass, uint32_t subpass,
+                                   PipelineLayout *layout,
+                                   RenderPass *renderpass, uint32_t subpass,
                                    VkPipelineCreateFlags flags,
                                    GraphicsPipeline *base_pipeline,
                                    uint32_t base_pipeline_index)
-    : Pipeline(logical_device), flags_(flags) {
+    : Pipeline(logical_device), layout_(layout), renderpass_(renderpass),
+      flags_(flags) {
   info_.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
   info_.flags = flags;
-  info_.layout = layout.handle();
-  info_.renderPass = renderpass.handle();
   info_.subpass = subpass;
   info_.basePipelineHandle =
       base_pipeline ? base_pipeline->handle() : VK_NULL_HANDLE;
@@ -401,6 +408,8 @@ GraphicsPipeline::GraphicsPipeline(const LogicalDevice *logical_device,
 
 VkPipeline GraphicsPipeline::handle() {
   if (this->vk_pipeline_ == VK_NULL_HANDLE) {
+    info_.layout = layout_->handle();
+    info_.renderPass = renderpass_->handle();
     info_.stageCount = this->shader_stage_infos_.size();
     info_.pStages = this->shader_stage_infos_.data();
     info_.pVertexInputState = vertex_input_state.info();

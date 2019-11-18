@@ -100,9 +100,13 @@ bool SubpassDescription::hasDepthStencilAttachmentRef() const {
 RenderPass::RenderPass(const LogicalDevice *logical_device)
     : logical_device_(logical_device) {}
 
-RenderPass::~RenderPass() {
-  if (vk_renderpass_ != VK_NULL_HANDLE)
+RenderPass::~RenderPass() { destroy(); }
+
+void RenderPass::destroy() {
+  if (vk_renderpass_ != VK_NULL_HANDLE) {
     vkDestroyRenderPass(logical_device_->handle(), vk_renderpass_, nullptr);
+    vk_renderpass_ = VK_NULL_HANDLE;
+  }
 }
 
 void RenderPass::addAttachment(VkFormat format, VkSampleCountFlagBits samples,

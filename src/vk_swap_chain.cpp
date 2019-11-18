@@ -40,96 +40,92 @@ Swapchain::Swapchain(const LogicalDevice *logical_device,
                      VkSurfaceTransformFlagBitsKHR surface_transform,
                      VkPresentModeKHR present_mode)
     : logical_device_(logical_device) {
-  create(presentation_surface, image_count, surface_format, image_size,
-         image_usage, surface_transform, present_mode);
+
+  info_.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+  info_.pNext = nullptr;
+  info_.flags = 0;
+  set(presentation_surface, image_count, surface_format, image_size,
+      image_usage, surface_transform, present_mode);
 }
 
-Swapchain::~Swapchain() {
-  if (vk_swapchain_) {
+Swapchain::~Swapchain() { destroy(); }
+
+void Swapchain::destroy() {
+  if (vk_swapchain_ != VK_NULL_HANDLE) {
     vkDeviceWaitIdle(logical_device_->handle());
     vkDestroySwapchainKHR(logical_device_->handle(), vk_swapchain_, nullptr);
+    vk_swapchain_ = VK_NULL_HANDLE;
   }
 }
 
-VkSwapchainKHR Swapchain::handle() const { return vk_swapchain_; }
-
-bool Swapchain::set(VkSurfaceKHR presentation_surface, uint32_t image_count,
-                    VkSurfaceFormatKHR surface_format, VkExtent2D image_size,
-                    VkImageUsageFlags image_usage,
-                    VkSurfaceTransformFlagBitsKHR surface_transform,
-                    VkPresentModeKHR present_mode) {
-  return create(presentation_surface, image_count, surface_format, image_size,
-                image_usage, surface_transform, present_mode);
-}
-
-bool Swapchain::nextImage(VkSemaphore semaphore, VkFence fence,
-                          uint32_t &image_index) const {
-  VkResult result;
-  result = vkAcquireNextImageKHR(logical_device_->handle(), vk_swapchain_,
-                                 2000000000, semaphore, fence, &image_index);
-  switch (result) {
-  case VK_SUCCESS:
-  case VK_SUBOPTIMAL_KHR:
-    return true;
-  default:
-    return false;
-  }
-}
-
-const std::vector<Image> &Swapchain::images() const { return images_; }
-
-bool Swapchain::create(VkSurfaceKHR presentation_surface, uint32_t image_count,
-                       VkSurfaceFormatKHR surface_format, VkExtent2D image_size,
-                       VkImageUsageFlags image_usage,
-                       VkSurfaceTransformFlagBitsKHR surface_transform,
-                       VkPresentModeKHR present_mode) {
-  VkSwapchainCreateInfoKHR swapchain_create_info = {
-      VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR, // VkStructureType sType
-      nullptr,               // const void                     * pNext
-      0,                     // VkSwapchainCreateFlagsKHR        flags
-      presentation_surface,  // VkSurfaceKHR                     surface
-      image_count,           // uint32_t                         minImageCount
-      surface_format.format, // VkFormat                         imageFormat
-      surface_format.colorSpace, // VkColorSpaceKHR imageColorSpace
-      image_size,                // VkExtent2D                       imageExtent
-      1,           // uint32_t                         imageArrayLayers
-      image_usage, // VkImageUsageFlags                imageUsage
-      VK_SHARING_MODE_EXCLUSIVE, // VkSharingMode imageSharingMode
-      0,       // uint32_t                         queueFamilyIndexCount
-      nullptr, // const uint32_t                 * pQueueFamilyIndices
-      surface_transform, // VkSurfaceTransformFlagBitsKHR    preTransform
-      VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR, // VkCompositeAlphaFlagBitsKHR
-                                         // compositeAlpha
-      present_mode,  // VkPresentModeKHR                 presentMode
-      VK_TRUE,       // VkBool32                         clipped
-      VK_NULL_HANDLE // VkSwapchainKHR oldSwapchain
-  };
-  R_CHECK_VULKAN(vkCreateSwapchainKHR(logical_device_->handle(),
-                                      &swapchain_create_info, nullptr,
-                                      &vk_swapchain_));
-  CHECK_INFO(VK_NULL_HANDLE != vk_swapchain_, "Could not create a swapchain.");
-
-  {
+VkSwapchainKHR Swapchain::handle() {
+  if (vk_swapchain_ == VK_NULL_HANDLE) {
+    VkResult result = vkCreateSwapchainKHR(logical_device_->handle(), &info_,
+                                           nullptr, &vk_swapchain_);
+    CHECK_VULKAN(result);
+    if (result != VK_SUCCESS) {
+      INFO("Could not create a swapchain.");
+      return VK_NULL_HANDLE;
+    }
     std::vector<VkImage> images;
     uint32_t images_count = 0;
-    R_CHECK_VULKAN(vkGetSwapchainImagesKHR(
-        logical_device_->handle(), vk_swapchain_, &images_count, nullptr));
-    D_RETURN_FALSE_IF_NOT(0 != images_count,
-                          "Could not get the number of swapchain images.");
+    result = vkGetSwapchainImagesKHR(logical_device_->handle(), vk_swapchain_,
+                                     &images_count, nullptr);
+    CHECK_VULKAN(result);
+    if (0 == images_count) {
+      INFO("Could not get the number of swapchain images.");
+      return VK_NULL_HANDLE;
+    }
     images.resize(images_count);
-    R_CHECK_VULKAN(vkGetSwapchainImagesKHR(logical_device_->handle(),
-                                           vk_swapchain_, &images_count,
-                                           images.data()));
-    D_RETURN_FALSE_IF_NOT(0 != images_count,
-                          "Could not enumerate swapchain images.");
+    result = vkGetSwapchainImagesKHR(logical_device_->handle(), vk_swapchain_,
+                                     &images_count, images.data());
+    CHECK_VULKAN(result);
+    if (0 == images_count) {
+      INFO("Could not enumerate swapchain images.");
+      return VK_NULL_HANDLE;
+    }
+    images_.clear();
     for (auto &image : images)
       images_.emplace_back(logical_device_, image);
   }
 
+  return vk_swapchain_;
+}
+
+void Swapchain::set(VkSurfaceKHR presentation_surface, uint32_t image_count,
+                    VkSurfaceFormatKHR surface_format, VkExtent2D image_size,
+                    VkImageUsageFlags image_usage,
+                    VkSurfaceTransformFlagBitsKHR surface_transform,
+                    VkPresentModeKHR present_mode) {
+  info_.surface = presentation_surface;
+  info_.minImageCount = image_count;
+  info_.imageFormat = surface_format.format;
+  info_.imageColorSpace = surface_format.colorSpace;
+  info_.imageExtent = image_size;
+  info_.imageArrayLayers = 1;
+  info_.imageUsage = image_usage;
+  info_.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  info_.queueFamilyIndexCount = 0;
+  info_.pQueueFamilyIndices = nullptr;
+  info_.preTransform = surface_transform;
+  info_.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+  info_.presentMode = present_mode;
+  info_.clipped = VK_TRUE;
+  info_.oldSwapchain = VK_NULL_HANDLE;
+
   image_size_ = image_size;
   surface_format_ = surface_format;
+}
 
-  return true;
+VkResult Swapchain::nextImage(VkSemaphore semaphore, VkFence fence,
+                              uint32_t &image_index) const {
+  return vkAcquireNextImageKHR(logical_device_->handle(), vk_swapchain_,
+                               2000000000, semaphore, fence, &image_index);
+}
+
+const std::vector<Image> &Swapchain::images() {
+  handle();
+  return images_;
 }
 
 VkExtent2D Swapchain::imageSize() const { return image_size_; }

@@ -76,6 +76,7 @@ public:
   ///\param logical_device **[in]**
   PipelineLayout(const LogicalDevice *logical_device);
   ~PipelineLayout();
+  void destroy();
   VkPipelineLayout handle();
   ///\brief Create a Layout Set object
   ///
@@ -210,6 +211,7 @@ public:
   ///\param logical_device **[in]**
   Pipeline(const LogicalDevice *logical_device);
   virtual ~Pipeline();
+  void destroy();
   ///\brief
   ///
   ///\param stage **[in]**
@@ -343,8 +345,8 @@ public:
   ///\param flags **[in]**
   ///\param base_pipeline **[in]**
   ///\param base_pipeline_index **[in]**
-  GraphicsPipeline(const LogicalDevice *logical_device, PipelineLayout &layout,
-                   RenderPass &renderpass, uint32_t subpass,
+  GraphicsPipeline(const LogicalDevice *logical_device, PipelineLayout *layout,
+                   RenderPass *renderpass, uint32_t subpass,
                    VkPipelineCreateFlags flags = 0,
                    GraphicsPipeline *base_pipeline = nullptr,
                    uint32_t base_pipeline_index = 0);
@@ -423,6 +425,8 @@ public:
   ColorBlendState color_blend_state;
 
 private:
+  PipelineLayout *layout_ = nullptr;
+  RenderPass *renderpass_ = nullptr;
   VkPipelineCreateFlags flags_ = 0;
   std::unique_ptr<VkPipelineInputAssemblyStateCreateInfo> input_assembly_state_;
   std::unique_ptr<VkPipelineTessellationStateCreateInfo> tesselation_state_;

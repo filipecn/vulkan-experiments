@@ -70,10 +70,10 @@ std::vector<const char *> GraphicsDisplay::requiredVkExtensions() const {
                                    glfw_extensions + glfw_extension_count);
 }
 
-bool GraphicsDisplay::createWindowSurface(const Instance &instance,
-                                          VkSurfaceKHR &surface) const {
+bool GraphicsDisplay::createWindowSurface(const Instance *instance,
+                                          VkSurfaceKHR &surface) {
   R_CHECK_VULKAN(
-      glfwCreateWindowSurface(instance.handle(), window_, nullptr, &surface));
+      glfwCreateWindowSurface(instance->handle(), window_, nullptr, &surface));
   return true;
 }
 

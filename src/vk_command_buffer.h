@@ -44,7 +44,7 @@ public:
   ///
   ///\param renderpass **[in]**
   ///\param framebuffer **[in]**
-  RenderPassBeginInfo(RenderPass &renderpass, Framebuffer &framebuffer);
+  RenderPassBeginInfo(RenderPass *renderpass, Framebuffer *framebuffer);
   ///\brief Set the Render Area object
   ///
   ///\param x **[in]**
@@ -324,6 +324,7 @@ public:
   bool
   allocateCommandBuffers(VkCommandBufferLevel level, uint32_t count,
                          std::vector<CommandBuffer> &command_buffers) const;
+  bool freeCommandBuffers(std::vector<CommandBuffer> &command_buffers) const;
   ///\brief
   ///
   ///\param flags **[in]**

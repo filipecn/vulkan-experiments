@@ -33,15 +33,15 @@ namespace circe {
 
 namespace vk {
 
-RenderPassBeginInfo::RenderPassBeginInfo(RenderPass &renderpass,
-                                         Framebuffer &framebuffer) {
+RenderPassBeginInfo::RenderPassBeginInfo(RenderPass *renderpass,
+                                         Framebuffer *framebuffer) {
   info_.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   info_.pNext = nullptr;
-  info_.renderPass = renderpass.handle();
-  info_.framebuffer = framebuffer.handle();
+  info_.renderPass = renderpass->handle();
+  info_.framebuffer = framebuffer->handle();
   info_.renderArea.offset.x = info_.renderArea.offset.y = 0;
-  info_.renderArea.extent.width = framebuffer.width();
-  info_.renderArea.extent.height = framebuffer.height();
+  info_.renderArea.extent.width = framebuffer->width();
+  info_.renderArea.extent.height = framebuffer->height();
   info_.clearValueCount = 0;
   info_.pClearValues = nullptr;
 }
@@ -288,6 +288,20 @@ bool CommandPool::allocateCommandBuffers(
   command_buffers.clear();
   for (auto cb : vk_command_buffers)
     command_buffers.emplace_back(cb);
+  return true;
+}
+
+bool CommandPool::freeCommandBuffers(
+    std::vector<CommandBuffer> &command_buffers) const {
+  if (!command_buffers.size())
+    return true;
+  std::vector<VkCommandBuffer> vk_command_buffers(command_buffers.size());
+  for (size_t i = 0; i < vk_command_buffers.size(); ++i)
+    vk_command_buffers[i] = command_buffers[i].handle();
+  vkFreeCommandBuffers(logical_device_->handle(), vk_command_pool_,
+                       static_cast<uint32_t>(vk_command_buffers.size()),
+                       vk_command_buffers.data());
+  command_buffers.clear();
   return true;
 }
 

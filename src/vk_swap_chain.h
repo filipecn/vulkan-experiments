@@ -91,7 +91,8 @@ public:
             VkSurfaceTransformFlagBitsKHR surface_transform,
             VkPresentModeKHR present_mode);
   ~Swapchain();
-  VkSwapchainKHR handle() const;
+  void destroy();
+  VkSwapchainKHR handle();
   /// \param presentation_surface **[in]** surface to which the swap chain will
   /// present
   /// \param image_count **[in]** swapchain image count (ex: 2 = double
@@ -106,7 +107,7 @@ public:
   /// rendering direct to the image, use ..._STORAGE_BIT)
   /// \param surface_transform **[in]** surface transform
   /// \param present_mode **[in]** presentation mode
-  bool set(VkSurfaceKHR presentation_surface, uint32_t image_count,
+  void set(VkSurfaceKHR presentation_surface, uint32_t image_count,
            VkSurfaceFormatKHR surface_format, VkExtent2D image_size,
            VkImageUsageFlags image_usage,
            VkSurfaceTransformFlagBitsKHR surface_transform,
@@ -120,22 +121,17 @@ public:
   /// \param fence **[in]** fence handle
   /// \param image_index **[out]** acquired image index
   /// \return bool true if success
-  bool nextImage(VkSemaphore semaphore, VkFence fence,
-                 uint32_t &image_index) const;
+  VkResult nextImage(VkSemaphore semaphore, VkFence fence,
+                     uint32_t &image_index) const;
 
-  const std::vector<Image> &images() const;
+  const std::vector<Image> &images();
   VkExtent2D imageSize() const;
   VkSurfaceFormatKHR surfaceFormat() const;
 
 private:
-  bool create(VkSurfaceKHR presentation_surface, uint32_t image_count,
-              VkSurfaceFormatKHR surface_format, VkExtent2D image_size,
-              VkImageUsageFlags image_usage,
-              VkSurfaceTransformFlagBitsKHR surface_transform,
-              VkPresentModeKHR present_mode);
-
+  VkSwapchainCreateInfoKHR info_ = {};
   const LogicalDevice *logical_device_ = nullptr;
-  VkSwapchainKHR vk_swapchain_;
+  VkSwapchainKHR vk_swapchain_ = VK_NULL_HANDLE;
   std::vector<Image> images_;
   VkExtent2D image_size_;
   VkSurfaceFormatKHR surface_format_;

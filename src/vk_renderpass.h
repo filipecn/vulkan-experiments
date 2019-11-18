@@ -107,6 +107,7 @@ class RenderPass {
 public:
   RenderPass(const LogicalDevice *logical_device);
   ~RenderPass();
+  void destroy();
   ///\brief
   /// The load/store ops parameters specify what to do with the attachment at
   /// the beginning and end of the render pass

@@ -28,9 +28,13 @@
 #ifndef CIRCE_VK_APP_H
 #define CIRCE_VK_APP_H
 
+#include "vk_command_buffer.h"
 #include "vk_graphics_display.h"
 #include "vk_image.h"
+#include "vk_pipeline.h"
+#include "vk_renderpass.h"
 #include "vk_swap_chain.h"
+#include "vk_sync.h"
 #include "vulkan_logical_device.h"
 #include <functional>
 #include <memory>
@@ -92,11 +96,22 @@ public:
   /// \param format **[in]** desired image format
   /// \param color_space **[in]** desired color space
   /// \return bool true if success
-  bool setupSwapChain(VkFormat format, VkColorSpaceKHR color_space);
+  bool setupSwapChain(
+      VkFormat format = VK_FORMAT_B8G8R8A8_UNORM,
+      VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
   const LogicalDevice *logicalDevice();
-  const Swapchain *swapchain();
+  GraphicsPipeline *graphicsPipeline();
+  PipelineLayout *pipelineLayout();
+  RenderPass *renderpass();
+  Swapchain *swapchain();
   const std::vector<Image::View> &swapchainImageViews();
+  std::vector<CommandBuffer> &commandBuffers();
+  std::vector<Framebuffer> &framebuffers();
   QueueFamilies &queueFamilies();
+
+  std::function<void(uint32_t width, uint32_t height)> resize_callback;
+  std::function<void(CommandBuffer &, Framebuffer &)>
+      record_command_buffer_callback;
 
 private:
   bool selectNumberOfSwapchainImages(
@@ -105,18 +120,35 @@ private:
   bool chooseSizeOfSwapchainImages(
       VkSurfaceCapabilitiesKHR const &surface_capabilities,
       VkExtent2D &size_of_images) const;
+  void destroySwapchain();
+  void recreateSwapchain();
+  void draw();
 
   std::unique_ptr<GraphicsDisplay> graphics_display_;
   std::unique_ptr<Instance> instance_;
   std::unique_ptr<PhysicalDevice> physical_device_;
   std::unique_ptr<LogicalDevice> logical_device_;
+  // swapchain information
   std::unique_ptr<Swapchain> swapchain_;
-  std::vector<Image::View> swap_chain_image_views_;
+  std::vector<Image::View> swapchain_image_views_;
+  std::unique_ptr<RenderPass> renderpass_;
+  std::unique_ptr<PipelineLayout> pipeline_layout_;
+  std::unique_ptr<GraphicsPipeline> pipeline_;
+  std::unique_ptr<CommandPool> command_pool_;
+  std::vector<circe::vk::CommandBuffer> command_buffers_;
+  std::vector<circe::vk::Framebuffer> framebuffers_;
+  // synchronization
+  size_t max_frames_in_flight = 2;
+  std::vector<Semaphore> render_finished_semaphores_;
+  std::vector<Semaphore> image_available_semaphores_;
+  std::vector<Fence> in_flight_fences_;
+  std::vector<VkFence> images_in_flight_;
+
   QueueFamilies queue_families_;
 
   std::vector<const char *> validation_layer_names_;
   std::string application_name_;
-  VkSurfaceKHR surface_ = VK_NULL_HANDLE;
+  VkSurfaceKHR vk_surface_ = VK_NULL_HANDLE;
 };
 
 } // namespace vk
