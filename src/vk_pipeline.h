@@ -299,6 +299,8 @@ public:
     ///\param height **[in]**
     void addScissor(int32_t x, int32_t y, uint32_t width, uint32_t height);
     const VkPipelineViewportStateCreateInfo *info() const;
+    VkViewport &viewport(uint32_t i);
+    VkRect2D &scissor(uint32_t i);
 
   private:
     VkPipelineViewportStateCreateInfo info_;

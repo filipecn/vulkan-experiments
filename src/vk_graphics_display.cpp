@@ -33,18 +33,34 @@ namespace circe {
 
 namespace vk {
 
+static void framebufferResizeCallback(GLFWwindow *window, int width,
+                                      int height) {
+  auto gd =
+      reinterpret_cast<GraphicsDisplay *>(glfwGetWindowUserPointer(window));
+  if (gd->resize_callback)
+    gd->resize_callback(width, height);
+}
+
 GraphicsDisplay::GraphicsDisplay(uint32_t w, uint32_t h,
                                  const std::string &title) {
   ASSERT(glfwInit());
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
   ASSERT(glfwVulkanSupported());
   window_ = glfwCreateWindow(w, h, title.c_str(), nullptr, nullptr);
+  glfwSetWindowUserPointer(window_, this);
+  glfwSetFramebufferSizeCallback(window_, framebufferResizeCallback);
 }
 
 GraphicsDisplay::~GraphicsDisplay() {
   glfwDestroyWindow(window_);
   glfwTerminate();
+}
+
+VkExtent2D GraphicsDisplay::framebufferSize() const {
+  int w, h;
+  glfwGetFramebufferSize(window_, &w, &h);
+  VkExtent2D extent = {static_cast<uint32_t>(w), static_cast<uint32_t>(h)};
+  return extent;
 }
 
 uint32_t GraphicsDisplay::width() const { return width_; }
@@ -75,6 +91,14 @@ bool GraphicsDisplay::createWindowSurface(const Instance *instance,
   R_CHECK_VULKAN(
       glfwCreateWindowSurface(instance->handle(), window_, nullptr, &surface));
   return true;
+}
+
+void GraphicsDisplay::waitForValidWindowSize() {
+  int w = 0, h = 0;
+  while (w == 0 || h == 0) {
+    glfwGetFramebufferSize(window_, &w, &h);
+    glfwWaitEvents();
+  }
 }
 
 } // namespace vk

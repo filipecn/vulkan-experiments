@@ -149,6 +149,7 @@ private:
   std::vector<const char *> validation_layer_names_;
   std::string application_name_;
   VkSurfaceKHR vk_surface_ = VK_NULL_HANDLE;
+  bool framebuffer_resized_ = false;
 };
 
 } // namespace vk

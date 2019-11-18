@@ -54,6 +54,7 @@ public:
   uint32_t height() const;
   /// Runs window loop
   void open(const std::function<void()> & = []() {});
+  VkExtent2D framebufferSize() const;
   /// Stops window loop
   void close();
   /// \return bool true if window is running
@@ -67,6 +68,8 @@ public:
   /// \param surface **[out]** surface handle
   /// \return bool true if success
   bool createWindowSurface(const Instance *instance, VkSurfaceKHR &surface);
+  void waitForValidWindowSize();
+  std::function<void(int, int)> resize_callback;
 
 private:
   uint32_t width_;

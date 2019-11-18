@@ -103,6 +103,14 @@ int main(int argc, char const *argv[]) {
   // pipeline.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
   // pipeline.addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
 
+  app.resize_callback = [&](uint32_t w, uint32_t h) {
+    auto &vp = pipeline.viewport_state.viewport(0);
+    vp.width = w;
+    vp.height = h;
+    auto s = pipeline.viewport_state.scissor(0);
+    s.extent.width = w;
+    s.extent.height = h;
+  };
   app.record_command_buffer_callback = [&](circe::vk::CommandBuffer &cb,
                                            circe::vk::Framebuffer &f) {
     cb.begin();

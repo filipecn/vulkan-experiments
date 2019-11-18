@@ -26,6 +26,7 @@
 ///\brief
 
 #include "vk_pipeline.h"
+#include "logging.h"
 #include "vulkan_debug.h"
 #include <fstream>
 
@@ -342,6 +343,15 @@ void GraphicsPipeline::ViewportState::addScissor(int32_t x, int32_t y,
   scissors_.emplace_back(scissor);
   info_.pScissors = scissors_.data();
   info_.scissorCount = scissors_.size();
+}
+
+VkViewport &GraphicsPipeline::ViewportState::viewport(uint32_t i) {
+  ASSERT(i < viewports_.size());
+  return viewports_[i];
+}
+VkRect2D &GraphicsPipeline::ViewportState::scissor(uint32_t i) {
+  ASSERT(i < scissors_.size());
+  return scissors_[i];
 }
 
 const VkPipelineViewportStateCreateInfo *

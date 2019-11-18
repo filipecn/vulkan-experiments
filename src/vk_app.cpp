@@ -36,7 +36,11 @@ namespace vk {
 
 App::App(uint32_t w, uint32_t h, const std::string &name)
     : application_name_(name),
-      graphics_display_(new GraphicsDisplay(w, h, name)) {}
+      graphics_display_(new GraphicsDisplay(w, h, name)) {
+  graphics_display_->resize_callback = [&](int new_w, int new_h) {
+    framebuffer_resized_ = true;
+  };
+}
 
 App::~App() {
   destroySwapchain();
@@ -45,8 +49,6 @@ App::~App() {
 }
 
 void App::run(const std::function<void()> &render_callback) {
-  // if (!swapchain_)
-  //   setupSwapChain();
   recreateSwapchain();
   images_in_flight_.resize(framebuffers_.size(), VK_NULL_HANDLE);
   auto draw_callback = [&]() { this->draw(); };
@@ -278,7 +280,6 @@ bool App::chooseSizeOfSwapchainImages(
     VkExtent2D &size_of_images) const {
   if (0xFFFFFFFF == surface_capabilities.currentExtent.width) {
     size_of_images = {640, 480};
-
     if (size_of_images.width < surface_capabilities.minImageExtent.width) {
       size_of_images.width = surface_capabilities.minImageExtent.width;
     } else if (size_of_images.width >
@@ -292,6 +293,7 @@ bool App::chooseSizeOfSwapchainImages(
                surface_capabilities.maxImageExtent.height) {
       size_of_images.height = surface_capabilities.maxImageExtent.height;
     }
+    graphics_display_->framebufferSize();
   } else {
     size_of_images = surface_capabilities.currentExtent;
   }
@@ -320,14 +322,14 @@ void App::destroySwapchain() {
 }
 
 void App::recreateSwapchain() {
+  graphics_display_->waitForValidWindowSize();
   vkDeviceWaitIdle(logical_device_->handle());
   destroySwapchain();
-  // if (resize_callback)
-  //  resize_callback();
-
+  if (framebuffer_resized_ && resize_callback)
+    resize_callback(graphics_display_->framebufferSize().width,
+                    graphics_display_->framebufferSize().height);
   setupSwapChain();
   commandBuffers();
-
   if (record_command_buffer_callback)
     for (size_t i = 0; i < framebuffers_.size(); ++i)
       record_command_buffer_callback(command_buffers_[i], framebuffers_[i]);
@@ -340,11 +342,12 @@ void App::draw() {
   auto next_image_result =
       swapchain_->nextImage(image_available_semaphores_[current_frame].handle(),
                             VK_NULL_HANDLE, image_index);
-  switch (next_image_result) {
-  case VK_SUCCESS:
-  case VK_SUBOPTIMAL_KHR:
-    break;
-  default:
+  if (next_image_result == VK_ERROR_OUT_OF_DATE_KHR) {
+    recreateSwapchain();
+    return;
+  } else if (next_image_result != VK_SUCCESS &&
+             next_image_result != VK_SUBOPTIMAL_KHR) {
+    INFO("error on getting next swapchain image!");
     return;
   }
   if (images_in_flight_[image_index] != VK_NULL_HANDLE)
@@ -391,13 +394,22 @@ void App::draw() {
 
   presentInfo.pImageIndices = &image_index;
 
-  vkQueuePresentKHR(queue_families_.family("presentation").vk_queues[0],
-                    &presentInfo);
+  result = vkQueuePresentKHR(
+      queue_families_.family("presentation").vk_queues[0], &presentInfo);
+
+  if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR ||
+      framebuffer_resized_) {
+    recreateSwapchain();
+    framebuffer_resized_ = false;
+  } else if (next_image_result != VK_SUCCESS) {
+    INFO("error on presenting swapchain image!");
+    return;
+  }
 
   vkQueueWaitIdle(queue_families_.family("presentation").vk_queues[0]);
 
   current_frame = (current_frame + 1) % max_frames_in_flight;
-}
+} // namespace vk
 
 } // namespace vk
 
