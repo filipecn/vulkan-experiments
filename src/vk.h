@@ -1,6 +1,7 @@
 #include "logging.h"
 #include "vk_app.h"
 #include "vk_command_buffer.h"
+#include "vk_device_memory.h"
 #include "vk_pipeline.h"
 #include "vk_renderpass.h"
 #include "vk_shader_module.h"

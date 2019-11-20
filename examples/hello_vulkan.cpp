@@ -1,6 +1,22 @@
 #include "vk.h"
 #include <iostream>
 
+struct vec2 {
+  float x, y;
+};
+struct vec3 {
+  float x, y, z;
+};
+
+struct Vertex {
+  vec2 pos;
+  vec3 color;
+};
+
+const std::vector<Vertex> vertices = {{{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
+                                      {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+                                      {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
+
 int main(int argc, char const *argv[]) {
 #ifndef GLFW_INCLUDE_VULKAN
 #if defined __WIN32__
@@ -85,6 +101,13 @@ int main(int argc, char const *argv[]) {
       VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
           VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
   auto &pipeline = *app.graphicsPipeline();
+  // Vertex data
+  pipeline.vertex_input_state.addBindingDescription(
+      0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX);
+  pipeline.vertex_input_state.addAttributeDescription(
+      0, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, pos));
+  pipeline.vertex_input_state.addAttributeDescription(
+      1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, color));
   pipeline.addShaderStage(vert_shader_stage_info);
   pipeline.addShaderStage(frag_shader_stage_info);
   pipeline.setInputState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
@@ -102,7 +125,18 @@ int main(int argc, char const *argv[]) {
           VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
   // pipeline.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
   // pipeline.addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
-
+  // vertex buffer
+  circe::vk::Buffer vertex_buffer(
+      app.logicalDevice(), sizeof(vertices[0]) * vertices.size(),
+      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertices.data());
+  circe::vk::DeviceMemory vertex_buffer_memory(
+      app.logicalDevice(), vertex_buffer,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  vertex_buffer_memory.bind(vertex_buffer);
+  vertex_buffer_memory.copy(vertex_buffer);
   app.resize_callback = [&](uint32_t w, uint32_t h) {
     auto &vp = pipeline.viewport_state.viewport(0);
     vp.width = w;
@@ -119,7 +153,10 @@ int main(int argc, char const *argv[]) {
     renderpass_begin_info.addClearColorValuef(0.f, 0.f, 0.f, 1.f);
     cb.beginRenderPass(renderpass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
     cb.bind(pipeline);
-    cb.draw(3);
+    std::vector<VkBuffer> vertex_buffers = {vertex_buffer.handle()};
+    std::vector<VkDeviceSize> offsets = {0};
+    cb.bindVertexBuffers(0, vertex_buffers, offsets);
+    cb.draw(vertices.size());
     cb.endRenderPass();
     cb.end();
   };

@@ -105,9 +105,9 @@ public:
   ///\param required_flags **[in]** hard requirements
   ///\param preferred_flags **[in]** soft requirements
   ///\return uint32_t memory type
-  uint32_t chooseHeap(const VkMemoryRequirements &memory_requirements,
-                      VkMemoryPropertyFlags required_flags,
-                      VkMemoryPropertyFlags preferred_flags) const;
+  uint32_t chooseMemoryType(const VkMemoryRequirements &memory_requirements,
+                            VkMemoryPropertyFlags required_flags,
+                            VkMemoryPropertyFlags preferred_flags) const;
   /// Checks if the desired presentation mode is supported by the device, if
   /// so, it is returned in **present_mode**. If not, VK_PRESENT_MODE_FIFO_KHR
   /// is chosen.

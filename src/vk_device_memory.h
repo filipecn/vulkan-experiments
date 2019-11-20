@@ -48,18 +48,28 @@ private:
 
 class DeviceMemory final {
 public:
-  DeviceMemory(const LogicalDevice &device, const Buffer &buffer,
+  DeviceMemory(const LogicalDevice *device, const Buffer &buffer,
                VkMemoryPropertyFlags required_flags,
                VkMemoryPropertyFlags preferred_flags);
-  DeviceMemory(const LogicalDevice &device, const Image &image,
+  DeviceMemory(const LogicalDevice *device, const Image &image,
                VkMemoryPropertyFlags required_flags,
                VkMemoryPropertyFlags preferred_flags);
   ~DeviceMemory();
   bool bind(const Buffer &buffer);
   bool bind(const Image &image);
+  /// Unfortunately the driver may not immediately copy the data into the buffer
+  /// memory, for example because of caching. It is also possible that writes to
+  /// the buffer are not visible in the mapped memory yet. There are two ways to
+  /// deal with that problem:
+  /// - Use a memory heap that is host coherent, indicated with
+  /// VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+  /// - Call vkFlushMappedMemoryRanges to after writing to the mapped memory,
+  /// and call vkInvalidateMappedMemoryRanges before reading from the mapped
+  /// memory
+  bool copy(const Buffer &buffer);
 
 private:
-  const LogicalDevice &device_;
+  const LogicalDevice *device_ = nullptr;
   VkDeviceMemory vk_device_memory_ = VK_NULL_HANDLE;
 };
 

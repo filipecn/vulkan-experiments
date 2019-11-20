@@ -54,15 +54,15 @@ DeviceMemoryPool::~DeviceMemoryPool() {
     vkFreeMemory(device_.handle(), vk_device_memory_, nullptr);
 }
 
-DeviceMemory::DeviceMemory(const LogicalDevice &device, const Image &image,
+DeviceMemory::DeviceMemory(const LogicalDevice *device, const Image &image,
                            VkMemoryPropertyFlags required_flags,
                            VkMemoryPropertyFlags preferred_flags)
     : device_(device) {
   VkMemoryRequirements memory_requirements{};
   if (!image.memoryRequirements(memory_requirements))
     return;
-  uint32_t heap_index =
-      device.chooseHeap(memory_requirements, required_flags, preferred_flags);
+  uint32_t heap_index = device->chooseMemoryType(
+      memory_requirements, required_flags, preferred_flags);
   // try to allocate memory
   VkMemoryAllocateInfo buffer_memory_allocate_info = {
       VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, // VkStructureType    sType
@@ -70,19 +70,19 @@ DeviceMemory::DeviceMemory(const LogicalDevice &device, const Image &image,
       memory_requirements.size, // VkDeviceSize       allocationSize
       heap_index                // uint32_t           memoryTypeIndex
   };
-  CHECK_VULKAN(vkAllocateMemory(device.handle(), &buffer_memory_allocate_info,
+  CHECK_VULKAN(vkAllocateMemory(device->handle(), &buffer_memory_allocate_info,
                                 nullptr, &vk_device_memory_));
 }
 
-DeviceMemory::DeviceMemory(const LogicalDevice &device, const Buffer &buffer,
+DeviceMemory::DeviceMemory(const LogicalDevice *device, const Buffer &buffer,
                            VkMemoryPropertyFlags required_flags,
                            VkMemoryPropertyFlags preferred_flags)
     : device_(device) {
   VkMemoryRequirements memory_requirements{};
   if (!buffer.memoryRequirements(memory_requirements))
     return;
-  uint32_t heap_index =
-      device.chooseHeap(memory_requirements, required_flags, preferred_flags);
+  uint32_t heap_index = device->chooseMemoryType(
+      memory_requirements, required_flags, preferred_flags);
   // try to allocate memory
   VkMemoryAllocateInfo buffer_memory_allocate_info = {
       VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, // VkStructureType    sType
@@ -90,24 +90,33 @@ DeviceMemory::DeviceMemory(const LogicalDevice &device, const Buffer &buffer,
       memory_requirements.size, // VkDeviceSize       allocationSize
       heap_index                // uint32_t           memoryTypeIndex
   };
-  CHECK_VULKAN(vkAllocateMemory(device.handle(), &buffer_memory_allocate_info,
+  CHECK_VULKAN(vkAllocateMemory(device->handle(), &buffer_memory_allocate_info,
                                 nullptr, &vk_device_memory_));
 }
 
 DeviceMemory::~DeviceMemory() {
   if (VK_NULL_HANDLE != vk_device_memory_)
-    vkFreeMemory(device_.handle(), vk_device_memory_, nullptr);
+    vkFreeMemory(device_->handle(), vk_device_memory_, nullptr);
 }
 
 bool DeviceMemory::bind(const Buffer &buffer) {
-  R_CHECK_VULKAN(vkBindBufferMemory(device_.handle(), buffer.handle(),
+  R_CHECK_VULKAN(vkBindBufferMemory(device_->handle(), buffer.handle(),
                                     vk_device_memory_, 0));
   return true;
 }
 
 bool DeviceMemory::bind(const Image &image) {
-  R_CHECK_VULKAN(vkBindImageMemory(device_.handle(), image.handle(),
+  R_CHECK_VULKAN(vkBindImageMemory(device_->handle(), image.handle(),
                                    vk_device_memory_, 0));
+  return true;
+}
+
+bool DeviceMemory::copy(const Buffer &buffer) {
+  void *data;
+  CHECK_VULKAN(vkMapMemory(device_->handle(), vk_device_memory_, 0,
+                           buffer.size(), 0, &data));
+  memcpy(data, buffer.data(), (size_t)buffer.size());
+  vkUnmapMemory(device_->handle(), vk_device_memory_);
   return true;
 }
 

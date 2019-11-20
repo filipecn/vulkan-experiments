@@ -87,8 +87,8 @@ public:
   /// \param sharingMode **[in | optional = VK_SHARING_MODE_EXCLUSIVE]**
   /// specifies whether queues from multiple families can access the buffer at
   /// the same time.
-  Buffer(const LogicalDevice &logical_device, VkDeviceSize size,
-         VkBufferUsageFlags usage,
+  Buffer(const LogicalDevice *logical_device, VkDeviceSize size,
+         VkBufferUsageFlags usage, const void *data = nullptr,
          VkSharingMode sharingMode = VK_SHARING_MODE_EXCLUSIVE);
   ~Buffer();
   ///\return VkBuffer vulkan handle object
@@ -98,16 +98,25 @@ public:
   ///\return bool
   bool good() const;
   ///\return const LogicalDevice& device owner of its resouce
-  const LogicalDevice &device() const;
-  ///\brief Information about the type of memory and how much of it the image
+  const LogicalDevice *device() const;
+  VkDeviceSize size() const;
+  const void *data() const;
+  ///\brief Information about the type of memory and how much of it the
+  /// image
   /// resource requires.
   ///\param memory_requirements **[out]**
   ///\return bool true if success
   bool memoryRequirements(VkMemoryRequirements &memory_requirements) const;
+  void setData(const void *data, uint32_t size);
+  template <typename T> const T &at(uint32_t i) const {
+    return (reinterpret_cast<const T *>(data_))[i];
+  }
 
 private:
-  const LogicalDevice &logical_device_;
+  const LogicalDevice *logical_device_ = nullptr;
+  VkBufferCreateInfo info_ = {};
   VkBuffer vk_buffer_ = VK_NULL_HANDLE;
+  void *data_ = nullptr;
 };
 
 } // namespace vk

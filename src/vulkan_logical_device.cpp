@@ -99,11 +99,11 @@ VkDevice LogicalDevice::handle() const { return vk_device_; }
 bool LogicalDevice::good() const { return vk_device_ != VK_NULL_HANDLE; }
 
 uint32_t
-LogicalDevice::chooseHeap(const VkMemoryRequirements &memory_requirements,
-                          VkMemoryPropertyFlags required_flags,
-                          VkMemoryPropertyFlags preferred_flags) const {
-  return physical_device_.chooseHeap(memory_requirements, required_flags,
-                                     preferred_flags);
+LogicalDevice::chooseMemoryType(const VkMemoryRequirements &memory_requirements,
+                                VkMemoryPropertyFlags required_flags,
+                                VkMemoryPropertyFlags preferred_flags) const {
+  return physical_device_.chooseMemoryType(memory_requirements, required_flags,
+                                           preferred_flags);
 }
 
 bool LogicalDevice::waitIdle() const {

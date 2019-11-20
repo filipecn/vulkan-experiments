@@ -33,41 +33,54 @@ namespace circe {
 
 namespace vk {
 
-Buffer::Buffer(const LogicalDevice &logical_device, VkDeviceSize size,
-               VkBufferUsageFlags usage, VkSharingMode sharingMode)
+Buffer::Buffer(const LogicalDevice *logical_device, VkDeviceSize size,
+               VkBufferUsageFlags usage, const void *data,
+               VkSharingMode sharingMode)
     : logical_device_(logical_device) {
-  VkBufferCreateInfo buffer_create_info = {
-      VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, // sType
-      nullptr,                              // pNext
-      0,                                    // flags
-      size,                                 // size
-      usage,                                // usage
-      VK_SHARING_MODE_EXCLUSIVE,            // sharing mode
-      0,                                    // queue family index count
-      nullptr                               // queue family indices pointer
-  };
-  CHECK_VULKAN(vkCreateBuffer(logical_device.handle(), &buffer_create_info,
-                              nullptr, &vk_buffer_));
+  info_.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  info_.pNext = nullptr;
+  info_.flags = 0;
+  info_.size = size;
+  info_.usage = usage;
+  info_.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  info_.queueFamilyIndexCount = 0;
+  info_.pQueueFamilyIndices = nullptr;
+  CHECK_VULKAN(
+      vkCreateBuffer(logical_device->handle(), &info_, nullptr, &vk_buffer_));
   if (vk_buffer_ == VK_NULL_HANDLE)
     INFO("Could not create buffer.");
+  data_ = new char[size];
+  if (data)
+    setData(data, size);
 }
 
 Buffer::~Buffer() {
+  if (data_)
+    delete[] data_;
   if (VK_NULL_HANDLE != vk_buffer_)
-    vkDestroyBuffer(logical_device_.handle(), vk_buffer_, nullptr);
+    vkDestroyBuffer(logical_device_->handle(), vk_buffer_, nullptr);
 }
 
 VkBuffer Buffer::handle() const { return vk_buffer_; }
 
 bool Buffer::good() const { return vk_buffer_ != VK_NULL_HANDLE; }
 
-const LogicalDevice &Buffer::device() const { return logical_device_; }
+const LogicalDevice *Buffer::device() const { return logical_device_; }
+
+VkDeviceSize Buffer::size() const { return info_.size; }
+
+const void *Buffer::data() const { return data_; }
 
 bool Buffer::memoryRequirements(
     VkMemoryRequirements &memory_requirements) const {
-  vkGetBufferMemoryRequirements(logical_device_.handle(), vk_buffer_,
+  vkGetBufferMemoryRequirements(logical_device_->handle(), vk_buffer_,
                                 &memory_requirements);
   return true;
+}
+
+void Buffer::setData(const void *data, uint32_t size) {
+  ASSERT(size == info_.size);
+  memcpy(data_, data, size);
 }
 
 Buffer::View::View(const Buffer &buffer, VkFormat format,
@@ -83,7 +96,7 @@ Buffer::View::View(const Buffer &buffer, VkFormat format,
       memory_range     // VkDeviceSize               range
   };
 
-  CHECK_VULKAN(vkCreateBufferView(buffer.device().handle(),
+  CHECK_VULKAN(vkCreateBufferView(buffer.device()->handle(),
                                   &buffer_view_create_info, nullptr,
                                   &vk_buffer_view_));
   if (vk_buffer_view_ == VK_NULL_HANDLE)
@@ -92,7 +105,7 @@ Buffer::View::View(const Buffer &buffer, VkFormat format,
 
 Buffer::View::~View() {
   if (VK_NULL_HANDLE != vk_buffer_view_)
-    vkDestroyBufferView(buffer_.device().handle(), vk_buffer_view_, nullptr);
+    vkDestroyBufferView(buffer_.device()->handle(), vk_buffer_view_, nullptr);
 }
 
 } // namespace vk
