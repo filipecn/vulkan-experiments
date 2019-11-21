@@ -125,18 +125,53 @@ int main(int argc, char const *argv[]) {
           VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
   // pipeline.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
   // pipeline.addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
-  // vertex buffer
-  circe::vk::Buffer vertex_buffer(
+  // staging buffer
+  circe::vk::Buffer staging_buffer(
       app.logicalDevice(), sizeof(vertices[0]) * vertices.size(),
-      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertices.data());
-  circe::vk::DeviceMemory vertex_buffer_memory(
-      app.logicalDevice(), vertex_buffer,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+      VK_BUFFER_USAGE_TRANSFER_SRC_BIT, vertices.data());
+  circe::vk::DeviceMemory staging_buffer_memory(
+      app.logicalDevice(), staging_buffer,
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
           VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  staging_buffer_memory.bind(staging_buffer);
+  staging_buffer_memory.copy(staging_buffer);
+  // vertex buffer
+  uint32_t buffer_size = sizeof(vertices[0]) * vertices.size();
+  circe::vk::Buffer vertex_buffer(app.logicalDevice(), buffer_size,
+                                  VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+  circe::vk::DeviceMemory vertex_buffer_memory(
+      app.logicalDevice(), vertex_buffer, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   vertex_buffer_memory.bind(vertex_buffer);
-  vertex_buffer_memory.copy(vertex_buffer);
+  // In order to copy data from one buffer to another, we can create a temporary
+  // command buffer from a special command pool created for short-living command
+  // buffers
+  uint32_t graphics_family_index =
+      app.queueFamilies().family("graphics").family_index.value();
+  VkQueue graphics_queue = app.queueFamilies().family("graphics").vk_queues[0];
+  circe::vk::CommandPool short_living_command_pool(
+      app.logicalDevice(), VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+      graphics_family_index);
+  std::vector<circe::vk::CommandBuffer> short_living_command_buffers;
+  short_living_command_pool.allocateCommandBuffers(
+      VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1, short_living_command_buffers);
+  // lets record the copy command into the command buffer
+  short_living_command_buffers[0].begin(
+      VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+  short_living_command_buffers[0].copy(staging_buffer, 0, vertex_buffer, 0,
+                                       {buffer_size});
+  short_living_command_buffers[0].end();
+  // now we can submit and wait the transfer to finish
+  VkSubmitInfo submitInfo = {};
+  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  submitInfo.commandBufferCount = 1;
+  VkCommandBuffer vk_slcb = short_living_command_buffers[0].handle();
+  submitInfo.pCommandBuffers = &vk_slcb;
+
+  vkQueueSubmit(graphics_queue, 1, &submitInfo, VK_NULL_HANDLE);
+  vkQueueWaitIdle(graphics_queue);
+  short_living_command_pool.freeCommandBuffers(short_living_command_buffers);
+
   app.resize_callback = [&](uint32_t w, uint32_t h) {
     auto &vp = pipeline.viewport_state.viewport(0);
     vp.width = w;

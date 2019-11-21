@@ -49,6 +49,8 @@ private:
 class DeviceMemory final {
 public:
   DeviceMemory(const LogicalDevice *device, const Buffer &buffer,
+               VkMemoryPropertyFlags required_flags);
+  DeviceMemory(const LogicalDevice *device, const Buffer &buffer,
                VkMemoryPropertyFlags required_flags,
                VkMemoryPropertyFlags preferred_flags);
   DeviceMemory(const LogicalDevice *device, const Image &image,
