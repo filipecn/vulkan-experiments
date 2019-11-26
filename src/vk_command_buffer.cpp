@@ -242,10 +242,24 @@ bool CommandBuffer::bindVertexBuffers(
   return true;
 }
 
+bool CommandBuffer::bindIndexBuffer(const Buffer &buffer, VkDeviceSize offset,
+                                    VkIndexType type) const {
+  vkCmdBindIndexBuffer(vk_command_buffer_, buffer.handle(), offset, type);
+  return true;
+}
+
 bool CommandBuffer::draw(uint32_t vertex_count, uint32_t instance_count,
                          uint32_t first_vertex, uint32_t first_instance) const {
   vkCmdDraw(vk_command_buffer_, vertex_count, instance_count, first_vertex,
             first_instance);
+  return true;
+}
+
+bool CommandBuffer::drawIndexed(uint32_t index_count, uint32_t instance_count,
+                                uint32_t first_index, int32_t vertex_offset,
+                                uint32_t first_instance) const {
+  vkCmdDrawIndexed(vk_command_buffer_, index_count, instance_count, first_index,
+                   vertex_offset, first_instance);
   return true;
 }
 

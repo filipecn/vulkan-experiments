@@ -289,6 +289,8 @@ public:
   bool bindVertexBuffers(uint32_t first_binding,
                          const std::vector<VkBuffer> &buffers,
                          const std::vector<VkDeviceSize> &offsets) const;
+  bool bindIndexBuffer(const Buffer &buffer, VkDeviceSize offset,
+                       VkIndexType type) const;
   ///\brief Generates vertices and push them into the current graphics pipeline.
   ///\param vertex_count **[in]**
   ///\param instance_count **[in]**
@@ -297,6 +299,9 @@ public:
   ///\return bool
   bool draw(uint32_t vertex_count, uint32_t instance_count = 1,
             uint32_t first_vertex = 0, uint32_t first_instance = 0) const;
+  bool drawIndexed(uint32_t index_count, uint32_t instance_count = 1,
+                   uint32_t first_index = 0, int32_t vertex_offset = 0,
+                   uint32_t first_instance = 0) const;
 
 private:
   VkCommandBuffer vk_command_buffer_ = VK_NULL_HANDLE;

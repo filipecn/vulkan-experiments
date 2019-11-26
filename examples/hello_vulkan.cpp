@@ -13,9 +13,11 @@ struct Vertex {
   vec3 color;
 };
 
-const std::vector<Vertex> vertices = {{{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
-                                      {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-                                      {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
+const std::vector<Vertex> vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+                                      {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+                                      {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+                                      {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 
 int main(int argc, char const *argv[]) {
 #ifndef GLFW_INCLUDE_VULKAN
@@ -125,24 +127,42 @@ int main(int argc, char const *argv[]) {
           VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
   // pipeline.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
   // pipeline.addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
-  // staging buffer
-  circe::vk::Buffer staging_buffer(
+  // vertex staging buffer
+  circe::vk::Buffer vertex_staging_buffer(
       app.logicalDevice(), sizeof(vertices[0]) * vertices.size(),
       VK_BUFFER_USAGE_TRANSFER_SRC_BIT, vertices.data());
-  circe::vk::DeviceMemory staging_buffer_memory(
-      app.logicalDevice(), staging_buffer,
+  circe::vk::DeviceMemory vertex_staging_buffer_memory(
+      app.logicalDevice(), vertex_staging_buffer,
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
           VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-  staging_buffer_memory.bind(staging_buffer);
-  staging_buffer_memory.copy(staging_buffer);
+  vertex_staging_buffer_memory.bind(vertex_staging_buffer);
+  vertex_staging_buffer_memory.copy(vertex_staging_buffer);
+  // index staging buffer
+  circe::vk::Buffer index_staging_buffer(
+      app.logicalDevice(), sizeof(indices[0]) * indices.size(),
+      VK_BUFFER_USAGE_TRANSFER_SRC_BIT, indices.data());
+  circe::vk::DeviceMemory index_staging_buffer_memory(
+      app.logicalDevice(), index_staging_buffer,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  index_staging_buffer_memory.bind(index_staging_buffer);
+  index_staging_buffer_memory.copy(index_staging_buffer);
   // vertex buffer
-  uint32_t buffer_size = sizeof(vertices[0]) * vertices.size();
-  circe::vk::Buffer vertex_buffer(app.logicalDevice(), buffer_size,
+  uint32_t vertex_buffer_size = sizeof(vertices[0]) * vertices.size();
+  circe::vk::Buffer vertex_buffer(app.logicalDevice(), vertex_buffer_size,
                                   VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                                       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
   circe::vk::DeviceMemory vertex_buffer_memory(
       app.logicalDevice(), vertex_buffer, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   vertex_buffer_memory.bind(vertex_buffer);
+  // index buffer
+  uint32_t index_buffer_size = sizeof(indices[0]) * indices.size();
+  circe::vk::Buffer index_buffer(app.logicalDevice(), index_buffer_size,
+                                 VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                     VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+  circe::vk::DeviceMemory index_buffer_memory(
+      app.logicalDevice(), index_buffer, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  index_buffer_memory.bind(index_buffer);
   // In order to copy data from one buffer to another, we can create a temporary
   // command buffer from a special command pool created for short-living command
   // buffers
@@ -158,8 +178,10 @@ int main(int argc, char const *argv[]) {
   // lets record the copy command into the command buffer
   short_living_command_buffers[0].begin(
       VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-  short_living_command_buffers[0].copy(staging_buffer, 0, vertex_buffer, 0,
-                                       {buffer_size});
+  short_living_command_buffers[0].copy(vertex_staging_buffer, 0, vertex_buffer,
+                                       0, {vertex_buffer_size});
+  short_living_command_buffers[0].copy(index_staging_buffer, 0, index_buffer, 0,
+                                       {index_buffer_size});
   short_living_command_buffers[0].end();
   // now we can submit and wait the transfer to finish
   VkSubmitInfo submitInfo = {};
@@ -191,7 +213,8 @@ int main(int argc, char const *argv[]) {
     std::vector<VkBuffer> vertex_buffers = {vertex_buffer.handle()};
     std::vector<VkDeviceSize> offsets = {0};
     cb.bindVertexBuffers(0, vertex_buffers, offsets);
-    cb.draw(vertices.size());
+    cb.bindIndexBuffer(index_buffer, 0, VK_INDEX_TYPE_UINT16);
+    cb.drawIndexed(indices.size());
     cb.endRenderPass();
     cb.end();
   };
