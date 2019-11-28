@@ -1,6 +1,16 @@
 #include "vk.h"
 #include <iostream>
 
+struct mat4 {
+  float m[4][4];
+};
+
+struct UniformBufferObject {
+  mat4 model;
+  mat4 view;
+  mat4 proj;
+};
+
 struct vec2 {
   float x, y;
 };
@@ -88,6 +98,10 @@ int main(int argc, char const *argv[]) {
   // An important part is to describe the resources that will be used by the
   // shaders, which is done via a pipeline layout.
   auto *layout = app.pipelineLayout();
+//  auto descriptor_set_layout =
+//      layout->descriptorSetLayout(layout->createLayoutSet(0));
+//  descriptor_set_layout.addLayoutBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+//                                         1, VK_SHADER_STAGE_VERTEX_BIT);
   auto *renderpass = app.renderpass();
   renderpass->addAttachment(
       app.swapchain()->surfaceFormat().format, VK_SAMPLE_COUNT_1_BIT,
@@ -169,35 +183,25 @@ int main(int argc, char const *argv[]) {
   uint32_t graphics_family_index =
       app.queueFamilies().family("graphics").family_index.value();
   VkQueue graphics_queue = app.queueFamilies().family("graphics").vk_queues[0];
-  circe::vk::CommandPool short_living_command_pool(
-      app.logicalDevice(), VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-      graphics_family_index);
-  std::vector<circe::vk::CommandBuffer> short_living_command_buffers;
-  short_living_command_pool.allocateCommandBuffers(
-      VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1, short_living_command_buffers);
-  // lets record the copy command into the command buffer
-  short_living_command_buffers[0].begin(
-      VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-  short_living_command_buffers[0].copy(vertex_staging_buffer, 0, vertex_buffer,
-                                       0, {vertex_buffer_size});
-  short_living_command_buffers[0].copy(index_staging_buffer, 0, index_buffer, 0,
-                                       {index_buffer_size});
-  short_living_command_buffers[0].end();
-  // now we can submit and wait the transfer to finish
-  VkSubmitInfo submitInfo = {};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submitInfo.commandBufferCount = 1;
-  VkCommandBuffer vk_slcb = short_living_command_buffers[0].handle();
-  submitInfo.pCommandBuffers = &vk_slcb;
-
-  vkQueueSubmit(graphics_queue, 1, &submitInfo, VK_NULL_HANDLE);
-  vkQueueWaitIdle(graphics_queue);
-  short_living_command_pool.freeCommandBuffers(short_living_command_buffers);
+  circe::vk::CommandPool::submitCommandBuffer(app.logicalDevice(),
+                                              graphics_family_index, graphics_queue,
+                                              [&](circe::vk::CommandBuffer &cb) {
+                                                cb.copy(vertex_staging_buffer,
+                                                        0,
+                                                        vertex_buffer,
+                                                        0,
+                                                        vertex_buffer_size);
+                                                cb.copy(index_staging_buffer,
+                                                        0,
+                                                        index_buffer,
+                                                        0,
+                                                        index_buffer_size);
+                                              });
 
   app.resize_callback = [&](uint32_t w, uint32_t h) {
     auto &vp = pipeline.viewport_state.viewport(0);
-    vp.width = w;
-    vp.height = h;
+    vp.width = static_cast<float>(w);
+    vp.height = static_cast<float>(h);
     auto s = pipeline.viewport_state.scissor(0);
     s.extent.width = w;
     s.extent.height = h;

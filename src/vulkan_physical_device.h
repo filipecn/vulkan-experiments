@@ -71,7 +71,7 @@ public:
   /// \param desired_capabilities **[in]** desired set of capabalities
   /// \param queue_family_index **[out]** capable queue family index
   /// \return bool true if success
-  bool selectIndexOfQueueFamily(VkQueueFlags desired_capabilities,
+  bool selectIndexOfQueueFamily(VkQueueFlagBits desired_capabilities,
                                 uint32_t &queue_family_index) const;
   /// Finds a queue family of a physical device that can accept commands for a
   /// given surface

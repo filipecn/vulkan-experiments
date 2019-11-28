@@ -28,6 +28,7 @@
 #ifndef CIRCE_VULKAN_COMMAND_BUFFER_H
 #define CIRCE_VULKAN_COMMAND_BUFFER_H
 
+#include <functional>
 #include "vk_buffer.h"
 #include "vk_image.h"
 #include "vk_pipeline.h"
@@ -106,6 +107,9 @@ public:
   ///\param flags **[in]**
   ///\return bool
   bool reset(VkCommandBufferResetFlags flags) const;
+  ///
+  /// \return
+  bool submit(VkQueue queue, VkFence fence = VK_NULL_HANDLE) const;
   ///\brief
   ///
   ///\param src_buffer **[in]**
@@ -163,11 +167,11 @@ public:
   ///\param offset **[in]** multiple of 4
   ///\param length **[in]**
   ///\return bool
-  template <typename T>
+  template<typename T>
   bool fill(const Buffer &buffer, T data, VkDeviceSize offset = 0,
             VkDeviceSize length = VK_WHOLE_SIZE) const {
     vkCmdFillBuffer(vk_command_buffer_, buffer.handle(), offset, length,
-                    *(const uint32_t *)&data);
+                    *(const uint32_t *) &data);
     return true;
   }
   ///\brief
@@ -178,11 +182,11 @@ public:
   ///\param offset **[in]** multiple of 4
   ///\param length **[in]**
   ///\return bool
-  template <typename T>
+  template<typename T>
   bool update(const Buffer &buffer, const T *data, VkDeviceSize offset,
               VkDeviceSize length) const {
     vkCmdUpdateBuffer(vk_command_buffer_, buffer.handle(), offset, length,
-                      (const uint32_t *)data);
+                      (const uint32_t *) data);
     return true;
   }
   ///\brief
@@ -335,6 +339,12 @@ public:
   ///\param flags **[in]**
   ///\return bool
   bool reset(VkCommandPoolResetFlags flags) const;
+  ///
+  /// \param record_callback
+  static void submitCommandBuffer(const LogicalDevice *logical_device,
+                                  uint32_t family_index,
+                                  VkQueue queue,
+                                  const std::function<void(CommandBuffer & )> &record_callback);
 
 private:
   const LogicalDevice *logical_device_ = nullptr;

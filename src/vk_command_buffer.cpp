@@ -29,9 +29,7 @@
 #include "logging.h"
 #include "vulkan_debug.h"
 
-namespace circe {
-
-namespace vk {
+namespace circe::vk {
 
 RenderPassBeginInfo::RenderPassBeginInfo(RenderPass *renderpass,
                                          Framebuffer *framebuffer) {
@@ -123,6 +121,16 @@ bool CommandBuffer::end() const {
 
 bool CommandBuffer::reset(VkCommandBufferResetFlags flags) const {
   R_CHECK_VULKAN(vkResetCommandBuffer(vk_command_buffer_, flags));
+  return true;
+}
+
+bool CommandBuffer::submit(VkQueue queue, VkFence fence) const {
+  VkSubmitInfo submit_info = {};
+  submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  submit_info.commandBufferCount = 1;
+  submit_info.pCommandBuffers = &vk_command_buffer_;
+  vkQueueSubmit(queue, 1, &submit_info, fence);
+  vkQueueWaitIdle(queue);
   return true;
 }
 
@@ -325,6 +333,22 @@ bool CommandPool::reset(VkCommandPoolResetFlags flags) const {
   return true;
 }
 
-} // namespace vk
+void CommandPool::submitCommandBuffer(const LogicalDevice *logical_device,
+                                      uint32_t family_index,
+                                      VkQueue queue,
+                                      const std::function<void(CommandBuffer & )> &record_callback) {
+  circe::vk::CommandPool short_living_command_pool(
+      logical_device, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+      family_index);
+  std::vector<circe::vk::CommandBuffer> short_living_command_buffers;
+  short_living_command_pool.allocateCommandBuffers(
+      VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1, short_living_command_buffers);
+  short_living_command_buffers[0].begin(
+      VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+  record_callback(short_living_command_buffers[0]);
+  short_living_command_buffers[0].end();
+  short_living_command_buffers[0].submit(queue);
+  short_living_command_pool.freeCommandBuffers(short_living_command_buffers);
+}
 
 } // namespace circe

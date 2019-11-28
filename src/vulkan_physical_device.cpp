@@ -29,9 +29,7 @@
 #include "logging.h"
 #include "vulkan_debug.h"
 
-namespace circe {
-
-namespace vk {
+namespace circe::vk {
 
 PhysicalDevice::PhysicalDevice(VkPhysicalDevice device_handle)
     : vk_device_(device_handle) {
@@ -71,7 +69,7 @@ bool PhysicalDevice::checkAvailableQueueFamilies() {
 }
 
 bool PhysicalDevice::selectIndexOfQueueFamily(
-    VkQueueFlags desired_capabilities, uint32_t &queue_family_index) const {
+    VkQueueFlagBits desired_capabilities, uint32_t &queue_family_index) const {
   for (uint32_t index = 0;
        index < static_cast<uint32_t>(vk_queue_families_.size()); ++index) {
     if ((vk_queue_families_[index].queueCount > 0) &&
@@ -288,7 +286,5 @@ std::ostream &operator<<(std::ostream &os, const PhysicalDevice &d) {
   os << "==========================================" << std::endl;
   return os;
 }
-
-} // namespace vk
 
 } // namespace circe
