@@ -54,6 +54,20 @@ Buffer::Buffer(const LogicalDevice *logical_device, VkDeviceSize size,
     setData(data, size);
 }
 
+Buffer::Buffer(Buffer &other)
+    : logical_device_(other.logical_device_), info_(other.info_),
+      vk_buffer_(other.vk_buffer_), data_(other.data_) {
+  other.vk_buffer_ = VK_NULL_HANDLE;
+  other.data_ = nullptr;
+}
+
+Buffer::Buffer(Buffer &&other) noexcept
+    : logical_device_(other.logical_device_), info_(other.info_),
+      vk_buffer_(other.vk_buffer_), data_(other.data_) {
+  other.vk_buffer_ = VK_NULL_HANDLE;
+  other.data_ = nullptr;
+}
+
 Buffer::~Buffer() {
   if (data_)
     delete[] data_;

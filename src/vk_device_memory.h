@@ -56,6 +56,10 @@ public:
   DeviceMemory(const LogicalDevice *device, const Image &image,
                VkMemoryPropertyFlags required_flags,
                VkMemoryPropertyFlags preferred_flags);
+  DeviceMemory(const DeviceMemory &other) = delete;
+  DeviceMemory(const DeviceMemory &&other) = delete;
+  DeviceMemory(DeviceMemory &other);
+  DeviceMemory(DeviceMemory &&other) noexcept;
   ~DeviceMemory();
   bool bind(const Buffer &buffer);
   bool bind(const Image &image);

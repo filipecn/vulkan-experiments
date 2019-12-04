@@ -170,7 +170,7 @@ public:
   Framebuffer(const Framebuffer &&other) = delete;
   Framebuffer(const Framebuffer &other) = delete;
   Framebuffer(Framebuffer &other);
-  Framebuffer(Framebuffer &&other);
+  Framebuffer(Framebuffer &&other) noexcept;
   ~Framebuffer();
   ///\brief Bounds an image into the framebuffer
   /// The passes comprising the renderpass make references to the image
@@ -181,9 +181,9 @@ public:
   ///\param image_view **[in]**
   void addAttachment(const Image::View &image_view);
   VkFramebuffer handle();
-  uint32_t width() const;
-  uint32_t height() const;
-  uint32_t layers() const;
+  [[nodiscard]] uint32_t width() const;
+  [[nodiscard]] uint32_t height() const;
+  [[nodiscard]] uint32_t layers() const;
 
 private:
   const LogicalDevice *logical_device_ = nullptr;

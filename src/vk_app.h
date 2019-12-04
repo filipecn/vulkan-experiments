@@ -34,6 +34,7 @@
 #include "vk_pipeline.h"
 #include "vk_renderpass.h"
 #include "vk_swap_chain.h"
+#include "vk_device_memory.h"
 #include "vk_sync.h"
 #include "vulkan_logical_device.h"
 #include <functional>
@@ -110,13 +111,16 @@ public:
   QueueFamilies &queueFamilies();
 
   std::function<void(uint32_t width, uint32_t height)> resize_callback;
-  std::function<void(CommandBuffer &, Framebuffer &)>
+  std::function<void(CommandBuffer &, Framebuffer &, VkDescriptorSet)>
       record_command_buffer_callback;
+  std::function<uint32_t()> uniform_buffer_size_callback;
+  std::function<void(Buffer&)> update_uniform_buffer_callback;
+  std::function<void(DescriptorSetLayout&)> descriptor_set_layout_callback;
 
 private:
-  bool selectNumberOfSwapchainImages(
+  static bool selectNumberOfSwapchainImages(
       VkSurfaceCapabilitiesKHR const &surface_capabilities,
-      uint32_t &number_of_images) const;
+      uint32_t &number_of_images) ;
   bool chooseSizeOfSwapchainImages(
       VkSurfaceCapabilitiesKHR const &surface_capabilities,
       VkExtent2D &size_of_images) const;
@@ -137,6 +141,10 @@ private:
   std::unique_ptr<CommandPool> command_pool_;
   std::vector<circe::vk::CommandBuffer> command_buffers_;
   std::vector<circe::vk::Framebuffer> framebuffers_;
+  std::vector<circe::vk::Buffer> uniform_buffers_;
+  std::vector<circe::vk::DeviceMemory> uniform_buffer_memories_;
+  std::unique_ptr<DescriptorPool> descriptor_pool_;
+  std::vector<VkDescriptorSet> descriptor_sets_;
   // synchronization
   size_t max_frames_in_flight = 2;
   std::vector<Semaphore> render_finished_semaphores_;

@@ -30,9 +30,7 @@
 #include "vulkan_library.h"
 #include <map>
 
-namespace circe {
-
-namespace vk {
+namespace circe::vk {
 
 App::App(uint32_t w, uint32_t h, const std::string &name)
     : application_name_(name),
@@ -120,20 +118,20 @@ bool App::createLogicalDevice(
   auto extensions = desired_extensions;
   extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
   logical_device_ = std::make_unique<LogicalDevice>(
-      *physical_device_.get(), extensions, desired_features, queue_families_,
+      *physical_device_, extensions, desired_features, queue_families_,
       validation_layer_names_);
 
   if (!command_pool_) {
     command_pool_ = std::make_unique<CommandPool>(
-        logicalDevice(), 0,
+        logical_device_.get(), 0,
         queue_families_.family("graphics").family_index.value());
   }
   { // setup synchronization objects
     for (size_t i = 0; i < max_frames_in_flight; ++i) {
-      in_flight_fences_.emplace_back(logicalDevice(),
+      in_flight_fences_.emplace_back(logical_device_.get(),
                                      VK_FENCE_CREATE_SIGNALED_BIT);
-      image_available_semaphores_.emplace_back(logicalDevice());
-      render_finished_semaphores_.emplace_back(logicalDevice());
+      image_available_semaphores_.emplace_back(logical_device_.get());
+      render_finished_semaphores_.emplace_back(logical_device_.get());
     }
   }
 
@@ -147,7 +145,7 @@ bool App::setupSwapChain(VkFormat desired_format,
   // PRESENTATION MODE
   VkPresentModeKHR present_mode;
   if (!physical_device_->selectPresentationMode(
-          vk_surface_, VK_PRESENT_MODE_MAILBOX_KHR, present_mode))
+      vk_surface_, VK_PRESENT_MODE_MAILBOX_KHR, present_mode))
     return false;
   // CHECK SURFACE CAPABILITIES
   VkSurfaceCapabilitiesKHR surface_capabilities;
@@ -164,7 +162,7 @@ bool App::setupSwapChain(VkFormat desired_format,
     return false;
   // USAGE
   VkImageUsageFlags image_usage = surface_capabilities.supportedUsageFlags &
-                                  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
   if (image_usage != VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
     return false;
   // IMAGE TRANSFORM
@@ -177,8 +175,8 @@ bool App::setupSwapChain(VkFormat desired_format,
   VkFormat image_format;
   VkColorSpaceKHR image_color_space;
   if (!physical_device_->selectFormatOfSwapchainImages(
-          vk_surface_, {desired_format, desired_color_space}, image_format,
-          image_color_space))
+      vk_surface_, {desired_format, desired_color_space}, image_format,
+      image_color_space))
     return false;
   // SWAP CHAIN
   VkSurfaceFormatKHR surface_format = {image_format, image_color_space};
@@ -192,8 +190,8 @@ bool App::setupSwapChain(VkFormat desired_format,
                     present_mode);
   // CREATE IMAGE VIEWS
   const auto &swap_chain_images = swapchain_->images();
-  for (uint32_t i = 0; i < swap_chain_images.size(); i++)
-    swapchain_image_views_.emplace_back(&swap_chain_images[i],
+  for (const auto &swap_chain_image : swap_chain_images)
+    swapchain_image_views_.emplace_back(&swap_chain_image,
                                         VK_IMAGE_VIEW_TYPE_2D, image_format,
                                         VK_IMAGE_ASPECT_COLOR_BIT);
   // setup framebuffers
@@ -204,7 +202,53 @@ bool App::setupSwapChain(VkFormat desired_format,
     framebuffer.addAttachment(image_view);
     framebuffers_.emplace_back(framebuffer);
   }
+  // setup uniform buffers (if any)
+  if (uniform_buffer_size_callback)
+    for (size_t i = 0; i < swapchain_image_views_.size(); ++i) {
+      uniform_buffers_.emplace_back(logical_device_.get(),
+                                    uniform_buffer_size_callback(),
+                                    VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+      uniform_buffer_memories_.emplace_back(logical_device_.get(),
+                                            uniform_buffers_[i],
+                                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                                                | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+      uniform_buffer_memories_[i].bind(uniform_buffers_[i]);
+    }
 
+  // setup descriptor pool
+  if (!descriptor_pool_)
+    descriptor_pool_ = std::make_unique<DescriptorPool>(logical_device_.get(),
+                                                        swapchain_image_views_.size());
+  descriptor_pool_->setPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                swapchain_image_views_.size());
+  if (descriptor_set_layout_callback) {
+    for (size_t i = 0; i < swapchain_image_views_.size(); ++i)
+      descriptor_set_layout_callback(pipelineLayout()->descriptorSetLayout(
+          pipeline_layout_->createLayoutSet(i)));
+  }
+  // setup descriptor sets
+  descriptor_pool_->allocate(pipelineLayout()->descriptorSetLayouts(),
+                             descriptor_sets_);
+  for (size_t i = 0; i < swapchain_image_views_.size(); ++i) {
+    VkDescriptorBufferInfo bufferInfo = {};
+    bufferInfo.buffer = uniform_buffers_[i].handle();
+    bufferInfo.offset = 0;
+    bufferInfo.range = uniform_buffer_size_callback();
+
+    VkWriteDescriptorSet descriptorWrite = {};
+    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.dstSet = descriptor_sets_[i];
+    descriptorWrite.dstBinding = 0;
+    descriptorWrite.dstArrayElement = 0;
+    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.pBufferInfo = &bufferInfo;
+    vkUpdateDescriptorSets(logical_device_->handle(),
+                           1,
+                           &descriptorWrite,
+                           0,
+                           nullptr);
+  }
   return true;
 }
 
@@ -229,7 +273,7 @@ GraphicsPipeline *App::graphicsPipeline() {
 
 PipelineLayout *App::pipelineLayout() {
   if (!pipeline_layout_)
-    pipeline_layout_ = std::make_unique<PipelineLayout>(logicalDevice());
+    pipeline_layout_ = std::make_unique<PipelineLayout>(logical_device_.get());
   return pipeline_layout_.get();
 }
 
@@ -246,9 +290,9 @@ const std::vector<Image::View> &App::swapchainImageViews() {
 }
 
 std::vector<CommandBuffer> &App::commandBuffers() {
-  if (!command_buffers_.size()) {
+  if (command_buffers_.empty()) {
     swapchain();
-    if (!framebuffers_.size())
+    if (framebuffers_.empty())
       exit();
     command_pool_->allocateCommandBuffers(VK_COMMAND_BUFFER_LEVEL_PRIMARY,
                                           framebuffers_.size(),
@@ -266,7 +310,7 @@ QueueFamilies &App::queueFamilies() { return queue_families_; }
 
 bool App::selectNumberOfSwapchainImages(
     VkSurfaceCapabilitiesKHR const &surface_capabilities,
-    uint32_t &number_of_images) const {
+    uint32_t &number_of_images) {
   number_of_images = surface_capabilities.minImageCount + 1;
   if ((surface_capabilities.maxImageCount > 0) &&
       (number_of_images > surface_capabilities.maxImageCount)) {
@@ -283,14 +327,14 @@ bool App::chooseSizeOfSwapchainImages(
     if (size_of_images.width < surface_capabilities.minImageExtent.width) {
       size_of_images.width = surface_capabilities.minImageExtent.width;
     } else if (size_of_images.width >
-               surface_capabilities.maxImageExtent.width) {
+        surface_capabilities.maxImageExtent.width) {
       size_of_images.width = surface_capabilities.maxImageExtent.width;
     }
 
     if (size_of_images.height < surface_capabilities.minImageExtent.height) {
       size_of_images.height = surface_capabilities.minImageExtent.height;
     } else if (size_of_images.height >
-               surface_capabilities.maxImageExtent.height) {
+        surface_capabilities.maxImageExtent.height) {
       size_of_images.height = surface_capabilities.maxImageExtent.height;
     }
     graphics_display_->framebufferSize();
@@ -312,10 +356,13 @@ void App::destroySwapchain() {
   // 5. renderpass
   // 6. swapchain image views
   // 7. swapchain
+  uniform_buffers_.clear();
+  uniform_buffer_memories_.clear();
+  descriptor_pool_.reset();
   framebuffers_.clear();
   command_pool_->freeCommandBuffers(command_buffers_);
   pipeline_->destroy();
-  pipeline_layout_->destroy();
+  pipeline_layout_.reset();
   renderpass_->destroy();
   swapchain_image_views_.clear();
   swapchain_->destroy();
@@ -329,10 +376,13 @@ void App::recreateSwapchain() {
     resize_callback(graphics_display_->framebufferSize().width,
                     graphics_display_->framebufferSize().height);
   setupSwapChain();
+  graphicsPipeline()->setLayout(pipeline_layout_.get());
   commandBuffers();
   if (record_command_buffer_callback)
     for (size_t i = 0; i < framebuffers_.size(); ++i)
-      record_command_buffer_callback(command_buffers_[i], framebuffers_[i]);
+      record_command_buffer_callback(command_buffers_[i], framebuffers_[i],
+                                     !descriptor_sets_.empty()
+                                     ? descriptor_sets_[i] : VK_NULL_HANDLE);
 }
 
 void App::draw() {
@@ -346,7 +396,7 @@ void App::draw() {
     recreateSwapchain();
     return;
   } else if (next_image_result != VK_SUCCESS &&
-             next_image_result != VK_SUBOPTIMAL_KHR) {
+      next_image_result != VK_SUBOPTIMAL_KHR) {
     INFO("error on getting next swapchain image!");
     return;
   }
@@ -354,6 +404,12 @@ void App::draw() {
     vkWaitForFences(logical_device_->handle(), 1,
                     &images_in_flight_[image_index], VK_TRUE, UINT64_MAX);
   images_in_flight_[image_index] = in_flight_fences_[current_frame].handle();
+
+  // update uniform buffer
+  if (update_uniform_buffer_callback) {
+    update_uniform_buffer_callback(uniform_buffers_[image_index]);
+    uniform_buffer_memories_[image_index].copy(uniform_buffers_[image_index]);
+  }
 
   VkSubmitInfo submitInfo = {};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -409,8 +465,6 @@ void App::draw() {
   vkQueueWaitIdle(queue_families_.family("presentation").vk_queues[0]);
 
   current_frame = (current_frame + 1) % max_frames_in_flight;
-} // namespace vk
+}
 
-} // namespace vk
-
-} // namespace circe
+} // namespace circe::vk

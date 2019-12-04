@@ -31,19 +31,15 @@
 #ifndef CIRCE_VULKAN_LIBRARY
 #define CIRCE_VULKAN_LIBRARY
 
-#ifndef GLFW_INCLUDE_VULKAN
-// #include "vulkan_api.h"
-#endif
-
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-
 #include <iostream>
 #include <optional>
 #include <sstream>
 #include <vector>
 
 #if defined _WIN32
+#ifndef NOMINMAX
+# define NOMINMAX
+#endif
 #include <windows.h>
 #define VulkanLibraryType HMODULE
 #elif __linux
@@ -51,6 +47,13 @@
 #elif __APPLE__
 #define VulkanLibraryType void *
 #endif
+
+#ifndef GLFW_INCLUDE_VULKAN
+// #include "vulkan_api.h"
+#endif
+
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
 
 namespace circe {
 

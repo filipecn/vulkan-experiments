@@ -113,6 +113,16 @@ DeviceMemory::DeviceMemory(const LogicalDevice *device, const Buffer &buffer,
                                 nullptr, &vk_device_memory_));
 }
 
+DeviceMemory::DeviceMemory(DeviceMemory &other)
+    : device_(other.device_), vk_device_memory_(other.vk_device_memory_) {
+  other.vk_device_memory_ = VK_NULL_HANDLE;
+}
+
+DeviceMemory::DeviceMemory(DeviceMemory &&other) noexcept
+    : device_(other.device_), vk_device_memory_(other.vk_device_memory_) {
+  other.vk_device_memory_ = VK_NULL_HANDLE;
+}
+
 DeviceMemory::~DeviceMemory() {
   if (VK_NULL_HANDLE != vk_device_memory_)
     vkFreeMemory(device_->handle(), vk_device_memory_, nullptr);

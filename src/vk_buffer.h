@@ -30,9 +30,7 @@
 
 #include "vulkan_logical_device.h"
 
-namespace circe {
-
-namespace vk {
+namespace circe::vk {
 
 /// \brief Holds a vulkan buffer object.
 /// Buffers represent linear arrays of data, just like C arrays, and is one of
@@ -90,17 +88,21 @@ public:
   Buffer(const LogicalDevice *logical_device, VkDeviceSize size,
          VkBufferUsageFlags usage, const void *data = nullptr,
          VkSharingMode sharingMode = VK_SHARING_MODE_EXCLUSIVE);
+  Buffer(const Buffer &&other) = delete;
+  Buffer(const Buffer &other) = delete;
+  Buffer(Buffer &other);
+  Buffer(Buffer &&other) noexcept;
   ~Buffer();
   ///\return VkBuffer vulkan handle object
-  VkBuffer handle() const;
+  [[nodiscard]] VkBuffer handle() const;
   ///\brief
   ///
   ///\return bool
-  bool good() const;
+  [[nodiscard]] bool good() const;
   ///\return const LogicalDevice& device owner of its resouce
-  const LogicalDevice *device() const;
-  VkDeviceSize size() const;
-  const void *data() const;
+  [[nodiscard]] const LogicalDevice *device() const;
+  [[nodiscard]] VkDeviceSize size() const;
+  [[nodiscard]] const void *data() const;
   ///\brief Information about the type of memory and how much of it the
   /// image
   /// resource requires.
@@ -118,8 +120,6 @@ private:
   VkBuffer vk_buffer_ = VK_NULL_HANDLE;
   void *data_ = nullptr;
 };
-
-} // namespace vk
 
 } // namespace circe
 

@@ -29,13 +29,26 @@
 #include "logging.h"
 #include "vulkan_debug.h"
 #include <fstream>
+#include <utility>
 
-namespace circe {
-
-namespace vk {
+namespace circe::vk {
 
 DescriptorSetLayout::DescriptorSetLayout(const LogicalDevice *logical_device)
     : logical_device_(logical_device) {}
+
+DescriptorSetLayout::DescriptorSetLayout(DescriptorSetLayout &&other) noexcept
+    : logical_device_(other.logical_device_),
+      vk_descriptor_set_layout_(other.vk_descriptor_set_layout_),
+      bindings_(other.bindings_) {
+  other.vk_descriptor_set_layout_ = VK_NULL_HANDLE;
+}
+
+DescriptorSetLayout::DescriptorSetLayout(DescriptorSetLayout &other) noexcept
+    : logical_device_(other.logical_device_),
+      vk_descriptor_set_layout_(other.vk_descriptor_set_layout_),
+      bindings_(other.bindings_) {
+  other.vk_descriptor_set_layout_ = VK_NULL_HANDLE;
+}
 
 DescriptorSetLayout::~DescriptorSetLayout() {
   if (vk_descriptor_set_layout_ != VK_NULL_HANDLE)
@@ -44,10 +57,11 @@ DescriptorSetLayout::~DescriptorSetLayout() {
 }
 
 VkDescriptorSetLayout DescriptorSetLayout::handle() {
-  if (vk_descriptor_set_layout_) {
+  if (vk_descriptor_set_layout_ == VK_NULL_HANDLE) {
     VkDescriptorSetLayoutCreateInfo info = {
         VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, nullptr, 0,
-        bindings_.size(), (bindings_.size()) ? bindings_.data() : nullptr};
+        static_cast<uint32_t>(bindings_.size()),
+        (bindings_.size()) ? bindings_.data() : nullptr};
     VkResult result = vkCreateDescriptorSetLayout(
         logical_device_->handle(), &info, nullptr, &vk_descriptor_set_layout_);
     CHECK_VULKAN(result);
@@ -92,9 +106,9 @@ VkPipelineLayout PipelineLayout::handle() {
         VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         nullptr,
         0,
-        layout_handles.size(),
+        static_cast<uint32_t>(layout_handles.size()),
         layout_handles.data(),
-        vk_push_constant_ranges_.size(),
+        static_cast<uint32_t>(vk_push_constant_ranges_.size()),
         vk_push_constant_ranges_.data()};
     VkResult result = vkCreatePipelineLayout(logical_device_->handle(), &info,
                                              nullptr, &vk_pipeline_layout_);
@@ -116,13 +130,17 @@ void PipelineLayout::addPushConstantRange(VkShaderStageFlags stage_flags,
   vk_push_constant_ranges_.emplace_back(pc);
 }
 
-DescriptorPool::DescriptorPool(const LogicalDevice &logical_device,
+std::vector<DescriptorSetLayout> &PipelineLayout::descriptorSetLayouts() {
+  return descriptor_sets_;
+}
+
+DescriptorPool::DescriptorPool(const LogicalDevice *logical_device,
                                uint32_t max_sets)
     : max_sets_(max_sets), logical_device_(logical_device) {}
 
 DescriptorPool::~DescriptorPool() {
   if (vk_descriptor_pool_ != VK_NULL_HANDLE)
-    vkDestroyDescriptorPool(logical_device_.handle(), vk_descriptor_pool_,
+    vkDestroyDescriptorPool(logical_device_->handle(), vk_descriptor_pool_,
                             nullptr);
 }
 
@@ -139,9 +157,9 @@ VkDescriptorPool DescriptorPool::handle() {
         nullptr,
         VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
         max_sets_,
-        pool_sizes_.size(),
+        static_cast<uint32_t>(pool_sizes_.size()),
         pool_sizes_.data()};
-    VkResult result = vkCreateDescriptorPool(logical_device_.handle(), &info,
+    VkResult result = vkCreateDescriptorPool(logical_device_->handle(), &info,
                                              nullptr, &vk_descriptor_pool_);
     CHECK_VULKAN(result);
     if (result != VK_SUCCESS)
@@ -153,31 +171,34 @@ VkDescriptorPool DescriptorPool::handle() {
 bool DescriptorPool::allocate(
     std::vector<DescriptorSetLayout> &descriptor_set_layouts,
     std::vector<VkDescriptorSet> &descriptor_sets) {
+  if (vk_descriptor_pool_ == VK_NULL_HANDLE)
+    handle();
   std::vector<VkDescriptorSetLayout> dsls;
+  dsls.reserve(descriptor_set_layouts.size());
   for (auto &dsl : descriptor_set_layouts)
     dsls.emplace_back(dsl.handle());
   VkDescriptorSetAllocateInfo allocate_info = {
       VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO, nullptr,
-      vk_descriptor_pool_, dsls.size(), dsls.data()};
+      vk_descriptor_pool_, static_cast<uint32_t>(dsls.size()), dsls.data()};
   VkDescriptorSet *descriptor_sets_ptr = nullptr;
-  R_CHECK_VULKAN(vkAllocateDescriptorSets(logical_device_.handle(),
-                                          &allocate_info, descriptor_sets_ptr));
   descriptor_sets.clear();
-  for (size_t i = 0; i < descriptor_set_layouts.size(); ++i)
-    descriptor_sets.emplace_back(descriptor_sets_ptr[i]);
+  descriptor_sets.resize(descriptor_set_layouts.size(), VK_NULL_HANDLE);
+  R_CHECK_VULKAN(vkAllocateDescriptorSets(logical_device_->handle(),
+                                          &allocate_info,
+                                          descriptor_sets.data()));
   return true;
 }
 
 bool DescriptorPool::free(const std::vector<VkDescriptorSet> &descriptor_sets) {
   R_CHECK_VULKAN(
-      vkFreeDescriptorSets(logical_device_.handle(), vk_descriptor_pool_,
+      vkFreeDescriptorSets(logical_device_->handle(), vk_descriptor_pool_,
                            descriptor_sets.size(), descriptor_sets.data()));
   return true;
 }
 
 bool DescriptorPool::reset() {
   R_CHECK_VULKAN(
-      vkResetDescriptorPool(logical_device_.handle(), vk_descriptor_pool_, 0));
+      vkResetDescriptorPool(logical_device_->handle(), vk_descriptor_pool_, 0));
   return true;
 }
 
@@ -186,7 +207,7 @@ PipelineShaderStage::PipelineShaderStage(VkShaderStageFlagBits stage,
                                          std::string name,
                                          const void *specialization_info_data,
                                          size_t specialization_info_data_size)
-    : stage_(stage), module_(module.handle()), name_(name) {
+    : stage_(stage), module_(module.handle()), name_(std::move(name)) {
   specialization_info_.pData = specialization_info_data;
   specialization_info_.dataSize = specialization_info_data_size;
   specialization_info_.mapEntryCount = 0;
@@ -242,7 +263,7 @@ bool Pipeline::saveCache(const std::string &path) {
       if (result == VK_SUCCESS) {
         std::ofstream ofile(path, std::ios::binary);
         if (ofile.good()) {
-          ofile.write((char *)&data, cache_data_size);
+          ofile.write((char *) &data, cache_data_size);
           ofile.close();
         }
       }
@@ -281,7 +302,7 @@ ComputePipeline::ComputePipeline(const LogicalDevice *logical_device,
       this->shader_stage_infos_[0],
       layout.handle(),
       (base_pipeline ? base_pipeline->handle() : VK_NULL_HANDLE),
-      base_pipeline_index};
+      static_cast<int32_t>(base_pipeline_index)};
   vkCreateComputePipelines(this->logical_device_->handle(),
                            (cache ? cache->cache() : VK_NULL_HANDLE), 1, &info,
                            nullptr, &this->vk_pipeline_);
@@ -379,7 +400,7 @@ void GraphicsPipeline::ColorBlendState::addAttachmentState(
     VkBlendFactor src_alpha_blend_factor, VkBlendFactor dst_alpha_blend_factor,
     VkBlendOp alpha_blend_op, VkColorComponentFlags color_write_mask) {
   VkPipelineColorBlendAttachmentState as = {
-      blend_enable,   src_color_blend_factor, dst_color_blend_factor,
+      blend_enable, src_color_blend_factor, dst_color_blend_factor,
       color_blend_op, src_alpha_blend_factor, dst_alpha_blend_factor,
       alpha_blend_op, color_write_mask};
   attachments_.emplace_back(as);
@@ -416,6 +437,14 @@ GraphicsPipeline::GraphicsPipeline(const LogicalDevice *logical_device,
   info_.basePipelineIndex = base_pipeline_index;
 }
 
+void GraphicsPipeline::setLayout(PipelineLayout *layout) {
+  layout_ = layout;
+}
+
+void GraphicsPipeline::setRendePass(RenderPass *renderpass) {
+  renderpass_ = renderpass;
+}
+
 VkPipeline GraphicsPipeline::handle() {
   if (this->vk_pipeline_ == VK_NULL_HANDLE) {
     info_.layout = layout_->handle();
@@ -434,7 +463,7 @@ VkPipeline GraphicsPipeline::handle() {
         VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO, // VkStructureType
         nullptr,                                              // pNext
         0,                      // VkPipelineDynamicStateCreateFlags
-        dynamic_states_.size(), // dynamicStateCount;
+        static_cast<uint32_t>(dynamic_states_.size()), // dynamicStateCount;
         (dynamic_states_.size()) ? dynamic_states_.data() : nullptr};
     info_.pDynamicState = &d_info;
 
@@ -544,7 +573,5 @@ void GraphicsPipeline::addDynamicState(VkDynamicState dynamic_state) {
   dynamic_state_->dynamicStateCount = dynamic_states_.size();
   dynamic_state_->pDynamicStates = dynamic_states_.data();
 }
-
-} // namespace vk
 
 } // namespace circe

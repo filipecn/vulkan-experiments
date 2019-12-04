@@ -39,11 +39,15 @@ namespace vk {
 /// as a group. Multiple sets can be bound to a pipeline at a time. Each set
 /// has layout, which describes the order and types of resources in the set.
 class DescriptorSetLayout {
-public:
+ public:
   ///\brief Construct a new Descriptor Set object
   ///
   ///\param logical_device **[in]**
-  DescriptorSetLayout(const LogicalDevice *logical_device);
+  explicit DescriptorSetLayout(const LogicalDevice *logical_device);
+  DescriptorSetLayout(const DescriptorSetLayout &&other) = delete;
+  DescriptorSetLayout(const DescriptorSetLayout &other) = delete;
+  DescriptorSetLayout(DescriptorSetLayout &&other) noexcept;
+  DescriptorSetLayout(DescriptorSetLayout &other) noexcept;
   ~DescriptorSetLayout();
 
   ///\brief
@@ -62,7 +66,7 @@ public:
                         uint32_t descriptor_count,
                         VkShaderStageFlags stage_flags);
 
-private:
+ private:
   const LogicalDevice *logical_device_ = nullptr;
   VkDescriptorSetLayout vk_descriptor_set_layout_ = VK_NULL_HANDLE;
   std::vector<VkDescriptorSetLayoutBinding> bindings_;
@@ -70,11 +74,11 @@ private:
 
 /// Groups descriptor sets to be used by a pipeline.
 class PipelineLayout {
-public:
+ public:
   ///\brief Construct a new Pipeline Layout object
   ///
   ///\param logical_device **[in]**
-  PipelineLayout(const LogicalDevice *logical_device);
+  explicit PipelineLayout(const LogicalDevice *logical_device);
   ~PipelineLayout();
   void destroy();
   VkPipelineLayout handle();
@@ -96,8 +100,11 @@ public:
   ///\param size **[in]**
   void addPushConstantRange(VkShaderStageFlags stage_flags, uint32_t offset,
                             uint32_t size);
+  ///
+  /// \return
+  std::vector<DescriptorSetLayout> &descriptorSetLayouts();
 
-private:
+ private:
   const LogicalDevice *logical_device_ = nullptr;
   VkPipelineLayout vk_pipeline_layout_ = VK_NULL_HANDLE;
   std::vector<DescriptorSetLayout> descriptor_sets_;
@@ -108,13 +115,13 @@ private:
 /// first bibnding their descriptors into sets and then binding those descriptor
 /// sets to then pipeline. The descriptors are allocated from pools.
 class DescriptorPool {
-public:
+ public:
   ///\brief Construct a new Descriptor Pool object
   ///
   ///\param logical_device **[in]**
   ///\param max_sets **[in]** specifies the maximum total number of sets that
   /// may be allocated from the pool
-  DescriptorPool(const LogicalDevice &logical_device, uint32_t max_sets);
+  DescriptorPool(const LogicalDevice *logical_device, uint32_t max_sets);
   /// Completely free all the resources associated with the descriptor pool, it
   /// is not necessary to explicitly free the descriptor sets allocated before
   /// destroying the pool
@@ -144,16 +151,16 @@ public:
   ///\return bool
   bool reset();
 
-private:
+ private:
   uint32_t max_sets_;
-  const LogicalDevice &logical_device_;
+  const LogicalDevice *logical_device_;
   VkDescriptorPool vk_descriptor_pool_ = VK_NULL_HANDLE;
   std::vector<VkDescriptorPoolSize> pool_sizes_;
 };
 
 /// Holds information about a shader
 class PipelineShaderStage {
-public:
+ public:
   ///\param stage **[in]**
   ///\param module **[in]**
   ///\param name **[in]** entry point in the shader module
@@ -168,13 +175,13 @@ public:
   ///\param size **[in]** size of the raw data (passed in constructor)
   void addSpecializationMapEntry(uint32_t constant_id, uint32_t offset,
                                  size_t size);
-  VkShaderStageFlagBits stage() const;
-  VkShaderModule module() const;
-  const std::string &name() const;
-  const VkSpecializationInfo *specializationInfo() const;
+  [[nodiscard]] VkShaderStageFlagBits stage() const;
+  [[nodiscard]] VkShaderModule module() const;
+  [[nodiscard]] const std::string &name() const;
+  [[nodiscard]] const VkSpecializationInfo *specializationInfo() const;
 
-private:
-  VkSpecializationInfo specialization_info_;
+ private:
+  VkSpecializationInfo specialization_info_{};
   VkShaderStageFlagBits stage_;
   VkShaderModule module_;
   std::string name_;
@@ -205,7 +212,7 @@ private:
 //    to perform mathematical operations.
 
 class Pipeline {
-public:
+ public:
   ///\brief Construct a new Pipeline object
   ///
   ///\param logical_device **[in]**
@@ -221,10 +228,10 @@ public:
   ///\param path **[in]**
   ///\return bool
   bool saveCache(const std::string &path);
-  VkPipeline handle() const;
-  VkPipelineCache cache() const;
+  [[nodiscard]] VkPipeline handle() const;
+  [[nodiscard]] VkPipelineCache cache() const;
 
-protected:
+ protected:
   const LogicalDevice *logical_device_ = nullptr;
   VkPipeline vk_pipeline_ = VK_NULL_HANDLE;
   VkPipelineCache vk_pipeline_cache_ = VK_NULL_HANDLE;
@@ -232,7 +239,7 @@ protected:
 };
 
 class ComputePipeline : public Pipeline {
-public:
+ public:
   ////\brief Construct a new Compute Pipeline object
   ///
   ///\param logical_device **[in]**
@@ -249,9 +256,9 @@ public:
 };
 
 class GraphicsPipeline : public Pipeline {
-public:
+ public:
   class VertexInputState {
-  public:
+   public:
     VertexInputState();
     ~VertexInputState() = default;
     ///\brief
@@ -270,15 +277,15 @@ public:
     void addAttributeDescription(uint32_t location, uint32_t binding,
                                  VkFormat format, uint32_t offset);
 
-    const VkPipelineVertexInputStateCreateInfo *info() const;
+    [[nodiscard]] const VkPipelineVertexInputStateCreateInfo *info() const;
 
-  private:
+   private:
     VkPipelineVertexInputStateCreateInfo info_;
     std::vector<VkVertexInputBindingDescription> binding_descriptions_;
     std::vector<VkVertexInputAttributeDescription> attribute_descriptions_;
   };
   class ViewportState {
-  public:
+   public:
     ViewportState();
     ~ViewportState() = default;
     ///\brief
@@ -302,13 +309,13 @@ public:
     VkViewport &viewport(uint32_t i);
     VkRect2D &scissor(uint32_t i);
 
-  private:
+   private:
     VkPipelineViewportStateCreateInfo info_;
     std::vector<VkViewport> viewports_;
     std::vector<VkRect2D> scissors_;
   };
   class ColorBlendState {
-  public:
+   public:
     ColorBlendState();
     ~ColorBlendState() = default;
 
@@ -332,9 +339,9 @@ public:
                             VkBlendOp alpha_blend_op,
                             VkColorComponentFlags color_write_mask);
     void setBlendConstants(float r, float g, float b, float a);
-    const VkPipelineColorBlendStateCreateInfo *info() const;
+    [[nodiscard]] const VkPipelineColorBlendStateCreateInfo *info() const;
 
-  private:
+   private:
     VkPipelineColorBlendStateCreateInfo info_;
     std::vector<VkPipelineColorBlendAttachmentState> attachments_;
   };
@@ -352,7 +359,8 @@ public:
                    VkPipelineCreateFlags flags = 0,
                    GraphicsPipeline *base_pipeline = nullptr,
                    uint32_t base_pipeline_index = 0);
-
+  void setLayout(PipelineLayout *layout);
+  void setRendePass(RenderPass *renderpass);
   VkPipeline handle();
 
   ///\brief Set the Input State object
@@ -426,7 +434,7 @@ public:
   ViewportState viewport_state;
   ColorBlendState color_blend_state;
 
-private:
+ private:
   PipelineLayout *layout_ = nullptr;
   RenderPass *renderpass_ = nullptr;
   VkPipelineCreateFlags flags_ = 0;

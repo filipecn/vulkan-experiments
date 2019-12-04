@@ -632,7 +632,7 @@ void VulkanLibraryInterface::SetImageMemoryBarrier(
 bool VulkanLibraryInterface::createPresentationSurface(
     VkInstance instance, WindowParameters window_parameters,
     VkSurfaceKHR &presentation_surface) {
-  VkResult result;
+  VkResult result {VK_SUCCESS};
 
 #ifdef VK_USE_PLATFORM_WIN32_KHR
 

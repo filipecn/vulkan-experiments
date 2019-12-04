@@ -191,9 +191,26 @@ bool CommandBuffer::bind(const ComputePipeline &compute_pipeline) const {
   return true;
 }
 
-bool CommandBuffer::bind(GraphicsPipeline &graphics_pipeline) const {
+bool CommandBuffer::bind(GraphicsPipeline *graphics_pipeline) const {
   vkCmdBindPipeline(vk_command_buffer_, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    graphics_pipeline.handle());
+                    graphics_pipeline->handle());
+  return true;
+}
+
+bool CommandBuffer::bind(VkPipelineBindPoint pipeline_bind_point,
+                         PipelineLayout *layout,
+                         uint32_t first_set,
+                         const std::vector<VkDescriptorSet> &descriptor_sets,
+                         const std::vector<uint32_t> &dynamic_offsets) {
+  vkCmdBindDescriptorSets(vk_command_buffer_,
+                          pipeline_bind_point,
+                          layout->handle(),
+                          first_set,
+                          descriptor_sets.size(),
+                          descriptor_sets.data(),
+                          dynamic_offsets.size(),
+                          (dynamic_offsets.size()) ? dynamic_offsets.data()
+                                                   : nullptr);
   return true;
 }
 
@@ -336,7 +353,7 @@ bool CommandPool::reset(VkCommandPoolResetFlags flags) const {
 void CommandPool::submitCommandBuffer(const LogicalDevice *logical_device,
                                       uint32_t family_index,
                                       VkQueue queue,
-                                      const std::function<void(CommandBuffer & )> &record_callback) {
+                                      const std::function<void(CommandBuffer &)> &record_callback) {
   circe::vk::CommandPool short_living_command_pool(
       logical_device, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
       family_index);

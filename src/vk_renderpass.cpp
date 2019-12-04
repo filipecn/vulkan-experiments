@@ -117,8 +117,8 @@ void RenderPass::addAttachment(VkFormat format, VkSampleCountFlagBits samples,
                                VkImageLayout initial_layout,
                                VkImageLayout final_layout) {
   VkAttachmentDescription d = {
-      0,           format,          samples,          load_op,
-      store_op,    stencil_load_op, stencil_store_op, initial_layout,
+      0, format, samples, load_op,
+      store_op, stencil_load_op, stencil_store_op, initial_layout,
       final_layout};
   vk_attachments_.emplace_back(d);
 }
@@ -153,30 +153,30 @@ VkRenderPass RenderPass::handle() {
       VkSubpassDescription info = {
           0,
           VK_PIPELINE_BIND_POINT_GRAPHICS,
-          sd.inputAttachmentRefs().size(),
+          static_cast<uint32_t>(sd.inputAttachmentRefs().size()),
           (sd.inputAttachmentRefs().size() ? sd.inputAttachmentRefs().data()
                                            : nullptr),
-          sd.colorAttachmentRefs().size(),
+          static_cast<uint32_t>(sd.colorAttachmentRefs().size()),
           (sd.colorAttachmentRefs().size() ? sd.colorAttachmentRefs().data()
                                            : nullptr),
           (sd.colorAttachmentRefs().size() ? sd.resolveAttachmentRefs().data()
                                            : nullptr),
           (sd.hasDepthStencilAttachmentRef() ? &sd.depthStencilAttachmentRef()
                                              : nullptr),
-          sd.preserveAttachmentRefs().size(),
+          static_cast<uint32_t>(sd.preserveAttachmentRefs().size()),
           (sd.preserveAttachmentRefs().size()
-               ? sd.preserveAttachmentRefs().data()
-               : nullptr)};
+           ? sd.preserveAttachmentRefs().data()
+           : nullptr)};
       subpass_descriptions.emplace_back(info);
     }
     VkRenderPassCreateInfo info = {VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
                                    nullptr,
                                    0,
-                                   vk_attachments_.size(),
+                                   static_cast<uint32_t>(vk_attachments_.size()),
                                    vk_attachments_.data(),
-                                   subpass_descriptions.size(),
+                                   static_cast<uint32_t>(subpass_descriptions.size()),
                                    subpass_descriptions.data(),
-                                   vk_subpass_dependencies_.size(),
+                                   static_cast<uint32_t>(vk_subpass_dependencies_.size()),
                                    vk_subpass_dependencies_.data()};
     VkResult result = vkCreateRenderPass(logical_device_->handle(), &info,
                                          nullptr, &vk_renderpass_);
@@ -201,7 +201,7 @@ Framebuffer::Framebuffer(Framebuffer &other)
   other.vk_framebuffer_ = VK_NULL_HANDLE;
 }
 
-Framebuffer::Framebuffer(Framebuffer &&other)
+Framebuffer::Framebuffer(Framebuffer &&other) noexcept
     : Framebuffer(other.logical_device_, other.renderpass_, other.width_,
                   other.height_, other.layers_) {
   attachments_ = std::move(other.attachments_);
@@ -231,7 +231,7 @@ VkFramebuffer Framebuffer::handle() {
         nullptr,
         0,
         renderpass_->handle(),
-        attachments_.size(),
+        static_cast<uint32_t>(attachments_.size()),
         (attachments_.size() ? attachments_.data() : nullptr),
         width_,
         height_,

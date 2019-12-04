@@ -29,9 +29,7 @@
 #include "logging.h"
 #include "vulkan_debug.h"
 
-namespace circe {
-
-namespace vk {
+namespace circe::vk {
 
 Image::View::View(const Image *image, VkImageViewType view_type,
                   VkFormat format, VkImageAspectFlags aspect)
@@ -64,7 +62,7 @@ Image::View::View(const Image *image, VkImageViewType view_type,
                                  &vk_image_view_));
 }
 
-Image::View::View(Image::View &&other) : image_(other.image_) {
+Image::View::View(Image::View &&other) noexcept : image_(other.image_) {
   vk_image_view_ = other.vk_image_view_;
   other.vk_image_view_ = VK_NULL_HANDLE;
 }
@@ -109,7 +107,7 @@ Image::Image(const LogicalDevice *logical_device, VkImage handle)
     : logical_device_(logical_device), vk_image_(handle),
       do_not_destroy_(true) {}
 
-Image::Image(Image &&other)
+Image::Image(Image &&other) noexcept
     : logical_device_(other.logical_device_), vk_image_(other.vk_image_),
       do_not_destroy_(other.do_not_destroy_) {
   other.vk_image_ = VK_NULL_HANDLE;
@@ -144,7 +142,5 @@ bool Image::memoryRequirements(
                                &memory_requirements);
   return true;
 }
-
-} // namespace vk
 
 } // namespace circe

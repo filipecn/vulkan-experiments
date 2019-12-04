@@ -55,9 +55,9 @@ public:
     View(const Image *image, VkImageViewType view_type, VkFormat format,
          VkImageAspectFlags aspect);
     View(const View &&other) = delete;
-    View(View &&other);
+    View(View &&other) noexcept;
     ~View();
-    VkImageView handle() const;
+    [[nodiscard]] VkImageView handle() const;
 
   private:
     const Image *image_ = nullptr;
@@ -96,16 +96,16 @@ public:
         bool cubemap);
   Image(const LogicalDevice *logical_device, VkImage handle);
   Image(const Image &&other) = delete;
-  Image(Image &&other);
+  Image(Image &&other) noexcept;
   ~Image();
   ///\return const LogicalDevice& device owner of its resouce
-  const LogicalDevice *device() const;
+  [[nodiscard]] const LogicalDevice *device() const;
   ///\return VkImage vulkan handle object
-  VkImage handle() const;
+  [[nodiscard]] VkImage handle() const;
   ///\brief
   ///
   ///\return bool
-  bool good() const;
+  [[nodiscard]] bool good() const;
   ///\brief Retrieves information about a given subresource in the image.
   /// Images subresources are mipmap levels, depth or stencil components, array
   /// layers.

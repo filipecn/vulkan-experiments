@@ -35,12 +35,10 @@
 #include "vk_renderpass.h"
 #include "vulkan_logical_device.h"
 
-namespace circe {
-
-namespace vk {
+namespace circe::vk {
 
 class RenderPassBeginInfo {
-public:
+ public:
   ///\brief Construct a new Render Pass Begin Info object
   ///
   ///\param renderpass **[in]**
@@ -57,9 +55,9 @@ public:
   void addClearColorValuei(int32_t r, int32_t g, int32_t b, int32_t a);
   void addClearColorValueu(uint32_t r, uint32_t g, uint32_t b, uint32_t a);
   void addClearDepthStencilValue(float depth, uint32_t stencil);
-  const VkRenderPassBeginInfo *info() const;
+  [[nodiscard]] const VkRenderPassBeginInfo *info() const;
 
-private:
+ private:
   VkRenderPassBeginInfo info_;
   std::vector<VkClearValue> clear_values_;
 };
@@ -86,27 +84,27 @@ private:
 // pass).
 
 class CommandBuffer {
-public:
+ public:
   ///\brief Construct a new Command Buffer object
   ///
   ///\param vk_command_buffer **[in]**
-  CommandBuffer(VkCommandBuffer vk_command_buffer_);
+  explicit CommandBuffer(VkCommandBuffer vk_command_buffer_);
   ~CommandBuffer() = default;
-  VkCommandBuffer handle() const;
+  [[nodiscard]] VkCommandBuffer handle() const;
   ///\brief
   ///
   ///\param flags **[in]**
   ///\return bool
-  bool begin(VkCommandBufferUsageFlags flags = 0) const;
+  [[nodiscard]] bool begin(VkCommandBufferUsageFlags flags = 0) const;
   ///\brief
   ///
   ///\return bool
-  bool end() const;
+  [[nodiscard]] bool end() const;
   ///\brief
   ///
   ///\param flags **[in]**
   ///\return bool
-  bool reset(VkCommandBufferResetFlags flags) const;
+  [[nodiscard]] bool reset(VkCommandBufferResetFlags flags) const;
   ///
   /// \return
   bool submit(VkQueue queue, VkFence fence = VK_NULL_HANDLE) const;
@@ -118,9 +116,9 @@ public:
   ///\param dst_offset **[in]**
   ///\param size **[in]**
   ///\return bool
-  bool copy(const Buffer &src_buffer, VkDeviceSize src_offset,
-            const Buffer &dst_buffer, VkDeviceSize dst_offset,
-            VkDeviceSize size) const;
+  [[nodiscard]] bool copy(const Buffer &src_buffer, VkDeviceSize src_offset,
+                          const Buffer &dst_buffer, VkDeviceSize dst_offset,
+                          VkDeviceSize size) const;
   ///\brief
   ///
   ///\param src_buffer **[in]**
@@ -202,9 +200,9 @@ public:
   ///\param color **[in]** Note: it is up to the application to fill the color
   /// union object correctly, no conversion is performed by the clear command.
   ///\return bool true if success
-  bool clear(const Image &image, VkImageLayout layout,
-             const std::vector<VkImageSubresourceRange> &ranges,
-             const VkClearColorValue &color) const;
+  [[nodiscard]] bool clear(const Image &image, VkImageLayout layout,
+                           const std::vector<VkImageSubresourceRange> &ranges,
+                           const VkClearColorValue &color) const;
   ///\brief
   /// Clears a depth stencil image to a fixed value
   ///\param image **[in]**
@@ -217,19 +215,31 @@ public:
   /// to VK_IMAGE_ASPECT_[DEPTH_BIT or/and STENCIL_BIT].
   ///\param value **[in]**
   ///\return bool true if success
-  bool clear(const Image &image, VkImageLayout layout,
-             const std::vector<VkImageSubresourceRange> &ranges,
-             const VkClearDepthStencilValue &value) const;
+  [[nodiscard]] bool clear(const Image &image, VkImageLayout layout,
+                           const std::vector<VkImageSubresourceRange> &ranges,
+                           const VkClearDepthStencilValue &value) const;
   ///\brief
   ///
   ///\param compute_pipeline **[in]**
   ///\return bool
-  bool bind(const ComputePipeline &compute_pipeline) const;
+  [[nodiscard]] bool bind(const ComputePipeline &compute_pipeline) const;
   ///\brief
   ///
   ///\param graphics_pipeline **[in]**
   ///\return bool
-  bool bind(GraphicsPipeline &graphics_pipeline) const;
+  bool bind(GraphicsPipeline *graphics_pipeline) const;
+  ///
+  /// \param pipeline_bind_point
+  /// \param layout
+  /// \param first_set
+  /// \param descriptor_sets
+  /// \param dynamic_offsets
+  /// \return
+  bool bind(VkPipelineBindPoint pipeline_bind_point,
+            PipelineLayout *layout,
+            uint32_t first_set,
+            const std::vector<VkDescriptorSet> &descriptor_sets,
+            const std::vector<uint32_t> &dynamic_offsets = {});
   ///\brief
   ///
   ///\param pipeline_bind_point **[in]** VK_PIPELINE_BIND_POINT_[COMPUTE |
@@ -253,14 +263,14 @@ public:
   ///\param y **[in]** number of local work groups in y
   ///\param z **[in]** number of local work groups in z
   ///\return bool
-  bool dispatch(uint32_t x, uint32_t y, uint32_t z) const;
+  [[nodiscard]] bool dispatch(uint32_t x, uint32_t y, uint32_t z) const;
   ///\brief Performs an indirect dispatch
   /// The size of the dispatch in work groups is sourced from a buffer object
   ///\param buffer **[in]** buffer storing the x, y and z values contiguously
   ///\param offset **[in]** location of the workgroup sizes in the buffer (in
   /// bytes)
   /// \return bool
-  bool dispatch(const Buffer &buffer, VkDeviceSize offset) const;
+  [[nodiscard]] bool dispatch(const Buffer &buffer, VkDeviceSize offset) const;
   ///\brief
   /// The content of each push constant lives at an offset from the beginning of
   /// the block.
@@ -279,42 +289,46 @@ public:
   ///\param info **[in]** Parameters describing the renderpass
   ///\param contents **[in]**
   ///\return bool
-  bool beginRenderPass(const RenderPassBeginInfo &info,
-                       VkSubpassContents contents) const;
+  [[nodiscard]] bool beginRenderPass(const RenderPassBeginInfo &info,
+                                     VkSubpassContents contents) const;
   ///\brief Finalize rendering contained in the renderpass
   ///\return bool
-  bool endRenderPass() const;
+  [[nodiscard]] bool endRenderPass() const;
   ///\brief
   ///
   ///\param first_binding **[in]**
   ///\param buffers **[in]**
   ///\param offsets **[in]**
   ///\return bool
-  bool bindVertexBuffers(uint32_t first_binding,
-                         const std::vector<VkBuffer> &buffers,
-                         const std::vector<VkDeviceSize> &offsets) const;
-  bool bindIndexBuffer(const Buffer &buffer, VkDeviceSize offset,
-                       VkIndexType type) const;
+  [[nodiscard]] bool bindVertexBuffers(uint32_t first_binding,
+                                       const std::vector<VkBuffer> &buffers,
+                                       const std::vector<VkDeviceSize> &offsets) const;
+  [[nodiscard]] bool bindIndexBuffer(const Buffer &buffer, VkDeviceSize offset,
+                                     VkIndexType type) const;
   ///\brief Generates vertices and push them into the current graphics pipeline.
   ///\param vertex_count **[in]**
   ///\param instance_count **[in]**
   ///\param first_vertex **[in]**
   ///\param first_instance **[in]**
   ///\return bool
-  bool draw(uint32_t vertex_count, uint32_t instance_count = 1,
-            uint32_t first_vertex = 0, uint32_t first_instance = 0) const;
-  bool drawIndexed(uint32_t index_count, uint32_t instance_count = 1,
-                   uint32_t first_index = 0, int32_t vertex_offset = 0,
-                   uint32_t first_instance = 0) const;
+  [[nodiscard]] bool draw(uint32_t vertex_count,
+                          uint32_t instance_count = 1,
+                          uint32_t first_vertex = 0,
+                          uint32_t first_instance = 0) const;
+  [[nodiscard]] bool drawIndexed(uint32_t index_count,
+                                 uint32_t instance_count = 1,
+                                 uint32_t first_index = 0,
+                                 int32_t vertex_offset = 0,
+                                 uint32_t first_instance = 0) const;
 
-private:
+ private:
   VkCommandBuffer vk_command_buffer_ = VK_NULL_HANDLE;
 };
 
 /// Command pools cannot be used concurrently, we must create a separate
 /// command pool for each thread.
 class CommandPool {
-public:
+ public:
   /// \brief Create a Command Pool object
   /// \param logical_device **[in]** logical device handle
   /// \param parameters **[in]** flags that define how the command pool will
@@ -338,20 +352,18 @@ public:
   ///
   ///\param flags **[in]**
   ///\return bool
-  bool reset(VkCommandPoolResetFlags flags) const;
+  [[nodiscard]] bool reset(VkCommandPoolResetFlags flags) const;
   ///
   /// \param record_callback
   static void submitCommandBuffer(const LogicalDevice *logical_device,
                                   uint32_t family_index,
                                   VkQueue queue,
-                                  const std::function<void(CommandBuffer & )> &record_callback);
+                                  const std::function<void(CommandBuffer &)> &record_callback);
 
-private:
+ private:
   const LogicalDevice *logical_device_ = nullptr;
   VkCommandPool vk_command_pool_ = VK_NULL_HANDLE;
 };
-
-} // namespace vk
 
 } // namespace circe
 

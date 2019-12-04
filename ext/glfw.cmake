@@ -19,6 +19,13 @@ else()
     CMAKE_CACHE_ARGS
         "-DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}"
         "-DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}"
+            # BUILD_ALWAYS 1
+            LOG_DOWNLOAD 1
+            LOG_UPDATE 1
+            LOG_CONFIGURE 1
+            LOG_BUILD 1
+            LOG_TEST 1
+            LOG_INSTALL 1
     )
 
     ExternalProject_Get_Property(glfw INSTALL_DIR)
