@@ -48,13 +48,13 @@ LogicalDevice::LogicalDevice(
   std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
   for (auto &info : queue_infos.families()) {
     queue_create_infos.push_back({
-        VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, // VkStructureType sType
-        nullptr,                   // const void                     * pNext
-        0,                         // VkDeviceQueueCreateFlags         flags
-        info.family_index.value(), // uint32_t queueFamilyIndex
-        static_cast<uint32_t>(info.priorities.size()), // uint32_t queueCount
-        info.priorities.data() // const float  * pQueuePriorities
-    });
+                                     VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, // VkStructureType sType
+                                     nullptr,                   // const void                     * pNext
+                                     0,                         // VkDeviceQueueCreateFlags         flags
+                                     info.family_index.value(), // uint32_t queueFamilyIndex
+                                     static_cast<uint32_t>(info.priorities.size()), // uint32_t queueCount
+                                     info.priorities.data() // const float  * pQueuePriorities
+                                 });
   };
   VkDeviceCreateInfo device_create_info = {
       VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO, // VkStructureType sType
@@ -64,10 +64,10 @@ LogicalDevice::LogicalDevice(
           queue_create_infos.size()), // uint32_t queueCreateInfoCount
       queue_create_infos
           .data(), // const VkDeviceQueueCreateInfo  * pQueueCreateInfos
-      validation_layers.size(), // uint32_t enabledLayerCount
+      static_cast<uint32_t>(validation_layers.size()), // uint32_t enabledLayerCount
       (validation_layers.size())
-          ? validation_layers.data()
-          : nullptr, // const char * const             * ppEnabledLayerNames
+      ? validation_layers.data()
+      : nullptr, // const char * const             * ppEnabledLayerNames
       static_cast<uint32_t>(
           desired_extensions.size()), // uint32_t enabledExtensionCount
       desired_extensions

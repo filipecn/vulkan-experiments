@@ -66,7 +66,7 @@ namespace vk {
 //    is displayed in sync with blanking periods. When the application
 //    presents an image, the new image replaces the one waiting in the
 //    queue. So the displayed image is always the most recent available.
-class Swapchain {
+class Swapchain final {
 public:
   /// \brief Create a Swapchain object
   /// \param logical_device **[in]** logical device handle
@@ -125,8 +125,8 @@ public:
                      uint32_t &image_index) const;
 
   const std::vector<Image> &images();
-  VkExtent2D imageSize() const;
-  VkSurfaceFormatKHR surfaceFormat() const;
+  [[nodiscard]] VkExtent2D imageSize() const;
+  [[nodiscard]] VkSurfaceFormatKHR surfaceFormat() const;
 
 private:
   VkSwapchainCreateInfoKHR info_ = {};

@@ -28,6 +28,7 @@
 #ifndef CIRCE_VK_APP_H
 #define CIRCE_VK_APP_H
 
+#include "vk_render_engine.h"
 #include "vk_command_buffer.h"
 #include "vk_graphics_display.h"
 #include "vk_image.h"
@@ -40,9 +41,7 @@
 #include <functional>
 #include <memory>
 
-namespace circe {
-
-namespace vk {
+namespace circe::vk {
 
 /// Holds all resources of a Vulkan graphical application: window, device,
 /// instance, etc.
@@ -110,6 +109,7 @@ public:
   std::vector<Framebuffer> &framebuffers();
   QueueFamilies &queueFamilies();
 
+  RenderEngine render_engine;
   std::function<void(uint32_t width, uint32_t height)> resize_callback;
   std::function<void(CommandBuffer &, Framebuffer &, VkDescriptorSet)>
       record_command_buffer_callback;
@@ -159,8 +159,6 @@ private:
   VkSurfaceKHR vk_surface_ = VK_NULL_HANDLE;
   bool framebuffer_resized_ = false;
 };
-
-} // namespace vk
 
 } // namespace circe
 

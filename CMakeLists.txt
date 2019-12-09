@@ -61,6 +61,7 @@ set(SOURCES
         src/vk_graphics_display.cpp
         src/vk_image.cpp
         src/vk_pipeline.cpp
+        src/vk_render_engine.cpp
         src/vk_renderpass.cpp
         src/vk_shader_module.cpp
         src/vk_swap_chain.cpp
@@ -76,13 +77,14 @@ set(HEADERS
         src/vk_buffer.h
         src/vk_command_buffer.h
         src/vk_device_memory.h
-        src/vk_sync.h
         src/vk_graphics_display.h
         src/vk_image.h
         src/vk_pipeline.h
+        src/vk_render_engine.h
         src/vk_renderpass.h
         src/vk_shader_module.h
         src/vk_swap_chain.h
+        src/vk_sync.h
         src/vulkan_instance.h
         src/vulkan_library.h
         src/vulkan_logical_device.h
