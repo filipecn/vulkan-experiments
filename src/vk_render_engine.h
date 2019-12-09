@@ -57,14 +57,18 @@ public:
   ///
   /// \param surface
   void setSurface(VkSurfaceKHR surface);
-  ///
-  /// \param desired_format
-  /// \param desired_color_space
-  /// \return
+  /// Setups the swapchain structure, that is responsible for image presentation
+  /// on screen. It is configured with image format, color space and other
+  /// settings. If the swap chain is succefully created, the method retrieves
+  /// the list of swap chain images.
+  /// \param format **[in]** desired image format
+  /// \param color_space **[in]** desired color space
+  /// \return bool true if success
   bool setupSwapChain(
       VkFormat format = VK_FORMAT_B8G8R8A8_UNORM,
       VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
   void resize(uint32_t width, uint32_t height);
+  void destroy();
   GraphicsPipeline *graphicsPipeline();
   PipelineLayout *pipelineLayout();
   RenderPass *renderpass();
@@ -72,6 +76,7 @@ public:
   const std::vector<Image::View> &swapchainImageViews();
   std::vector<CommandBuffer> &commandBuffers();
   std::vector<Framebuffer> &framebuffers();
+  void init();
   void draw(VkQueue graphics_queue, VkQueue presentation_queue);
 
   std::function<void(uint32_t width, uint32_t height)> resize_callback;

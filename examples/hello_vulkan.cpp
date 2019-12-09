@@ -93,40 +93,50 @@ int main(int argc, char const *argv[]) {
                                              path + "/vert.spv");
   circe::vk::PipelineShaderStage vert_shader_stage_info(
       VK_SHADER_STAGE_VERTEX_BIT, vert_shader_module, "main", nullptr, 0);
-  app.uniform_buffer_size_callback = []() -> uint32_t {
+  app.render_engine.uniform_buffer_size_callback = []() -> uint32_t {
     return sizeof(UniformBufferObject);
   };
-  app.update_uniform_buffer_callback = [&](circe::vk::Buffer &ubm) {
-    static auto start_time = std::chrono::high_resolution_clock::now();
-    auto current_time = std::chrono::high_resolution_clock::now();
-    float time = std::chrono::duration<float, std::chrono::seconds::period>(
-        current_time - start_time).count();
-    UniformBufferObject ubo;// = {};
-    ubo.model =
-        ponos::transpose(ponos::rotateZ(ponos::DEGREES(
-            time * ponos::RADIANS(90.0f))).matrix());
-    ubo.view = ponos::transpose(ponos::lookAtRH(ponos::point3(2.0f, 2.0f, 2.0f),
-                                                ponos::point3(0.0f, 0.0f, 0.0f),
-                                                ponos::vec3(0.0f,
-                                                            1.0f,
-                                                            0.0f)).matrix());
-    ubo.proj =
-        ponos::transpose(ponos::perspective(45.0f, 1.f, 0.1f, 10.0f).matrix());
-    ubm.setData(&ubo, sizeof(UniformBufferObject));
-  };
+  app.render_engine.update_uniform_buffer_callback =
+      [&](circe::vk::Buffer &ubm) {
+        static auto start_time = std::chrono::high_resolution_clock::now();
+        auto current_time = std::chrono::high_resolution_clock::now();
+        float time = std::chrono::duration<float, std::chrono::seconds::period>(
+            current_time - start_time).count();
+        UniformBufferObject ubo;// = {};
+        ubo.model =
+            ponos::transpose(ponos::rotateZ(ponos::DEGREES(
+                time * ponos::RADIANS(90.0f))).matrix());
+        ubo.view =
+            ponos::transpose(ponos::lookAtRH(ponos::point3(2.0f, 2.0f, 2.0f),
+                                             ponos::point3(0.0f, 0.0f, 0.0f),
+                                             ponos::vec3(0.0f,
+                                                         1.0f,
+                                                         0.0f)).matrix());
+        ubo.proj =
+            ponos::transpose(ponos::perspective(45.0f,
+                                                1.f,
+                                                0.1f,
+                                                10.0f).matrix());
+        ubm.setData(&ubo, sizeof(UniformBufferObject));
+      };
   // An important part is to describe the resources that will be used by the
   // shaders, which is done via a pipeline layout.
-  app.descriptor_set_layout_callback = [](circe::vk::DescriptorSetLayout &dsl) {
-    dsl.addLayoutBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                         1, VK_SHADER_STAGE_VERTEX_BIT);
-  };
-  auto *layout = app.pipelineLayout();
-  auto *renderpass = app.renderpass();
+  app.render_engine.descriptor_set_layout_callback =
+      [](circe::vk::DescriptorSetLayout &dsl) {
+        dsl.addLayoutBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                             1, VK_SHADER_STAGE_VERTEX_BIT);
+      };
+  auto *layout = app.render_engine.pipelineLayout();
+  auto *renderpass = app.render_engine.renderpass();
   renderpass->addAttachment(
-      app.swapchain()->surfaceFormat().format, VK_SAMPLE_COUNT_1_BIT,
-      VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE,
-      VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
-      VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+      app.render_engine.swapchain()->surfaceFormat().format,
+      VK_SAMPLE_COUNT_1_BIT,
+      VK_ATTACHMENT_LOAD_OP_CLEAR,
+      VK_ATTACHMENT_STORE_OP_STORE,
+      VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+      VK_ATTACHMENT_STORE_OP_DONT_CARE,
+      VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
   auto &subpass_desc = renderpass->newSubpassDescription();
   subpass_desc.addColorAttachmentRef(0,
                                      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
@@ -135,7 +145,7 @@ int main(int argc, char const *argv[]) {
       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
       VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
           VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
-  auto &pipeline = *app.graphicsPipeline();
+  auto &pipeline = *app.render_engine.graphicsPipeline();
   // Vertex data
   pipeline.vertex_input_state.addBindingDescription(
       0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX);
@@ -224,35 +234,37 @@ int main(int argc, char const *argv[]) {
                                                         0,
                                                         index_buffer_size);
                                               });
-  app.resize_callback = [&](uint32_t w, uint32_t h) {
-    auto &vp = app.graphicsPipeline()->viewport_state.viewport(0);
+  app.render_engine.resize_callback = [&](uint32_t w, uint32_t h) {
+    auto &vp = app.render_engine.graphicsPipeline()->viewport_state.viewport(0);
     vp.width = static_cast<float>(w);
     vp.height = static_cast<float>(h);
-    auto s = app.graphicsPipeline()->viewport_state.scissor(0);
+    auto s = app.render_engine.graphicsPipeline()->viewport_state.scissor(0);
     s.extent.width = w;
     s.extent.height = h;
   };
-  app.record_command_buffer_callback = [&](circe::vk::CommandBuffer &cb,
-                                           circe::vk::Framebuffer &f,
-                                           VkDescriptorSet ds) {
-    cb.begin();
-    circe::vk::RenderPassBeginInfo renderpass_begin_info(app.renderpass(), &f);
-    renderpass_begin_info.setRenderArea(0, 0, f.width(), f.height());
-    renderpass_begin_info.addClearColorValuef(0.f, 0.f, 0.f, 1.f);
-    cb.beginRenderPass(renderpass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
-    cb.bind(app.graphicsPipeline());
-    std::vector<VkBuffer> vertex_buffers = {vertex_buffer.handle()};
-    std::vector<VkDeviceSize> offsets = {0};
-    cb.bindVertexBuffers(0, vertex_buffers, offsets);
-    cb.bindIndexBuffer(index_buffer, 0, VK_INDEX_TYPE_UINT16);
-    cb.bind(VK_PIPELINE_BIND_POINT_GRAPHICS,
-            app.pipelineLayout(),
-            0,
-            {ds});
-    cb.drawIndexed(indices.size());
-    cb.endRenderPass();
-    cb.end();
-  };
+  app.render_engine.record_command_buffer_callback =
+      [&](circe::vk::CommandBuffer &cb,
+          circe::vk::Framebuffer &f,
+          VkDescriptorSet ds) {
+        cb.begin();
+        circe::vk::RenderPassBeginInfo
+            renderpass_begin_info(app.render_engine.renderpass(), &f);
+        renderpass_begin_info.setRenderArea(0, 0, f.width(), f.height());
+        renderpass_begin_info.addClearColorValuef(0.f, 0.f, 0.f, 1.f);
+        cb.beginRenderPass(renderpass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+        cb.bind(app.render_engine.graphicsPipeline());
+        std::vector<VkBuffer> vertex_buffers = {vertex_buffer.handle()};
+        std::vector<VkDeviceSize> offsets = {0};
+        cb.bindVertexBuffers(0, vertex_buffers, offsets);
+        cb.bindIndexBuffer(index_buffer, 0, VK_INDEX_TYPE_UINT16);
+        cb.bind(VK_PIPELINE_BIND_POINT_GRAPHICS,
+                app.render_engine.pipelineLayout(),
+                0,
+                {ds});
+        cb.drawIndexed(indices.size());
+        cb.endRenderPass();
+        cb.end();
+      };
 
   app.run();
   return 0;

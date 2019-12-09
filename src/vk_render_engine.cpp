@@ -114,10 +114,7 @@ RenderEngine::RenderEngine(
   setDeviceInfo(physical_device, logical_device, queue_family_index);
 }
 
-RenderEngine::~RenderEngine() {
-  //
-  // destroySwapchain();
-}
+RenderEngine::~RenderEngine() = default;
 
 void RenderEngine::setDeviceInfo(const PhysicalDevice *physical_device,
                                  const LogicalDevice *logical_device,
@@ -254,6 +251,15 @@ void RenderEngine::resize(uint32_t width, uint32_t height) {
   height_ = height;
 }
 
+void RenderEngine::destroy() {
+  destroySwapchain();
+  render_finished_semaphores_.clear();
+  image_available_semaphores_.clear();
+  in_flight_fences_.clear();
+  images_in_flight_.clear();
+  command_pool_.reset();
+}
+
 void RenderEngine::setSurface(VkSurfaceKHR surface) {
   vk_surface_ = surface;
 }
@@ -304,6 +310,11 @@ std::vector<CommandBuffer> &RenderEngine::commandBuffers() {
 std::vector<Framebuffer> &RenderEngine::framebuffers() {
   swapchain();
   return framebuffers_;
+}
+
+void RenderEngine::init() {
+  recreateSwapchain();
+  images_in_flight_.resize(framebuffers_.size(), VK_NULL_HANDLE);
 }
 
 void RenderEngine::draw(VkQueue graphics_queue, VkQueue presentation_queue) {
@@ -379,7 +390,7 @@ void RenderEngine::draw(VkQueue graphics_queue, VkQueue presentation_queue) {
     recreateSwapchain();
     framebuffer_resized_ = false;
   } else if (next_image_result != VK_SUCCESS) {
-    INFO("error on presenting swapchain image!");
+    INFO("error on presenting swapchain image!")
     return;
   }
 
