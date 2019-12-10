@@ -54,6 +54,8 @@ public:
                VkMemoryPropertyFlags required_flags,
                VkMemoryPropertyFlags preferred_flags);
   DeviceMemory(const LogicalDevice *device, const Image &image,
+               VkMemoryPropertyFlags required_flags);
+  DeviceMemory(const LogicalDevice *device, const Image &image,
                VkMemoryPropertyFlags required_flags,
                VkMemoryPropertyFlags preferred_flags);
   DeviceMemory(const DeviceMemory &other) = delete;

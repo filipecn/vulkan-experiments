@@ -104,13 +104,12 @@ public:
   [[nodiscard]] VkDeviceSize size() const;
   [[nodiscard]] const void *data() const;
   ///\brief Information about the type of memory and how much of it the
-  /// image
-  /// resource requires.
+  /// buffer resource requires.
   ///\param memory_requirements **[out]**
   ///\return bool true if success
   bool memoryRequirements(VkMemoryRequirements &memory_requirements) const;
   void setData(const void *data, uint32_t size);
-  template <typename T> const T &at(uint32_t i) const {
+  template<typename T> const T &at(uint32_t i) const {
     return (reinterpret_cast<const T *>(data_))[i];
   }
 

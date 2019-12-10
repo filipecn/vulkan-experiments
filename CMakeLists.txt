@@ -16,6 +16,7 @@ set(ENV{VK_INSTANCE_LAYERS}
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # external
+set(STB_INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}/ext")
 include(ExternalProject)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/ext")
 include(glfw)
@@ -65,6 +66,7 @@ set(SOURCES
         src/vk_renderpass.cpp
         src/vk_shader_module.cpp
         src/vk_swap_chain.cpp
+        src/vk_texture_image.cpp
         src/vulkan_instance.cpp
         src/vulkan_library.cpp
         src/vulkan_logical_device.cpp
@@ -85,6 +87,7 @@ set(HEADERS
         src/vk_shader_module.h
         src/vk_swap_chain.h
         src/vk_sync.h
+        src/vk_texture_image.h
         src/vulkan_instance.h
         src/vulkan_library.h
         src/vulkan_logical_device.h
@@ -95,7 +98,8 @@ add_library(vk STATIC ${SOURCES} ${HEADERS})
 set_target_properties(vk PROPERTIES
         OUTPUT_NAME "vk"
         FOLDER "VK")
-target_include_directories(vk PUBLIC 
+target_include_directories(vk PUBLIC
+${STB_INCLUDES}
 ${GLFW_INCLUDES} 
 ${VULKAN_INCLUDES} 
 ${PONOS_INCLUDE_DIR}
