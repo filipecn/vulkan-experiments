@@ -53,15 +53,15 @@ public:
   ///\brief Construct a new Physical Device object
   ///
   ///\param device_handle **[in]**
-  PhysicalDevice(VkPhysicalDevice device_handle);
+  explicit PhysicalDevice(VkPhysicalDevice device_handle);
   ///\brief Default destructor
   ~PhysicalDevice() = default;
   ///\brief
   ///\return VkPhysicalDevice vulkan handle
-  VkPhysicalDevice handle() const;
+  [[nodiscard]] VkPhysicalDevice handle() const;
   /// Checks with physical device object construction succeded
   ///\return bool true if this can be used
-  bool good() const;
+  [[nodiscard]] bool good() const;
   /// Checks if extension is supported by the device
   ///\param desired_device_extension **[in]** extension name (ex: )
   ///\return bool true if extension is supported
@@ -105,7 +105,7 @@ public:
   ///\param required_flags **[in]** hard requirements
   ///\param preferred_flags **[in]** soft requirements
   ///\return uint32_t memory type
-  uint32_t chooseMemoryType(const VkMemoryRequirements &memory_requirements,
+  [[nodiscard]] uint32_t chooseMemoryType(const VkMemoryRequirements &memory_requirements,
                             VkMemoryPropertyFlags required_flags,
                             VkMemoryPropertyFlags preferred_flags) const;
   /// Checks if the desired presentation mode is supported by the device, if
@@ -135,7 +135,8 @@ public:
   bool
   surfaceCapabilities(VkSurfaceKHR surface,
                       VkSurfaceCapabilitiesKHR &surface_capabilities) const;
-  const VkPhysicalDeviceProperties &properties() const;
+  [[nodiscard]] const VkPhysicalDeviceProperties &properties() const;
+  [[nodiscard]] const VkPhysicalDeviceFeatures & features() const;
 
 private:
   /// Retrieve available queue families exposed by a physical device

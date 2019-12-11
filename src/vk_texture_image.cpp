@@ -26,6 +26,8 @@
 /// \brief
 
 #include "vk_texture_image.h"
+#include "vk_command_buffer.h"
+#include "vk_sync.h"
 #include "vulkan_debug.h"
 #include "vk_buffer.h"
 #include "logging.h"
@@ -36,7 +38,9 @@
 namespace circe::vk {
 
 Texture::Texture(const LogicalDevice *logical_device,
-                 const std::string &filename)
+                 const std::string &filename,
+                 uint32_t queue_family_index,
+                 VkQueue queue)
     : logical_device_(logical_device) {
   int tex_width, tex_height, tex_channels;
   stbi_uc *pixels = stbi_load(filename.c_str(),
@@ -60,7 +64,7 @@ Texture::Texture(const LogicalDevice *logical_device,
   staging_buffer_memory.bind(staging_buffer);
   staging_buffer_memory.copy(staging_buffer);
   stbi_image_free(pixels);
-
+  // Allocate image data on device
   VkExtent3D size = {};
   size.width = tex_width;
   size.height = tex_height;
@@ -79,6 +83,48 @@ Texture::Texture(const LogicalDevice *logical_device,
                                                  *image_,
                                                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   image_memory_->bind(*image_);
+  // copy data to device
+  CommandPool::submitCommandBuffer(logical_device_,
+                                   queue_family_index,
+                                   queue,
+                                   [&](CommandBuffer &cb) {
+                                     ImageMemoryBarrier barrier(*image_,
+                                                                VK_IMAGE_LAYOUT_UNDEFINED,
+                                                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                                     cb.transitionImageLayout(barrier,
+                                                              VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                                              VK_PIPELINE_STAGE_TRANSFER_BIT);
+                                     VkBufferImageCopy region = {};
+                                     region.bufferOffset = 0;
+                                     region.bufferRowLength = 0;
+                                     region.bufferImageHeight = 0;
+                                     region.imageSubresource.aspectMask =
+                                         VK_IMAGE_ASPECT_COLOR_BIT;
+                                     region.imageSubresource.mipLevel = 0;
+                                     region.imageSubresource.baseArrayLayer = 0;
+                                     region.imageSubresource.layerCount = 1;
+                                     region.imageOffset = {0, 0, 0};
+                                     region.imageExtent = {
+                                         size.width,
+                                         size.height,
+                                         1
+                                     };
+                                     cb.copy(staging_buffer,
+                                             *image_,
+                                             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                             {region});
+                                     ImageMemoryBarrier after_barrier(*image_,
+                                                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                                     cb.transitionImageLayout(after_barrier,
+                                                              VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                                              VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+                                   });
+
+}
+
+const Image *Texture::image() const {
+  return image_.get();
 }
 
 }

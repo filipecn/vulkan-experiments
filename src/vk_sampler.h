@@ -19,32 +19,43 @@
 /// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 /// IN THE SOFTWARE.
 ///
-/// \file vk_texture_image.h
+/// \file vk_sampler.h
 /// \author FilipeCN (filipedecn@gmail.com)
-/// \date 2019-12-09
+/// \date 2019-12-10
 ///
 /// \brief
 
-#ifndef CIRCE_VK_TEXTURE_IMAGE_H
-#define CIRCE_VK_TEXTURE_IMAGE_H
+#ifndef CIRCE_VK_SAMPLER_H
+#define CIRCE_VK_SAMPLER_H
 
-#include <string>
-#include "vk_image.h"
-#include "vk_device_memory.h"
+#include "vulkan_logical_device.h"
 
 namespace circe::vk {
 
-class Texture {
+class Sampler {
 public:
-  explicit Texture(const LogicalDevice *logical_device,
-                   const std::string &filename,
-                   uint32_t queue_family_index,
-                   VkQueue queue);
-  [[nodiscard]] const Image* image() const;
+  Sampler(const LogicalDevice *logical_device,
+          VkFilter mag_filter,
+          VkFilter min_filter,
+          VkSamplerMipmapMode mipmap_mode,
+          VkSamplerAddressMode address_mode_u,
+          VkSamplerAddressMode address_mode_v,
+          VkSamplerAddressMode address_mode_w,
+          float mip_lod_bias,
+          VkBool32 anisotropy_enable,
+          float max_anisotropy,
+          VkBool32 compare_enable,
+          VkCompareOp compare_op,
+          float min_lod,
+          float max_lod,
+          VkBorderColor border_color,
+          VkBool32 unnormalized_coordinates);
+  ~Sampler();
+  [[nodiscard]] VkSampler handle() const;
+
 private:
-  const LogicalDevice* logical_device_ = nullptr;
-  std::unique_ptr<Image> image_;
-  std::unique_ptr<DeviceMemory> image_memory_;
+  const LogicalDevice *logical_device_ = nullptr;
+  VkSampler vk_sampler_ = VK_NULL_HANDLE;
 };
 
 } // circe::vk namespace

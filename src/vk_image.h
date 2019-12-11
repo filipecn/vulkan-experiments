@@ -30,9 +30,7 @@
 
 #include "vulkan_logical_device.h"
 
-namespace circe {
-
-namespace vk {
+namespace circe::vk {
 
 /// \brief Holds a vulkan image object
 /// Images represent data that can have multiple dimensions. They also have
@@ -132,8 +130,6 @@ private:
   VkImage vk_image_ = VK_NULL_HANDLE;
   bool do_not_destroy_ = false;
 };
-
-} // namespace vk
 
 } // namespace circe
 

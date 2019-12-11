@@ -110,17 +110,17 @@ VkCommandBuffer CommandBuffer::handle() const { return vk_command_buffer_; }
 bool CommandBuffer::begin(VkCommandBufferUsageFlags flags) const {
   VkCommandBufferBeginInfo info = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
                                    nullptr, flags, nullptr};
-  R_CHECK_VULKAN(vkBeginCommandBuffer(vk_command_buffer_, &info));
+  R_CHECK_VULKAN(vkBeginCommandBuffer(vk_command_buffer_, &info))
   return true;
 }
 
 bool CommandBuffer::end() const {
-  R_CHECK_VULKAN(vkEndCommandBuffer(vk_command_buffer_));
+  R_CHECK_VULKAN(vkEndCommandBuffer(vk_command_buffer_))
   return true;
 }
 
 bool CommandBuffer::reset(VkCommandBufferResetFlags flags) const {
-  R_CHECK_VULKAN(vkResetCommandBuffer(vk_command_buffer_, flags));
+  R_CHECK_VULKAN(vkResetCommandBuffer(vk_command_buffer_, flags))
   return true;
 }
 
@@ -134,70 +134,62 @@ bool CommandBuffer::submit(VkQueue queue, VkFence fence) const {
   return true;
 }
 
-bool CommandBuffer::copy(const Buffer &src_buffer, VkDeviceSize src_offset,
+void CommandBuffer::copy(const Buffer &src_buffer, VkDeviceSize src_offset,
                          const Buffer &dst_buffer, VkDeviceSize dst_offset,
                          VkDeviceSize size) const {
   const VkBufferCopy copy_region = {src_offset, dst_offset, size};
   vkCmdCopyBuffer(vk_command_buffer_, src_buffer.handle(), dst_buffer.handle(),
                   1, &copy_region);
-  return true;
 }
 
-bool CommandBuffer::copy(const Image &src_image, VkImageLayout layout,
+void CommandBuffer::copy(const Image &src_image, VkImageLayout layout,
                          Buffer &dst_buffer,
                          const std::vector<VkBufferImageCopy> &regions) const {
   vkCmdCopyImageToBuffer(vk_command_buffer_, src_image.handle(), layout,
                          dst_buffer.handle(), regions.size(), regions.data());
-  return true;
 }
 
-bool CommandBuffer::copy(const Buffer &src_buffer, Image &dst_image,
+void CommandBuffer::copy(const Buffer &src_buffer, Image &dst_image,
                          VkImageLayout layout,
                          const std::vector<VkBufferImageCopy> &regions) const {
   vkCmdCopyBufferToImage(vk_command_buffer_, src_buffer.handle(),
                          dst_image.handle(), layout, regions.size(),
                          regions.data());
-  return true;
 }
 
-bool CommandBuffer::copy(const Image &src_image, VkImageLayout src_layout,
+void CommandBuffer::copy(const Image &src_image, VkImageLayout src_layout,
                          Image &dst_image, VkImageLayout dst_layout,
                          const std::vector<VkImageCopy> &regions) const {
   vkCmdCopyImage(vk_command_buffer_, src_image.handle(), src_layout,
                  dst_image.handle(), dst_layout, regions.size(),
                  regions.data());
-  return true;
 }
 
-bool CommandBuffer::clear(const Image &image, VkImageLayout layout,
+void CommandBuffer::clear(const Image &image, VkImageLayout layout,
                           const std::vector<VkImageSubresourceRange> &ranges,
                           const VkClearColorValue &color) const {
   vkCmdClearColorImage(vk_command_buffer_, image.handle(), layout, &color,
                        ranges.size(), ranges.data());
-  return true;
 }
 
-bool CommandBuffer::clear(const Image &image, VkImageLayout layout,
+void CommandBuffer::clear(const Image &image, VkImageLayout layout,
                           const std::vector<VkImageSubresourceRange> &ranges,
                           const VkClearDepthStencilValue &value) const {
   vkCmdClearDepthStencilImage(vk_command_buffer_, image.handle(), layout,
                               &value, ranges.size(), ranges.data());
-  return true;
 }
 
-bool CommandBuffer::bind(const ComputePipeline &compute_pipeline) const {
+void CommandBuffer::bind(const ComputePipeline &compute_pipeline) const {
   vkCmdBindPipeline(vk_command_buffer_, VK_PIPELINE_BIND_POINT_COMPUTE,
                     compute_pipeline.handle());
-  return true;
 }
 
-bool CommandBuffer::bind(GraphicsPipeline *graphics_pipeline) const {
+void CommandBuffer::bind(GraphicsPipeline *graphics_pipeline) const {
   vkCmdBindPipeline(vk_command_buffer_, VK_PIPELINE_BIND_POINT_GRAPHICS,
                     graphics_pipeline->handle());
-  return true;
 }
 
-bool CommandBuffer::bind(VkPipelineBindPoint pipeline_bind_point,
+void CommandBuffer::bind(VkPipelineBindPoint pipeline_bind_point,
                          PipelineLayout *layout,
                          uint32_t first_set,
                          const std::vector<VkDescriptorSet> &descriptor_sets,
@@ -211,10 +203,9 @@ bool CommandBuffer::bind(VkPipelineBindPoint pipeline_bind_point,
                           dynamic_offsets.size(),
                           (dynamic_offsets.size()) ? dynamic_offsets.data()
                                                    : nullptr);
-  return true;
 }
 
-bool CommandBuffer::bind(VkPipelineBindPoint pipeline_bind_point,
+void CommandBuffer::bind(VkPipelineBindPoint pipeline_bind_point,
                          PipelineLayout &pipeline_layout,
                          const std::vector<VkDescriptorSet> &descriptor_sets,
                          const std::vector<uint32_t> &dynamic_offsets,
@@ -226,66 +217,70 @@ bool CommandBuffer::bind(VkPipelineBindPoint pipeline_bind_point,
                           pipeline_layout.handle(), first_set,
                           descriptor_set_count, descriptor_sets.data(),
                           dynamic_offsets.size(), dynamic_offsets.data());
-  return true;
 }
 
-bool CommandBuffer::dispatch(uint32_t x, uint32_t y, uint32_t z) const {
+void CommandBuffer::dispatch(uint32_t x, uint32_t y, uint32_t z) const {
   vkCmdDispatch(vk_command_buffer_, x, y, z);
-  return true;
 }
 
-bool CommandBuffer::dispatch(const Buffer &buffer, VkDeviceSize offset) const {
+void CommandBuffer::dispatch(const Buffer &buffer, VkDeviceSize offset) const {
   vkCmdDispatchIndirect(vk_command_buffer_, buffer.handle(), offset);
-  return true;
 }
 
-bool CommandBuffer::pushConstants(PipelineLayout &pipeline_layout,
+void CommandBuffer::pushConstants(PipelineLayout &pipeline_layout,
                                   VkShaderStageFlags stage_flags,
                                   uint32_t offset, uint32_t size,
                                   const void *values) const {
   vkCmdPushConstants(vk_command_buffer_, pipeline_layout.handle(), stage_flags,
                      offset, size, values);
-  return true;
 }
 
-bool CommandBuffer::beginRenderPass(const RenderPassBeginInfo &info,
+void CommandBuffer::beginRenderPass(const RenderPassBeginInfo &info,
                                     VkSubpassContents contents) const {
   vkCmdBeginRenderPass(vk_command_buffer_, info.info(), contents);
-  return true;
 }
 
-bool CommandBuffer::endRenderPass() const {
+void CommandBuffer::endRenderPass() const {
   vkCmdEndRenderPass(vk_command_buffer_);
-  return true;
 }
 
-bool CommandBuffer::bindVertexBuffers(
+void CommandBuffer::bindVertexBuffers(
     uint32_t first_binding, const std::vector<VkBuffer> &buffers,
     const std::vector<VkDeviceSize> &offsets) const {
   vkCmdBindVertexBuffers(vk_command_buffer_, first_binding, buffers.size(),
                          buffers.data(), offsets.data());
-  return true;
 }
 
-bool CommandBuffer::bindIndexBuffer(const Buffer &buffer, VkDeviceSize offset,
+void CommandBuffer::bindIndexBuffer(const Buffer &buffer, VkDeviceSize offset,
                                     VkIndexType type) const {
   vkCmdBindIndexBuffer(vk_command_buffer_, buffer.handle(), offset, type);
-  return true;
 }
 
-bool CommandBuffer::draw(uint32_t vertex_count, uint32_t instance_count,
+void CommandBuffer::draw(uint32_t vertex_count, uint32_t instance_count,
                          uint32_t first_vertex, uint32_t first_instance) const {
   vkCmdDraw(vk_command_buffer_, vertex_count, instance_count, first_vertex,
             first_instance);
-  return true;
 }
 
-bool CommandBuffer::drawIndexed(uint32_t index_count, uint32_t instance_count,
+void CommandBuffer::drawIndexed(uint32_t index_count, uint32_t instance_count,
                                 uint32_t first_index, int32_t vertex_offset,
                                 uint32_t first_instance) const {
   vkCmdDrawIndexed(vk_command_buffer_, index_count, instance_count, first_index,
                    vertex_offset, first_instance);
-  return true;
+}
+
+void CommandBuffer::transitionImageLayout(const ImageMemoryBarrier &barrier,
+                                          VkPipelineStageFlags src_stages,
+                                          VkPipelineStageFlags dst_stages) const {
+  auto barrier_handle = barrier.handle();
+  vkCmdPipelineBarrier(
+      vk_command_buffer_,
+      src_stages, dst_stages,
+      0,
+      0, nullptr,
+      0, nullptr,
+      1, &barrier_handle
+  );
 }
 
 CommandPool::CommandPool(const LogicalDevice *logical_device,

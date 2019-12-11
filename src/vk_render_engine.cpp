@@ -214,6 +214,8 @@ bool RenderEngine::setupSwapChain(VkFormat desired_format,
                                                         swapchain_image_views_.size());
   descriptor_pool_->setPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                 swapchain_image_views_.size());
+  descriptor_pool_->setPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                swapchain_image_views_.size());
   if (descriptor_set_layout_callback) {
     for (size_t i = 0; i < swapchain_image_views_.size(); ++i)
       descriptor_set_layout_callback(pipelineLayout()->descriptorSetLayout(
@@ -222,26 +224,10 @@ bool RenderEngine::setupSwapChain(VkFormat desired_format,
   // setup descriptor sets
   descriptor_pool_->allocate(pipelineLayout()->descriptorSetLayouts(),
                              descriptor_sets_);
-  for (size_t i = 0; i < swapchain_image_views_.size(); ++i) {
-    VkDescriptorBufferInfo bufferInfo = {};
-    bufferInfo.buffer = uniform_buffers_[i].handle();
-    bufferInfo.offset = 0;
-    bufferInfo.range = uniform_buffer_size_callback();
-
-    VkWriteDescriptorSet descriptorWrite = {};
-    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWrite.dstSet = descriptor_sets_[i];
-    descriptorWrite.dstBinding = 0;
-    descriptorWrite.dstArrayElement = 0;
-    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    descriptorWrite.descriptorCount = 1;
-    descriptorWrite.pBufferInfo = &bufferInfo;
-    vkUpdateDescriptorSets(logical_device_->handle(),
-                           1,
-                           &descriptorWrite,
-                           0,
-                           nullptr);
-  }
+  if (update_descriptor_set_callback)
+    for (size_t i = 0; i < swapchain_image_views_.size(); ++i)
+      update_descriptor_set_callback(descriptor_sets_[i],
+                                     uniform_buffers_[i].handle());
   return true;
 }
 

@@ -101,7 +101,7 @@ bool App::pickPhysicalDevice(
           std::make_pair(f(physical_devices[i], queue_families[i]), i));
     }
   }
-  CHECK_INFO(candidates.size() && candidates.rbegin()->first > 0,
+  CHECK_INFO(!candidates.empty() && candidates.rbegin()->first > 0,
              "failed to find a suitable GPU!");
   uint32_t selected_index = candidates.rbegin()->second;
   physical_device_ =
@@ -116,14 +116,17 @@ bool App::createLogicalDevice(
   if (!physical_device_)
     pickPhysicalDevice([&](const circe::vk::PhysicalDevice &d,
                            circe::vk::QueueFamilies &q) -> uint32_t {
-      if (d.properties().deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+      if (d.properties().deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
+          && d.features().samplerAnisotropy == VK_TRUE)
         return 1000;
       return 1;
     });
+  VkPhysicalDeviceFeatures features = {};
+  features.samplerAnisotropy = VK_TRUE;
   auto extensions = desired_extensions;
   extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
   logical_device_ = std::make_unique<LogicalDevice>(
-      *physical_device_, extensions, desired_features, queue_families_,
+      *physical_device_, extensions, &features, queue_families_,
       validation_layer_names_);
   render_engine.setDeviceInfo(physical_device_.get(), logical_device_.get(),
                               queue_families_.family("graphics").family_index.value());

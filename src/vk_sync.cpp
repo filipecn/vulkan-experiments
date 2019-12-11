@@ -27,10 +27,9 @@
 
 #include "vk_sync.h"
 #include "vulkan_debug.h"
+#include "logging.h"
 
-namespace circe {
-
-namespace vk {
+namespace circe::vk {
 
 Fence::Fence(const LogicalDevice *logical_device, VkFenceCreateFlags flags)
     : logical_device_(logical_device) {
@@ -38,7 +37,7 @@ Fence::Fence(const LogicalDevice *logical_device, VkFenceCreateFlags flags)
                             flags};
   VkResult result =
       vkCreateFence(logical_device->handle(), &info, nullptr, &vk_fence_);
-  CHECK_VULKAN(result);
+  CHECK_VULKAN(result)
   if (result != VK_SUCCESS)
     vk_fence_ = VK_NULL_HANDLE;
 }
@@ -48,7 +47,7 @@ Fence::Fence(Fence &other)
   other.vk_fence_ = VK_NULL_HANDLE;
 }
 
-Fence::Fence(Fence &&other)
+Fence::Fence(Fence &&other) noexcept
     : logical_device_(other.logical_device_), vk_fence_(other.vk_fence_) {
   other.vk_fence_ = VK_NULL_HANDLE;
 }
@@ -80,7 +79,7 @@ Semaphore::Semaphore(const LogicalDevice *logical_device,
                                 nullptr, flags};
   VkResult result = vkCreateSemaphore(logical_device->handle(), &info, nullptr,
                                       &vk_semaphore_);
-  CHECK_VULKAN(result);
+  CHECK_VULKAN(result)
   if (result != VK_SUCCESS)
     vk_semaphore_ = VK_NULL_HANDLE;
 }
@@ -91,7 +90,7 @@ Semaphore::Semaphore(Semaphore &other)
   other.vk_semaphore_ = VK_NULL_HANDLE;
 }
 
-Semaphore::Semaphore(Semaphore &&other)
+Semaphore::Semaphore(Semaphore &&other) noexcept
     : logical_device_(other.logical_device_),
       vk_semaphore_(other.vk_semaphore_) {
   other.vk_semaphore_ = VK_NULL_HANDLE;
@@ -104,6 +103,35 @@ Semaphore::~Semaphore() {
 
 VkSemaphore Semaphore::handle() const { return vk_semaphore_; }
 
-} // namespace vk
+ImageMemoryBarrier::ImageMemoryBarrier(const Image &image,
+                                       VkImageLayout old_layout,
+                                       VkImageLayout new_layout) {
+  vk_image_memory_barrier_.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  vk_image_memory_barrier_.oldLayout = old_layout;
+  vk_image_memory_barrier_.newLayout = new_layout;
+  vk_image_memory_barrier_.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  vk_image_memory_barrier_.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  vk_image_memory_barrier_.image = image.handle();
+  vk_image_memory_barrier_.subresourceRange.aspectMask =
+      VK_IMAGE_ASPECT_COLOR_BIT;
+  vk_image_memory_barrier_.subresourceRange.baseMipLevel = 0;
+  vk_image_memory_barrier_.subresourceRange.levelCount = 1;
+  vk_image_memory_barrier_.subresourceRange.baseArrayLayer = 0;
+  vk_image_memory_barrier_.subresourceRange.layerCount = 1;
 
+  if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED
+      && new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+    vk_image_memory_barrier_.srcAccessMask = 0;
+    vk_image_memory_barrier_.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+  } else if (old_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+      && new_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+    vk_image_memory_barrier_.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    vk_image_memory_barrier_.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+  } else {
+    INFO("unsupported layout transition!")
+  }
+}
+VkImageMemoryBarrier ImageMemoryBarrier::handle() const {
+  return vk_image_memory_barrier_;
+}
 } // namespace circe

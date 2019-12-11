@@ -2,6 +2,7 @@
 #include <iostream>
 #include <ponos/ponos.h>
 #include <chrono>
+#include <array>
 
 struct UniformBufferObject {
   alignas(16) ponos::mat4 model;
@@ -93,6 +94,29 @@ int main(int argc, char const *argv[]) {
                                              path + "/vert.spv");
   circe::vk::PipelineShaderStage vert_shader_stage_info(
       VK_SHADER_STAGE_VERTEX_BIT, vert_shader_module, "main", nullptr, 0);
+  uint32_t graphics_family_index =
+      app.queueFamilies().family("graphics").family_index.value();
+  VkQueue graphics_queue = app.queueFamilies().family("graphics").vk_queues[0];
+  // load texture
+  std::string texture_path(TEXTURES_PATH);
+  circe::vk::Texture texture(app.logicalDevice(), texture_path + "/texture.jpg",
+                             graphics_family_index, graphics_queue);
+  circe::vk::Image::View texture_view
+      (texture.image(), VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM,
+       VK_IMAGE_ASPECT_COLOR_BIT);
+  circe::vk::Sampler
+      texture_sampler(app.logicalDevice(), VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+                      VK_SAMPLER_MIPMAP_MODE_LINEAR,
+                      VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                      VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                      VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                      0.f,
+                      VK_TRUE,
+                      16,
+                      VK_FALSE,
+                      VK_COMPARE_OP_ALWAYS,
+                      0.f, 0.f, VK_BORDER_COLOR_INT_OPAQUE_BLACK, VK_FALSE);
+
   app.render_engine.uniform_buffer_size_callback = []() -> uint32_t {
     return sizeof(UniformBufferObject);
   };
@@ -125,6 +149,44 @@ int main(int argc, char const *argv[]) {
       [](circe::vk::DescriptorSetLayout &dsl) {
         dsl.addLayoutBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                              1, VK_SHADER_STAGE_VERTEX_BIT);
+        dsl.addLayoutBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
+                             VK_SHADER_STAGE_FRAGMENT_BIT);
+      };
+  app.render_engine.update_descriptor_set_callback =
+      [&](VkDescriptorSet ds, VkBuffer ubo) {
+        VkDescriptorBufferInfo buffer_info = {};
+        buffer_info.buffer = ubo;
+        buffer_info.offset = 0;
+        buffer_info.range = sizeof(UniformBufferObject);
+        VkDescriptorImageInfo image_info = {};
+        image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        image_info.imageView = texture_view.handle();
+        image_info.sampler = texture_sampler.handle();
+
+        std::array<VkWriteDescriptorSet, 2> descriptor_writes = {};
+
+        descriptor_writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptor_writes[0].dstSet = ds;
+        descriptor_writes[0].dstBinding = 0;
+        descriptor_writes[0].dstArrayElement = 0;
+        descriptor_writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptor_writes[0].descriptorCount = 1;
+        descriptor_writes[0].pBufferInfo = &buffer_info;
+
+        descriptor_writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptor_writes[1].dstSet = ds;
+        descriptor_writes[1].dstBinding = 1;
+        descriptor_writes[1].dstArrayElement = 0;
+        descriptor_writes[1].descriptorType =
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptor_writes[1].descriptorCount = 1;
+        descriptor_writes[1].pImageInfo = &image_info;
+
+        vkUpdateDescriptorSets(app.logicalDevice()->handle(),
+                               static_cast<uint32_t>(descriptor_writes.size()),
+                               descriptor_writes.data(),
+                               0,
+                               nullptr);
       };
   auto *layout = app.render_engine.pipelineLayout();
   auto *renderpass = app.render_engine.renderpass();
@@ -177,63 +239,12 @@ int main(int argc, char const *argv[]) {
           VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
   // pipeline.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
   // pipeline.addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
-  // vertex staging buffer
-  circe::vk::Buffer vertex_staging_buffer(
-      app.logicalDevice(), sizeof(vertices[0]) * vertices.size(),
-      VK_BUFFER_USAGE_TRANSFER_SRC_BIT, vertices.data());
-  circe::vk::DeviceMemory vertex_staging_buffer_memory(
-      app.logicalDevice(), vertex_staging_buffer,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-  vertex_staging_buffer_memory.bind(vertex_staging_buffer);
-  vertex_staging_buffer_memory.copy(vertex_staging_buffer);
-  // index staging buffer
-  circe::vk::Buffer index_staging_buffer(
-      app.logicalDevice(), sizeof(indices[0]) * indices.size(),
-      VK_BUFFER_USAGE_TRANSFER_SRC_BIT, indices.data());
-  circe::vk::DeviceMemory index_staging_buffer_memory(
-      app.logicalDevice(), index_staging_buffer,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-  index_staging_buffer_memory.bind(index_staging_buffer);
-  index_staging_buffer_memory.copy(index_staging_buffer);
-  // vertex buffer
-  uint32_t vertex_buffer_size = sizeof(vertices[0]) * vertices.size();
-  circe::vk::Buffer vertex_buffer(app.logicalDevice(), vertex_buffer_size,
-                                  VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                                      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-  circe::vk::DeviceMemory vertex_buffer_memory(
-      app.logicalDevice(), vertex_buffer, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-  vertex_buffer_memory.bind(vertex_buffer);
-  // index buffer
-  uint32_t index_buffer_size = sizeof(indices[0]) * indices.size();
-  circe::vk::Buffer index_buffer(app.logicalDevice(), index_buffer_size,
-                                 VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                                     VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-  circe::vk::DeviceMemory index_buffer_memory(
-      app.logicalDevice(), index_buffer, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-  index_buffer_memory.bind(index_buffer);
-  // In order to copy data from one buffer to another, we can create a temporary
-  // command buffer from a special command pool created for short-living command
-  // buffers
-  uint32_t graphics_family_index =
-      app.queueFamilies().family("graphics").family_index.value();
-  VkQueue graphics_queue = app.queueFamilies().family("graphics").vk_queues[0];
-  circe::vk::CommandPool::submitCommandBuffer(app.logicalDevice(),
-                                              graphics_family_index,
-                                              graphics_queue,
-                                              [&](circe::vk::CommandBuffer &cb) {
-                                                cb.copy(vertex_staging_buffer,
-                                                        0,
-                                                        vertex_buffer,
-                                                        0,
-                                                        vertex_buffer_size);
-                                                cb.copy(index_staging_buffer,
-                                                        0,
-                                                        index_buffer,
-                                                        0,
-                                                        index_buffer_size);
-                                              });
+  circe::vk::MeshBufferData mesh(
+      app.logicalDevice(),
+      sizeof(vertices[0]) * vertices.size(),
+      vertices.data(),
+      sizeof(indices[0]) * indices.size(),
+      indices.data(), graphics_family_index, graphics_queue);
   app.render_engine.resize_callback = [&](uint32_t w, uint32_t h) {
     auto &vp = app.render_engine.graphicsPipeline()->viewport_state.viewport(0);
     vp.width = static_cast<float>(w);
@@ -253,10 +264,13 @@ int main(int argc, char const *argv[]) {
         renderpass_begin_info.addClearColorValuef(0.f, 0.f, 0.f, 1.f);
         cb.beginRenderPass(renderpass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
         cb.bind(app.render_engine.graphicsPipeline());
-        std::vector<VkBuffer> vertex_buffers = {vertex_buffer.handle()};
+        std::vector<VkBuffer> vertex_buffers = {
+            mesh.vertexBuffer()->handle()
+        };
         std::vector<VkDeviceSize> offsets = {0};
         cb.bindVertexBuffers(0, vertex_buffers, offsets);
-        cb.bindIndexBuffer(index_buffer, 0, VK_INDEX_TYPE_UINT16);
+        cb.bindIndexBuffer(
+            *mesh.indexBuffer(), 0, VK_INDEX_TYPE_UINT16);
         cb.bind(VK_PIPELINE_BIND_POINT_GRAPHICS,
                 app.render_engine.pipelineLayout(),
                 0,
@@ -265,7 +279,6 @@ int main(int argc, char const *argv[]) {
         cb.endRenderPass();
         cb.end();
       };
-
   app.run();
   return 0;
 }

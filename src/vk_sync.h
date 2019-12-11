@@ -29,10 +29,9 @@
 #define CIRCE_VULKAN_SYNC_H
 
 #include "vulkan_logical_device.h"
+#include "vk_image.h"
 
-namespace circe {
-
-namespace vk {
+namespace circe::vk {
 
 // SYNCHRONIZATION
 // ---------------
@@ -61,10 +60,10 @@ public:
   Fence(const Fence &other) = delete;
   Fence(const Fence &&other) = delete;
   Fence(Fence &other);
-  Fence(Fence &&other);
+  Fence(Fence &&other) noexcept;
   ~Fence();
-  VkFence handle() const;
-  VkResult status() const;
+  [[nodiscard]] VkFence handle() const;
+  [[nodiscard]] VkResult status() const;
   void wait() const;
   void reset() const;
 
@@ -77,21 +76,29 @@ private:
 /// they are signaled by queues.
 class Semaphore {
 public:
-  Semaphore(const LogicalDevice *logical_device,
-            VkSemaphoreCreateFlags flags = 0);
+  explicit Semaphore(const LogicalDevice *logical_device,
+                     VkSemaphoreCreateFlags flags = 0);
   Semaphore(const Semaphore &other) = delete;
   Semaphore(const Semaphore &&other) = delete;
   Semaphore(Semaphore &other);
-  Semaphore(Semaphore &&other);
+  Semaphore(Semaphore &&other) noexcept;
   ~Semaphore();
-  VkSemaphore handle() const;
+  [[nodiscard]] VkSemaphore handle() const;
 
 private:
   const LogicalDevice *logical_device_ = nullptr;
   VkSemaphore vk_semaphore_ = VK_NULL_HANDLE;
 };
 
-} // namespace vk
+class ImageMemoryBarrier {
+public:
+  ImageMemoryBarrier(const Image &image,
+                     VkImageLayout old_layout,
+                     VkImageLayout new_layout);
+  [[nodiscard]] VkImageMemoryBarrier handle() const;
+private:
+  VkImageMemoryBarrier vk_image_memory_barrier_{};
+};
 
 } // namespace circe
 

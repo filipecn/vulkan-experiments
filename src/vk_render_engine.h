@@ -85,6 +85,7 @@ public:
   std::function<uint32_t()> uniform_buffer_size_callback;
   std::function<void(Buffer &)> update_uniform_buffer_callback;
   std::function<void(DescriptorSetLayout &)> descriptor_set_layout_callback;
+  std::function<void(VkDescriptorSet, VkBuffer)> update_descriptor_set_callback;
 
 private:
   // auxiliry mehods for swapchain creation

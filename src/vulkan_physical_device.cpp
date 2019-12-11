@@ -74,7 +74,7 @@ bool PhysicalDevice::selectIndexOfQueueFamily(
        index < static_cast<uint32_t>(vk_queue_families_.size()); ++index) {
     if ((vk_queue_families_[index].queueCount > 0) &&
         ((vk_queue_families_[index].queueFlags & desired_capabilities) ==
-         desired_capabilities)) {
+            desired_capabilities)) {
       queue_family_index = index;
       return true;
     }
@@ -254,6 +254,10 @@ bool PhysicalDevice::surfaceCapabilities(
 
 const VkPhysicalDeviceProperties &PhysicalDevice::properties() const {
   return vk_properties_;
+}
+
+const VkPhysicalDeviceFeatures &PhysicalDevice::features() const {
+  return vk_features_;
 }
 
 std::ostream &operator<<(std::ostream &os, VkPhysicalDeviceType e) {

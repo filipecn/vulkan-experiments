@@ -19,32 +19,34 @@
 /// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 /// IN THE SOFTWARE.
 ///
-/// \file vk_texture_image.h
+/// \file vk_mesh_buffer_data.h
 /// \author FilipeCN (filipedecn@gmail.com)
-/// \date 2019-12-09
+/// \date 2019-12-10
 ///
 /// \brief
 
-#ifndef CIRCE_VK_TEXTURE_IMAGE_H
-#define CIRCE_VK_TEXTURE_IMAGE_H
+#ifndef CIRCE_VK_MESH_BUFFER_DATA_H
+#define CIRCE_VK_MESH_BUFFER_DATA_H
 
-#include <string>
-#include "vk_image.h"
 #include "vk_device_memory.h"
 
 namespace circe::vk {
 
-class Texture {
+class MeshBufferData {
 public:
-  explicit Texture(const LogicalDevice *logical_device,
-                   const std::string &filename,
-                   uint32_t queue_family_index,
-                   VkQueue queue);
-  [[nodiscard]] const Image* image() const;
+  MeshBufferData(const LogicalDevice *logical_device,
+                 VkDeviceSize vertex_buffer_size,
+                 const void *vertex_data,
+                 VkDeviceSize index_buffer_size,
+                 const void *index_data,
+                 uint32_t queue_family_index,
+                 VkQueue queue);
+  [[nodiscard]] const Buffer *vertexBuffer() const;
+  [[nodiscard]] const Buffer *indexBuffer() const;
 private:
-  const LogicalDevice* logical_device_ = nullptr;
-  std::unique_ptr<Image> image_;
-  std::unique_ptr<DeviceMemory> image_memory_;
+  const LogicalDevice *logical_device_ = nullptr;
+  std::unique_ptr<Buffer> buffer_, index_buffer_;
+  std::unique_ptr<DeviceMemory> buffer_memory_, index_buffer_memory_;
 };
 
 } // circe::vk namespace

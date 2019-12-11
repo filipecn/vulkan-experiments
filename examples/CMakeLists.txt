@@ -1,5 +1,7 @@
 add_executable(hello_vulkan hello_vulkan.cpp)
-target_compile_definitions(hello_vulkan PUBLIC -DSHADERS_PATH="${VULKAN_EXPERIMENTS_SOURCE_DIR}/examples")
+target_compile_definitions(hello_vulkan PUBLIC
+        -DSHADERS_PATH="${VULKAN_EXPERIMENTS_SOURCE_DIR}/examples"
+        -DTEXTURES_PATH="${VULKAN_EXPERIMENTS_SOURCE_DIR}/examples/textures")
 target_include_directories(hello_vulkan PUBLIC  ${STB_INCLUDES} ${GLFW_INCLUDES} ${VULKAN_INCLUDES} ${PONOS_INCLUDE_DIR})
 add_dependencies(hello_vulkan
         glfw

@@ -56,6 +56,7 @@ set(CMAKE_CONFIGURATION_TYPES Debug Release)
 set(SOURCES
         src/vk_app.cpp
         src/vk_buffer.cpp
+        src/vk_mesh_buffer_data.cpp
         src/vk_command_buffer.cpp
         src/vk_device_memory.cpp
         src/vk_sync.cpp
@@ -64,6 +65,7 @@ set(SOURCES
         src/vk_pipeline.cpp
         src/vk_render_engine.cpp
         src/vk_renderpass.cpp
+        src/vk_sampler.cpp
         src/vk_shader_module.cpp
         src/vk_swap_chain.cpp
         src/vk_texture_image.cpp
@@ -77,6 +79,7 @@ set(HEADERS
         src/vk.h
         src/vk_app.h
         src/vk_buffer.h
+        src/vk_mesh_buffer_data.h
         src/vk_command_buffer.h
         src/vk_device_memory.h
         src/vk_graphics_display.h
@@ -84,6 +87,7 @@ set(HEADERS
         src/vk_pipeline.h
         src/vk_render_engine.h
         src/vk_renderpass.h
+        src/vk_sampler.h
         src/vk_shader_module.h
         src/vk_swap_chain.h
         src/vk_sync.h
