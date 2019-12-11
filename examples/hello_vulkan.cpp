@@ -20,12 +20,15 @@ struct vec3 {
 struct Vertex {
   vec2 pos;
   vec3 color;
+  vec2 tex_coord;
 };
 
-const std::vector<Vertex> vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-                                      {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-                                      {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-                                      {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+const std::vector<Vertex> vertices = {
+    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
+};
 const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 
 int main(int argc, char const *argv[]) {
@@ -215,6 +218,11 @@ int main(int argc, char const *argv[]) {
       0, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, pos));
   pipeline.vertex_input_state.addAttributeDescription(
       1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, color));
+  pipeline.vertex_input_state.addAttributeDescription(2,
+                                                      0,
+                                                      VK_FORMAT_R32G32_SFLOAT,
+                                                      offsetof(Vertex,
+                                                               tex_coord));
   pipeline.addShaderStage(vert_shader_stage_info);
   pipeline.addShaderStage(frag_shader_stage_info);
   pipeline.setInputState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
