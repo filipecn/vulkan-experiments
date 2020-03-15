@@ -4,3 +4,6 @@ build_xcode
 /.vs
 /CMakeSettings.json
 /wbuild
+.idea
+cmake-build-debug
+cmake-build-debug-visual-studio

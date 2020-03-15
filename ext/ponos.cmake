@@ -13,10 +13,10 @@ ExternalProject_Add(
 
 ExternalProject_Get_Property(ponos INSTALL_DIR)
 set(PONOS_INCLUDE_DIR
-        ${INSTALL_DIR}/src/ponos/ponos
+        ${INSTALL_DIR}/src/ponos-build/include
         )
 set(PONOS_LIBRARIES
-        ${INSTALL_DIR}/src/ponos-build/ponos/${CMAKE_STATIC_LIBRARY_PREFIX}ponos${CMAKE_STATIC_LIBRARY_SUFFIX}
+        ${INSTALL_DIR}/src/ponos-build/lib/${CMAKE_STATIC_LIBRARY_PREFIX}ponos${CMAKE_STATIC_LIBRARY_SUFFIX}
         )
 
 set(PONOS_INCLUDE_DIR ${PONOS_INCLUDE_DIR} CACHE STRING "")
