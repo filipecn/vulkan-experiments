@@ -30,8 +30,9 @@
 
 namespace circe::vk {
 
-bool RenderEngine::selectNumberOfSwapchainImages(VkSurfaceCapabilitiesKHR const &surface_capabilities,
-                                                 uint32_t &number_of_images) {
+bool RenderEngine::selectNumberOfSwapchainImages(
+    VkSurfaceCapabilitiesKHR const &surface_capabilities,
+    uint32_t &number_of_images) {
   number_of_images = surface_capabilities.minImageCount + 1;
   if ((surface_capabilities.maxImageCount > 0) &&
       (number_of_images > surface_capabilities.maxImageCount)) {
@@ -40,22 +41,23 @@ bool RenderEngine::selectNumberOfSwapchainImages(VkSurfaceCapabilitiesKHR const 
   return true;
 }
 
-bool RenderEngine::chooseSizeOfSwapchainImages(VkSurfaceCapabilitiesKHR const &surface_capabilities,
-                                               VkExtent2D &size_of_images) {
+bool RenderEngine::chooseSizeOfSwapchainImages(
+    VkSurfaceCapabilitiesKHR const &surface_capabilities,
+    VkExtent2D &size_of_images) {
 
   if (0xFFFFFFFF == surface_capabilities.currentExtent.width) {
     size_of_images = {640, 480};
     if (size_of_images.width < surface_capabilities.minImageExtent.width) {
       size_of_images.width = surface_capabilities.minImageExtent.width;
     } else if (size_of_images.width >
-        surface_capabilities.maxImageExtent.width) {
+               surface_capabilities.maxImageExtent.width) {
       size_of_images.width = surface_capabilities.maxImageExtent.width;
     }
 
     if (size_of_images.height < surface_capabilities.minImageExtent.height) {
       size_of_images.height = surface_capabilities.minImageExtent.height;
     } else if (size_of_images.height >
-        surface_capabilities.maxImageExtent.height) {
+               surface_capabilities.maxImageExtent.height) {
       size_of_images.height = surface_capabilities.maxImageExtent.height;
     }
   } else {
@@ -69,13 +71,17 @@ void RenderEngine::destroySwapchain() {
   // swapchain with new parameters. For that, we need to destroy the old
   // swapchain and the objects related to the swapchain, to recreate them later
   // We must destroy the objects in the following order:
-  // 1. framebuffers
-  // 2. command buffers
-  // 3. graphics pipeline
-  // 4. pipeline layout
-  // 5. renderpass
-  // 6. swapchain image views
-  // 7. swapchain
+  // 1. depth buffer
+  // 2. framebuffers
+  // 3. command buffers
+  // 4. graphics pipeline
+  // 5. pipeline layout
+  // 6. renderpass
+  // 7. swapchain image views
+  // 8. swapchain
+  depth_image_view_.reset();
+  depth_image_.reset();
+  depth_image_memory_.reset();
   uniform_buffers_.clear();
   uniform_buffer_memories_.clear();
   descriptor_pool_.reset();
@@ -93,24 +99,22 @@ void RenderEngine::recreateSwapchain() {
   vkDeviceWaitIdle(logical_device_->handle());
   destroySwapchain();
   if (framebuffer_resized_ && resize_callback)
-    resize_callback(width_,
-                    height_);
+    resize_callback(width_, height_);
   setupSwapChain();
   graphicsPipeline()->setLayout(pipeline_layout_.get());
   commandBuffers();
   if (record_command_buffer_callback)
     for (size_t i = 0; i < framebuffers_.size(); ++i)
-      record_command_buffer_callback(command_buffers_[i], framebuffers_[i],
-                                     !descriptor_sets_.empty()
-                                     ? descriptor_sets_[i] : VK_NULL_HANDLE);
+      record_command_buffer_callback(
+          command_buffers_[i], framebuffers_[i],
+          !descriptor_sets_.empty() ? descriptor_sets_[i] : VK_NULL_HANDLE);
 }
 
 RenderEngine::RenderEngine() = default;
 
-RenderEngine::RenderEngine(
-    const PhysicalDevice *physical_device,
-    const LogicalDevice *logical_device,
-    uint32_t queue_family_index) {
+RenderEngine::RenderEngine(const PhysicalDevice *physical_device,
+                           const LogicalDevice *logical_device,
+                           uint32_t queue_family_index) {
   setDeviceInfo(physical_device, logical_device, queue_family_index);
 }
 
@@ -121,9 +125,8 @@ void RenderEngine::setDeviceInfo(const PhysicalDevice *physical_device,
                                  uint32_t queue_family_index) {
   physical_device_ = physical_device;
   logical_device_ = logical_device;
-  command_pool_ = std::make_unique<CommandPool>(
-      logical_device_, 0,
-      queue_family_index);
+  command_pool_ =
+      std::make_unique<CommandPool>(logical_device_, 0, queue_family_index);
   // setup synchronization objects
   for (size_t i = 0; i < max_frames_in_flight; ++i) {
     in_flight_fences_.emplace_back(logical_device_,
@@ -138,7 +141,7 @@ bool RenderEngine::setupSwapChain(VkFormat desired_format,
   // PRESENTATION MODE
   VkPresentModeKHR present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
   if (!physical_device_->selectPresentationMode(
-      vk_surface_, VK_PRESENT_MODE_MAILBOX_KHR, present_mode))
+          vk_surface_, VK_PRESENT_MODE_MAILBOX_KHR, present_mode))
     return false;
   // CHECK SURFACE CAPABILITIES
   VkSurfaceCapabilitiesKHR surface_capabilities;
@@ -155,7 +158,7 @@ bool RenderEngine::setupSwapChain(VkFormat desired_format,
     return false;
   // USAGE
   VkImageUsageFlags image_usage = surface_capabilities.supportedUsageFlags &
-      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+                                  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
   if (image_usage != VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
     return false;
   // IMAGE TRANSFORM
@@ -168,8 +171,8 @@ bool RenderEngine::setupSwapChain(VkFormat desired_format,
   VkFormat image_format;
   VkColorSpaceKHR image_color_space;
   if (!physical_device_->selectFormatOfSwapchainImages(
-      vk_surface_, {desired_format, desired_color_space}, image_format,
-      image_color_space))
+          vk_surface_, {desired_format, desired_color_space}, image_format,
+          image_color_space))
     return false;
   // SWAP CHAIN
   VkSurfaceFormatKHR surface_format = {image_format, image_color_space};
@@ -187,12 +190,30 @@ bool RenderEngine::setupSwapChain(VkFormat desired_format,
     swapchain_image_views_.emplace_back(&swap_chain_image,
                                         VK_IMAGE_VIEW_TYPE_2D, image_format,
                                         VK_IMAGE_ASPECT_COLOR_BIT);
+  // DEPTH BUFFER
+  physical_device_->findSupportedFormat(
+      {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT,
+       VK_FORMAT_D24_UNORM_S8_UINT},
+      VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT,
+      depth_format_);
+  depth_image_.reset(new Image(
+      logical_device_, VK_IMAGE_TYPE_2D, depth_format_,
+      {swapchain_->imageSize().width, swapchain_->imageSize().height, 1}, 1, 1,
+      VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+      false));
+  depth_image_memory_ = std::make_unique<DeviceMemory>(
+      logical_device_, *depth_image_, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  depth_image_memory_->bind(*depth_image_);
+  depth_image_view_ =
+      std::make_unique<Image::View>(depth_image_.get(), VK_IMAGE_VIEW_TYPE_2D,
+                                    depth_format_, VK_IMAGE_ASPECT_DEPTH_BIT);
   // setup framebuffers
   for (auto &image_view : swapchain_image_views_) {
     circe::vk::Framebuffer framebuffer(logical_device_, renderpass(),
                                        swapchain_->imageSize().width,
                                        swapchain_->imageSize().height, 1);
     framebuffer.addAttachment(image_view);
+    framebuffer.addAttachment(*depth_image_view_);
     framebuffers_.emplace_back(framebuffer);
   }
   // setup uniform buffers (if any)
@@ -201,17 +222,17 @@ bool RenderEngine::setupSwapChain(VkFormat desired_format,
       uniform_buffers_.emplace_back(logical_device_,
                                     uniform_buffer_size_callback(),
                                     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-      uniform_buffer_memories_.emplace_back(logical_device_,
-                                            uniform_buffers_[i],
-                                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                                                | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+      uniform_buffer_memories_.emplace_back(
+          logical_device_, uniform_buffers_[i],
+          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+              VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
       uniform_buffer_memories_[i].bind(uniform_buffers_[i]);
     }
 
   // setup descriptor pool
   if (!descriptor_pool_)
-    descriptor_pool_ = std::make_unique<DescriptorPool>(logical_device_,
-                                                        swapchain_image_views_.size());
+    descriptor_pool_ = std::make_unique<DescriptorPool>(
+        logical_device_, swapchain_image_views_.size());
   descriptor_pool_->setPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                 swapchain_image_views_.size());
   descriptor_pool_->setPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -246,9 +267,7 @@ void RenderEngine::destroy() {
   command_pool_.reset();
 }
 
-void RenderEngine::setSurface(VkSurfaceKHR surface) {
-  vk_surface_ = surface;
-}
+void RenderEngine::setSurface(VkSurfaceKHR surface) { vk_surface_ = surface; }
 
 Swapchain *RenderEngine::swapchain() {
   if (!swapchain_)
@@ -298,6 +317,11 @@ std::vector<Framebuffer> &RenderEngine::framebuffers() {
   return framebuffers_;
 }
 
+VkFormat RenderEngine::depthFormat() {
+  swapchain();
+  return depth_format_;
+}
+
 void RenderEngine::init() {
   recreateSwapchain();
   images_in_flight_.resize(framebuffers_.size(), VK_NULL_HANDLE);
@@ -314,7 +338,7 @@ void RenderEngine::draw(VkQueue graphics_queue, VkQueue presentation_queue) {
     recreateSwapchain();
     return;
   } else if (next_image_result != VK_SUCCESS &&
-      next_image_result != VK_SUBOPTIMAL_KHR) {
+             next_image_result != VK_SUBOPTIMAL_KHR) {
     INFO("error on getting next swapchain image!");
     return;
   }
@@ -350,9 +374,8 @@ void RenderEngine::draw(VkQueue graphics_queue, VkQueue presentation_queue) {
 
   in_flight_fences_[current_frame].reset();
 
-  VkResult result =
-      vkQueueSubmit(graphics_queue, 1,
-                    &submitInfo, in_flight_fences_[current_frame].handle());
+  VkResult result = vkQueueSubmit(graphics_queue, 1, &submitInfo,
+                                  in_flight_fences_[current_frame].handle());
   if (VK_SUCCESS != result)
     std::cerr << "osp\n";
 
@@ -368,8 +391,7 @@ void RenderEngine::draw(VkQueue graphics_queue, VkQueue presentation_queue) {
 
   presentInfo.pImageIndices = &image_index;
 
-  result = vkQueuePresentKHR(
-      presentation_queue, &presentInfo);
+  result = vkQueuePresentKHR(presentation_queue, &presentInfo);
 
   if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR ||
       framebuffer_resized_) {
@@ -385,5 +407,4 @@ void RenderEngine::draw(VkQueue graphics_queue, VkQueue presentation_queue) {
   current_frame = (current_frame + 1) % max_frames_in_flight;
 }
 
-} // circe::vk namespace
-
+} // namespace circe::vk

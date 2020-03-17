@@ -1,8 +1,8 @@
 #include "vk.h"
+#include <array>
+#include <chrono>
 #include <iostream>
 #include <ponos/ponos.h>
-#include <chrono>
-#include <array>
 
 struct UniformBufferObject {
   alignas(16) ponos::mat4 model;
@@ -18,18 +18,22 @@ struct vec3 {
 };
 
 struct Vertex {
-  vec2 pos;
+  vec3 pos;
   vec3 color;
   vec2 tex_coord;
 };
 
 const std::vector<Vertex> vertices = {
-    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
-};
-const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
+    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+    {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+    {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+    {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}, //
+    {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+    {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+    {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+    {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}};
+const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0, //
+                                       4, 5, 6, 6, 7, 4};
 
 int main(int argc, char const *argv[]) {
 #ifndef GLFW_INCLUDE_VULKAN
@@ -104,140 +108,130 @@ int main(int argc, char const *argv[]) {
   std::string texture_path(TEXTURES_PATH);
   circe::vk::Texture texture(app.logicalDevice(), texture_path + "/texture.jpg",
                              graphics_family_index, graphics_queue);
-  circe::vk::Image::View texture_view
-      (texture.image(), VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM,
-       VK_IMAGE_ASPECT_COLOR_BIT);
-  circe::vk::Sampler
-      texture_sampler(app.logicalDevice(), VK_FILTER_LINEAR, VK_FILTER_LINEAR,
-                      VK_SAMPLER_MIPMAP_MODE_LINEAR,
-                      VK_SAMPLER_ADDRESS_MODE_REPEAT,
-                      VK_SAMPLER_ADDRESS_MODE_REPEAT,
-                      VK_SAMPLER_ADDRESS_MODE_REPEAT,
-                      0.f,
-                      VK_TRUE,
-                      16,
-                      VK_FALSE,
-                      VK_COMPARE_OP_ALWAYS,
-                      0.f, 0.f, VK_BORDER_COLOR_INT_OPAQUE_BLACK, VK_FALSE);
+  circe::vk::Image::View texture_view(texture.image(), VK_IMAGE_VIEW_TYPE_2D,
+                                      VK_FORMAT_R8G8B8A8_UNORM,
+                                      VK_IMAGE_ASPECT_COLOR_BIT);
+  circe::vk::Sampler texture_sampler(
+      app.logicalDevice(), VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+      VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT,
+      VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, 0.f,
+      VK_TRUE, 16, VK_FALSE, VK_COMPARE_OP_ALWAYS, 0.f, 0.f,
+      VK_BORDER_COLOR_INT_OPAQUE_BLACK, VK_FALSE);
 
   app.render_engine.uniform_buffer_size_callback = []() -> uint32_t {
     return sizeof(UniformBufferObject);
   };
-  app.render_engine.update_uniform_buffer_callback =
-      [&](circe::vk::Buffer &ubm) {
-        static auto start_time = std::chrono::high_resolution_clock::now();
-        auto current_time = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration<float, std::chrono::seconds::period>(
-            current_time - start_time).count();
-        UniformBufferObject ubo;// = {};
-        ubo.model =
-            ponos::transpose(ponos::rotateZ(ponos::DEGREES(
-                time * ponos::RADIANS(90.0f))).matrix());
-        ubo.view =
-            ponos::transpose(ponos::lookAtRH(ponos::point3(2.0f, 2.0f, 2.0f),
-                                             ponos::point3(0.0f, 0.0f, 0.0f),
-                                             ponos::vec3(0.0f,
-                                                         1.0f,
-                                                         0.0f)).matrix());
-        ubo.proj =
-            ponos::transpose(ponos::perspective(45.0f,
-                                                1.f,
-                                                0.1f,
-                                                10.0f).matrix());
-        ubm.setData(&ubo, sizeof(UniformBufferObject));
-      };
+  app.render_engine
+      .update_uniform_buffer_callback = [&](circe::vk::Buffer &ubm) {
+    static auto start_time = std::chrono::high_resolution_clock::now();
+    auto current_time = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float, std::chrono::seconds::period>(
+                     current_time - start_time)
+                     .count();
+    UniformBufferObject ubo; // = {};
+    ubo.model = ponos::transpose(
+        ponos::rotateZ(ponos::DEGREES(time * ponos::RADIANS(90.0f))).matrix());
+    ubo.view = ponos::transpose(ponos::lookAtRH(ponos::point3(2.0f, 2.0f, 2.0f),
+                                                ponos::point3(0.0f, 0.0f, 0.0f),
+                                                ponos::vec3(0.0f, 1.0f, 0.0f))
+                                    .matrix());
+    ubo.proj =
+        ponos::transpose(/*ponos::mat4({1.0f, 0.0f, 0.0f, 0.0f,  //
+                                      0.0f, -1.0f, 0.0f, 0.0f, //
+                                      0.0f, 0.0f, 0.5f, 0.0f,  //
+                                      0.0f, 0.0f, 0.5f, 1.0f}) **/
+                         ponos::perspective(45.0f, 1.f, 0.1f, 10.0f).matrix());
+    ubm.setData(&ubo, sizeof(UniformBufferObject));
+  };
   // An important part is to describe the resources that will be used by the
   // shaders, which is done via a pipeline layout.
   app.render_engine.descriptor_set_layout_callback =
       [](circe::vk::DescriptorSetLayout &dsl) {
-        dsl.addLayoutBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                             1, VK_SHADER_STAGE_VERTEX_BIT);
+        dsl.addLayoutBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1,
+                             VK_SHADER_STAGE_VERTEX_BIT);
         dsl.addLayoutBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
                              VK_SHADER_STAGE_FRAGMENT_BIT);
       };
-  app.render_engine.update_descriptor_set_callback =
-      [&](VkDescriptorSet ds, VkBuffer ubo) {
-        VkDescriptorBufferInfo buffer_info = {};
-        buffer_info.buffer = ubo;
-        buffer_info.offset = 0;
-        buffer_info.range = sizeof(UniformBufferObject);
-        VkDescriptorImageInfo image_info = {};
-        image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        image_info.imageView = texture_view.handle();
-        image_info.sampler = texture_sampler.handle();
+  app.render_engine.update_descriptor_set_callback = [&](VkDescriptorSet ds,
+                                                         VkBuffer ubo) {
+    VkDescriptorBufferInfo buffer_info = {};
+    buffer_info.buffer = ubo;
+    buffer_info.offset = 0;
+    buffer_info.range = sizeof(UniformBufferObject);
+    VkDescriptorImageInfo image_info = {};
+    image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    image_info.imageView = texture_view.handle();
+    image_info.sampler = texture_sampler.handle();
 
-        std::array<VkWriteDescriptorSet, 2> descriptor_writes = {};
+    std::array<VkWriteDescriptorSet, 2> descriptor_writes = {};
 
-        descriptor_writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptor_writes[0].dstSet = ds;
-        descriptor_writes[0].dstBinding = 0;
-        descriptor_writes[0].dstArrayElement = 0;
-        descriptor_writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptor_writes[0].descriptorCount = 1;
-        descriptor_writes[0].pBufferInfo = &buffer_info;
+    descriptor_writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptor_writes[0].dstSet = ds;
+    descriptor_writes[0].dstBinding = 0;
+    descriptor_writes[0].dstArrayElement = 0;
+    descriptor_writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptor_writes[0].descriptorCount = 1;
+    descriptor_writes[0].pBufferInfo = &buffer_info;
 
-        descriptor_writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptor_writes[1].dstSet = ds;
-        descriptor_writes[1].dstBinding = 1;
-        descriptor_writes[1].dstArrayElement = 0;
-        descriptor_writes[1].descriptorType =
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptor_writes[1].descriptorCount = 1;
-        descriptor_writes[1].pImageInfo = &image_info;
+    descriptor_writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptor_writes[1].dstSet = ds;
+    descriptor_writes[1].dstBinding = 1;
+    descriptor_writes[1].dstArrayElement = 0;
+    descriptor_writes[1].descriptorType =
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptor_writes[1].descriptorCount = 1;
+    descriptor_writes[1].pImageInfo = &image_info;
 
-        vkUpdateDescriptorSets(app.logicalDevice()->handle(),
-                               static_cast<uint32_t>(descriptor_writes.size()),
-                               descriptor_writes.data(),
-                               0,
-                               nullptr);
-      };
+    vkUpdateDescriptorSets(app.logicalDevice()->handle(),
+                           static_cast<uint32_t>(descriptor_writes.size()),
+                           descriptor_writes.data(), 0, nullptr);
+  };
   auto *layout = app.render_engine.pipelineLayout();
   auto *renderpass = app.render_engine.renderpass();
-  renderpass->addAttachment(
-      app.render_engine.swapchain()->surfaceFormat().format,
-      VK_SAMPLE_COUNT_1_BIT,
-      VK_ATTACHMENT_LOAD_OP_CLEAR,
-      VK_ATTACHMENT_STORE_OP_STORE,
-      VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-      VK_ATTACHMENT_STORE_OP_DONT_CARE,
-      VK_IMAGE_LAYOUT_UNDEFINED,
-      VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
   auto &subpass_desc = renderpass->newSubpassDescription();
-  subpass_desc.addColorAttachmentRef(0,
-                                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-  renderpass->addSubpassDependency(
-      VK_SUBPASS_EXTERNAL, 0, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
-      VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
-          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+  { // COLOR ATTACHMENT
+    renderpass->addAttachment(
+        app.render_engine.swapchain()->surfaceFormat().format,
+        VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_CLEAR,
+        VK_ATTACHMENT_STORE_OP_STORE, VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        VK_ATTACHMENT_STORE_OP_DONT_CARE, VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    subpass_desc.addColorAttachmentRef(
+        0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    renderpass->addSubpassDependency(
+        VK_SUBPASS_EXTERNAL, 0, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
+        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+  }
+  { // DEPTH ATTACHMENT
+    renderpass->addAttachment(
+        app.render_engine.depthFormat(), VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    subpass_desc.setDepthStencilAttachmentRef(
+        1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+  }
   auto &pipeline = *app.render_engine.graphicsPipeline();
   // Vertex data
   pipeline.vertex_input_state.addBindingDescription(
       0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX);
   pipeline.vertex_input_state.addAttributeDescription(
-      0, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, pos));
+      0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, pos));
   pipeline.vertex_input_state.addAttributeDescription(
       1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, color));
-  pipeline.vertex_input_state.addAttributeDescription(2,
-                                                      0,
-                                                      VK_FORMAT_R32G32_SFLOAT,
-                                                      offsetof(Vertex,
-                                                               tex_coord));
+  pipeline.vertex_input_state.addAttributeDescription(
+      2, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, tex_coord));
   pipeline.addShaderStage(vert_shader_stage_info);
   pipeline.addShaderStage(frag_shader_stage_info);
   pipeline.setInputState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
   pipeline.viewport_state.addViewport(0, 0, 800, 800, 0.f, 1.f);
   pipeline.viewport_state.addScissor(0, 0, 800, 800);
-  pipeline.setRasterizationState(VK_FALSE,
-                                 VK_FALSE,
-                                 VK_POLYGON_MODE_FILL,
-                                 VK_CULL_MODE_FRONT_BIT,
-                                 VK_FRONT_FACE_COUNTER_CLOCKWISE,
-                                 VK_FALSE,
-                                 0.f,
-                                 0.f,
-                                 0.f,
-                                 1.0f);
+  pipeline.setRasterizationState(
+      VK_FALSE, VK_FALSE, VK_POLYGON_MODE_FILL, VK_CULL_MODE_FRONT_BIT,
+      VK_FRONT_FACE_COUNTER_CLOCKWISE, VK_FALSE, 0.f, 0.f, 0.f, 1.0f);
   pipeline.setMultisampleState(VK_SAMPLE_COUNT_1_BIT, VK_FALSE, 1.f,
                                std::vector<VkSampleMask>(), VK_FALSE, VK_FALSE);
   pipeline.color_blend_state.addAttachmentState(
@@ -245,14 +239,14 @@ int main(int argc, char const *argv[]) {
       VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD,
       VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
           VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
+  pipeline.setDepthStencilState(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS, VK_FALSE,
+                                VK_FALSE, {}, {}, 0.0, 1.0);
   // pipeline.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
   // pipeline.addDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
   circe::vk::MeshBufferData mesh(
-      app.logicalDevice(),
-      sizeof(vertices[0]) * vertices.size(),
-      vertices.data(),
-      sizeof(indices[0]) * indices.size(),
-      indices.data(), graphics_family_index, graphics_queue);
+      app.logicalDevice(), sizeof(vertices[0]) * vertices.size(),
+      vertices.data(), sizeof(indices[0]) * indices.size(), indices.data(),
+      graphics_family_index, graphics_queue);
   app.render_engine.resize_callback = [&](uint32_t w, uint32_t h) {
     auto &vp = app.render_engine.graphicsPipeline()->viewport_state.viewport(0);
     vp.width = static_cast<float>(w);
@@ -262,27 +256,22 @@ int main(int argc, char const *argv[]) {
     s.extent.height = h;
   };
   app.render_engine.record_command_buffer_callback =
-      [&](circe::vk::CommandBuffer &cb,
-          circe::vk::Framebuffer &f,
+      [&](circe::vk::CommandBuffer &cb, circe::vk::Framebuffer &f,
           VkDescriptorSet ds) {
         cb.begin();
-        circe::vk::RenderPassBeginInfo
-            renderpass_begin_info(app.render_engine.renderpass(), &f);
+        circe::vk::RenderPassBeginInfo renderpass_begin_info(
+            app.render_engine.renderpass(), &f);
         renderpass_begin_info.setRenderArea(0, 0, f.width(), f.height());
         renderpass_begin_info.addClearColorValuef(0.f, 0.f, 0.f, 1.f);
+        renderpass_begin_info.addClearDepthStencilValue(1, 0);
         cb.beginRenderPass(renderpass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
         cb.bind(app.render_engine.graphicsPipeline());
-        std::vector<VkBuffer> vertex_buffers = {
-            mesh.vertexBuffer()->handle()
-        };
+        std::vector<VkBuffer> vertex_buffers = {mesh.vertexBuffer()->handle()};
         std::vector<VkDeviceSize> offsets = {0};
         cb.bindVertexBuffers(0, vertex_buffers, offsets);
-        cb.bindIndexBuffer(
-            *mesh.indexBuffer(), 0, VK_INDEX_TYPE_UINT16);
+        cb.bindIndexBuffer(*mesh.indexBuffer(), 0, VK_INDEX_TYPE_UINT16);
         cb.bind(VK_PIPELINE_BIND_POINT_GRAPHICS,
-                app.render_engine.pipelineLayout(),
-                0,
-                {ds});
+                app.render_engine.pipelineLayout(), 0, {ds});
         cb.drawIndexed(indices.size());
         cb.endRenderPass();
         cb.end();

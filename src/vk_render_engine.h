@@ -28,13 +28,13 @@
 #ifndef CIRCE_VK_RENDER_ENGINE_H
 #define CIRCE_VK_RENDER_ENGINE_H
 
+#include "vk_command_buffer.h"
+#include "vk_device_memory.h"
 #include "vk_image.h"
 #include "vk_pipeline.h"
 #include "vk_renderpass.h"
 #include "vk_swap_chain.h"
-#include "vk_device_memory.h"
 #include "vk_sync.h"
-#include "vk_command_buffer.h"
 
 namespace circe::vk {
 
@@ -43,10 +43,9 @@ public:
   RenderEngine();
   /// \param logical_device
   /// \param queue_family_index
-  explicit RenderEngine(
-      const PhysicalDevice *physical_device,
-      const LogicalDevice *logical_device,
-      uint32_t queue_family_index);
+  explicit RenderEngine(const PhysicalDevice *physical_device,
+                        const LogicalDevice *logical_device,
+                        uint32_t queue_family_index);
   ~RenderEngine();
   ///
   /// \param physical_device
@@ -76,6 +75,7 @@ public:
   const std::vector<Image::View> &swapchainImageViews();
   std::vector<CommandBuffer> &commandBuffers();
   std::vector<Framebuffer> &framebuffers();
+  VkFormat depthFormat();
   void init();
   void draw(VkQueue graphics_queue, VkQueue presentation_queue);
 
@@ -117,12 +117,17 @@ private:
   std::unique_ptr<PipelineLayout> pipeline_layout_;
   std::unique_ptr<GraphicsPipeline> pipeline_;
   std::unique_ptr<CommandPool> command_pool_;
-  std::vector<circe::vk::CommandBuffer> command_buffers_;
-  std::vector<circe::vk::Framebuffer> framebuffers_;
-  std::vector<circe::vk::Buffer> uniform_buffers_;
-  std::vector<circe::vk::DeviceMemory> uniform_buffer_memories_;
+  std::vector<CommandBuffer> command_buffers_;
+  std::vector<Framebuffer> framebuffers_;
+  std::vector<Buffer> uniform_buffers_;
+  std::vector<DeviceMemory> uniform_buffer_memories_;
   std::unique_ptr<DescriptorPool> descriptor_pool_;
   std::vector<VkDescriptorSet> descriptor_sets_;
+  // depth buffer information
+  VkFormat depth_format_;
+  std::unique_ptr<Image> depth_image_;
+  std::unique_ptr<Image::View> depth_image_view_;
+  std::unique_ptr<DeviceMemory> depth_image_memory_;
   // synchronization
   std::vector<Semaphore> render_finished_semaphores_;
   std::vector<Semaphore> image_available_semaphores_;
@@ -133,6 +138,6 @@ private:
   uint32_t width_ = 0, height_ = 0;
 };
 
-} // circe::vk namespace
+} // namespace circe::vk
 
 #endif

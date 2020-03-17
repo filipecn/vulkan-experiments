@@ -105,9 +105,10 @@ public:
   ///\param required_flags **[in]** hard requirements
   ///\param preferred_flags **[in]** soft requirements
   ///\return uint32_t memory type
-  [[nodiscard]] uint32_t chooseMemoryType(const VkMemoryRequirements &memory_requirements,
-                            VkMemoryPropertyFlags required_flags,
-                            VkMemoryPropertyFlags preferred_flags) const;
+  [[nodiscard]] uint32_t
+  chooseMemoryType(const VkMemoryRequirements &memory_requirements,
+                   VkMemoryPropertyFlags required_flags,
+                   VkMemoryPropertyFlags preferred_flags) const;
   /// Checks if the desired presentation mode is supported by the device, if
   /// so, it is returned in **present_mode**. If not, VK_PRESENT_MODE_FIFO_KHR
   /// is chosen.
@@ -131,12 +132,21 @@ public:
                                      VkSurfaceFormatKHR desired_surface_format,
                                      VkFormat &image_format,
                                      VkColorSpaceKHR &image_color_space) const;
-
+  ///\brief takes a list of candidate formats in order from most desirable to
+  /// least desirable, and checks which is the first one that is supported
+  ///\param candidates **[in]**
+  ///\param tiling **[in]**
+  ///\param features **[in]**
+  ///\param format **[in]**
+  ///\return bool
+  bool findSupportedFormat(const std::vector<VkFormat> &candidates,
+                           VkImageTiling tiling, VkFormatFeatureFlags features,
+                           VkFormat &format) const;
   bool
   surfaceCapabilities(VkSurfaceKHR surface,
                       VkSurfaceCapabilitiesKHR &surface_capabilities) const;
   [[nodiscard]] const VkPhysicalDeviceProperties &properties() const;
-  [[nodiscard]] const VkPhysicalDeviceFeatures & features() const;
+  [[nodiscard]] const VkPhysicalDeviceFeatures &features() const;
 
 private:
   /// Retrieve available queue families exposed by a physical device
@@ -162,7 +172,7 @@ private:
       vk_memory_properties_; //!< Physical device memory properties such as
                              //!< number of heaps, sizes, types and etc.
   std::vector<VkQueueFamilyProperties> vk_queue_families_;
-};
+}; // namespace vk
 
 std::ostream &operator<<(std::ostream &os, const PhysicalDevice &d);
 

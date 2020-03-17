@@ -74,7 +74,7 @@ bool PhysicalDevice::selectIndexOfQueueFamily(
        index < static_cast<uint32_t>(vk_queue_families_.size()); ++index) {
     if ((vk_queue_families_[index].queueCount > 0) &&
         ((vk_queue_families_[index].queueFlags & desired_capabilities) ==
-            desired_capabilities)) {
+         desired_capabilities)) {
       queue_family_index = index;
       return true;
     }
@@ -244,6 +244,26 @@ bool PhysicalDevice::selectFormatOfSwapchainImages(
   return true;
 }
 
+bool PhysicalDevice::findSupportedFormat(
+    const std::vector<VkFormat> &candidates, VkImageTiling tiling,
+    VkFormatFeatureFlags features, VkFormat &format) const {
+  for (VkFormat candidate_format : candidates) {
+    VkFormatProperties props;
+    vkGetPhysicalDeviceFormatProperties(vk_device_, candidate_format, &props);
+    if (tiling == VK_IMAGE_TILING_LINEAR &&
+        (props.linearTilingFeatures & features) == features) {
+      format = candidate_format;
+      return true;
+    } else if (tiling == VK_IMAGE_TILING_OPTIMAL &&
+               (props.optimalTilingFeatures & features) == features) {
+      format = candidate_format;
+      return true;
+    }
+  }
+  INFO("Failed to find supported format.");
+  return false;
+}
+
 bool PhysicalDevice::surfaceCapabilities(
     VkSurfaceKHR surface,
     VkSurfaceCapabilitiesKHR &surface_capabilities) const {
@@ -291,4 +311,4 @@ std::ostream &operator<<(std::ostream &os, const PhysicalDevice &d) {
   return os;
 }
 
-} // namespace circe
+} // namespace circe::vk
