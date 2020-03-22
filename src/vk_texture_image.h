@@ -28,25 +28,28 @@
 #ifndef CIRCE_VK_TEXTURE_IMAGE_H
 #define CIRCE_VK_TEXTURE_IMAGE_H
 
-#include <string>
-#include "vk_image.h"
 #include "vk_device_memory.h"
+#include "vk_image.h"
+#include <string>
 
 namespace circe::vk {
 
 class Texture {
 public:
   explicit Texture(const LogicalDevice *logical_device,
-                   const std::string &filename,
-                   uint32_t queue_family_index,
+                   const std::string &filename, uint32_t queue_family_index,
                    VkQueue queue);
-  [[nodiscard]] const Image* image() const;
+  [[nodiscard]] const Image *image() const;
+
 private:
-  const LogicalDevice* logical_device_ = nullptr;
+  ///\param queue **[in]**
+  ///\param queue_family_index **[in]**
+  void generateMipmaps(VkQueue queue, uint32_t queue_family_index);
+  const LogicalDevice *logical_device_ = nullptr;
   std::unique_ptr<Image> image_;
   std::unique_ptr<DeviceMemory> image_memory_;
 };
 
-} // circe::vk namespace
+} // namespace circe::vk
 
 #endif

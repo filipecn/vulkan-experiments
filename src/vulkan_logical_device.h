@@ -103,6 +103,8 @@ public:
   ///
   ///\return VkDevice
   VkDevice handle() const;
+  ///\return const PhysicalDevice&
+  const PhysicalDevice &physicalDevice() const;
   /// Checks with physical device object construction succeded
   ///\return bool true if this can be used
   bool good() const;

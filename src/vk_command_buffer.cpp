@@ -190,19 +190,13 @@ void CommandBuffer::bind(GraphicsPipeline *graphics_pipeline) const {
 }
 
 void CommandBuffer::bind(VkPipelineBindPoint pipeline_bind_point,
-                         PipelineLayout *layout,
-                         uint32_t first_set,
+                         PipelineLayout *layout, uint32_t first_set,
                          const std::vector<VkDescriptorSet> &descriptor_sets,
                          const std::vector<uint32_t> &dynamic_offsets) {
-  vkCmdBindDescriptorSets(vk_command_buffer_,
-                          pipeline_bind_point,
-                          layout->handle(),
-                          first_set,
-                          descriptor_sets.size(),
-                          descriptor_sets.data(),
-                          dynamic_offsets.size(),
-                          (dynamic_offsets.size()) ? dynamic_offsets.data()
-                                                   : nullptr);
+  vkCmdBindDescriptorSets(
+      vk_command_buffer_, pipeline_bind_point, layout->handle(), first_set,
+      descriptor_sets.size(), descriptor_sets.data(), dynamic_offsets.size(),
+      (dynamic_offsets.size()) ? dynamic_offsets.data() : nullptr);
 }
 
 void CommandBuffer::bind(VkPipelineBindPoint pipeline_bind_point,
@@ -269,18 +263,21 @@ void CommandBuffer::drawIndexed(uint32_t index_count, uint32_t instance_count,
                    vertex_offset, first_instance);
 }
 
-void CommandBuffer::transitionImageLayout(const ImageMemoryBarrier &barrier,
-                                          VkPipelineStageFlags src_stages,
-                                          VkPipelineStageFlags dst_stages) const {
+void CommandBuffer::transitionImageLayout(
+    const ImageMemoryBarrier &barrier, VkPipelineStageFlags src_stages,
+    VkPipelineStageFlags dst_stages) const {
   auto barrier_handle = barrier.handle();
-  vkCmdPipelineBarrier(
-      vk_command_buffer_,
-      src_stages, dst_stages,
-      0,
-      0, nullptr,
-      0, nullptr,
-      1, &barrier_handle
-  );
+  vkCmdPipelineBarrier(vk_command_buffer_, src_stages, dst_stages, 0, 0,
+                       nullptr, 0, nullptr, 1, &barrier_handle);
+}
+
+void CommandBuffer::blit(const Image &src_image, VkImageLayout src_image_layout,
+                         const Image &dst_image, VkImageLayout dst_image_layout,
+                         const std::vector<VkImageBlit> &regions,
+                         VkFilter filter) const {
+  vkCmdBlitImage(vk_command_buffer_, src_image.handle(), src_image_layout,
+                 dst_image.handle(), dst_image_layout, regions.size(),
+                 &regions[0], filter);
 }
 
 CommandPool::CommandPool(const LogicalDevice *logical_device,
@@ -345,13 +342,11 @@ bool CommandPool::reset(VkCommandPoolResetFlags flags) const {
   return true;
 }
 
-void CommandPool::submitCommandBuffer(const LogicalDevice *logical_device,
-                                      uint32_t family_index,
-                                      VkQueue queue,
-                                      const std::function<void(CommandBuffer &)> &record_callback) {
+void CommandPool::submitCommandBuffer(
+    const LogicalDevice *logical_device, uint32_t family_index, VkQueue queue,
+    const std::function<void(CommandBuffer &)> &record_callback) {
   circe::vk::CommandPool short_living_command_pool(
-      logical_device, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-      family_index);
+      logical_device, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, family_index);
   std::vector<circe::vk::CommandBuffer> short_living_command_buffers;
   short_living_command_pool.allocateCommandBuffers(
       VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1, short_living_command_buffers);
@@ -363,4 +358,4 @@ void CommandPool::submitCommandBuffer(const LogicalDevice *logical_device,
   short_living_command_pool.freeCommandBuffers(short_living_command_buffers);
 }
 
-} // namespace circe
+} // namespace circe::vk

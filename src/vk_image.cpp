@@ -50,10 +50,10 @@ Image::View::View(const Image *image, VkImageViewType view_type,
       },
       {
           // VkImageSubresourceRange    subresourceRange
-          aspect,                   // VkImageAspectFlags         aspectMask
-          0,                        // uint32_t                   baseMipLevel
-          VK_REMAINING_MIP_LEVELS,  // uint32_t                   levelCount
-          0,                        // uint32_t                   baseArrayLayer
+          aspect,             // VkImageAspectFlags         aspectMask
+          0,                  // uint32_t                   baseMipLevel
+          image->mipLevels(), // uint32_t levelCount VK_REMAINING_MIP_LEVELS
+          0,                  // uint32_t                   baseArrayLayer
           VK_REMAINING_ARRAY_LAYERS // uint32_t                   layerCount
       }};
 
@@ -78,7 +78,8 @@ Image::Image(const LogicalDevice *logical_device, VkImageType type,
              VkFormat format, VkExtent3D size, uint32_t num_mipmaps,
              uint32_t num_layers, VkSampleCountFlagBits samples,
              VkImageUsageFlags usage_scenarios, bool cubemap)
-    : logical_device_(logical_device), do_not_destroy_(false) {
+    : logical_device_(logical_device), format_(format), size_(size),
+      mip_levels_(num_mipmaps), do_not_destroy_(false) {
   VkImageCreateInfo image_create_info = {
       VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, // VkStructureType          sType
       nullptr,                             // const void             * pNext
@@ -87,7 +88,7 @@ Image::Image(const LogicalDevice *logical_device, VkImageType type,
       type,         // VkImageType              imageType
       format,       // VkFormat                 format
       size,         // VkExtent3D               extent
-      num_mipmaps,  // uint32_t                 mipLevels
+      mip_levels_,  // uint32_t                 mipLevels
       cubemap ? 6 * num_layers : num_layers, // uint32_t arrayLayers
       samples,                               // VkSampleCountFlagBits    samples
       VK_IMAGE_TILING_OPTIMAL,               // VkImageTiling            tiling
@@ -143,4 +144,10 @@ bool Image::memoryRequirements(
   return true;
 }
 
-} // namespace circe
+uint32_t Image::mipLevels() const { return mip_levels_; }
+
+VkExtent3D Image::size() const { return size_; }
+
+VkFormat Image::format() const { return format_; }
+
+} // namespace circe::vk

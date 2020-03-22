@@ -28,8 +28,8 @@
 #ifndef CIRCE_VULKAN_SYNC_H
 #define CIRCE_VULKAN_SYNC_H
 
-#include "vulkan_logical_device.h"
 #include "vk_image.h"
+#include "vulkan_logical_device.h"
 
 namespace circe::vk {
 
@@ -92,14 +92,16 @@ private:
 
 class ImageMemoryBarrier {
 public:
-  ImageMemoryBarrier(const Image &image,
-                     VkImageLayout old_layout,
+  ImageMemoryBarrier();
+  ImageMemoryBarrier(const Image &image, VkImageLayout old_layout,
                      VkImageLayout new_layout);
   [[nodiscard]] VkImageMemoryBarrier handle() const;
+  [[nodiscard]] VkImageMemoryBarrier &handle();
+
 private:
   VkImageMemoryBarrier vk_image_memory_barrier_{};
 };
 
-} // namespace circe
+} // namespace circe::vk
 
 #endif
