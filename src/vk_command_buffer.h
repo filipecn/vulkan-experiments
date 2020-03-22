@@ -28,13 +28,13 @@
 #ifndef CIRCE_VULKAN_COMMAND_BUFFER_H
 #define CIRCE_VULKAN_COMMAND_BUFFER_H
 
-#include <functional>
 #include "vk_buffer.h"
 #include "vk_image.h"
 #include "vk_pipeline.h"
 #include "vk_renderpass.h"
 #include "vk_sync.h"
 #include "vulkan_logical_device.h"
+#include <functional>
 
 namespace circe::vk {
 
@@ -118,8 +118,8 @@ public:
   ///\param size **[in]**
   ///\return bool
   void copy(const Buffer &src_buffer, VkDeviceSize src_offset,
-                          const Buffer &dst_buffer, VkDeviceSize dst_offset,
-                          VkDeviceSize size) const;
+            const Buffer &dst_buffer, VkDeviceSize dst_offset,
+            VkDeviceSize size) const;
   ///\brief
   ///
   ///\param src_buffer **[in]**
@@ -166,11 +166,11 @@ public:
   ///\param offset **[in]** multiple of 4
   ///\param length **[in]**
   ///\return bool
-  template<typename T>
+  template <typename T>
   void fill(const Buffer &buffer, T data, VkDeviceSize offset = 0,
             VkDeviceSize length = VK_WHOLE_SIZE) const {
     vkCmdFillBuffer(vk_command_buffer_, buffer.handle(), offset, length,
-                    *(const uint32_t *) &data);
+                    *(const uint32_t *)&data);
   }
   ///\brief
   /// Copies data directly from host memory into a buffer oject.
@@ -180,11 +180,11 @@ public:
   ///\param offset **[in]** multiple of 4
   ///\param length **[in]**
   ///\return bool
-  template<typename T>
+  template <typename T>
   void update(const Buffer &buffer, const T *data, VkDeviceSize offset,
               VkDeviceSize length) const {
     vkCmdUpdateBuffer(vk_command_buffer_, buffer.handle(), offset, length,
-                      (const uint32_t *) data);
+                      (const uint32_t *)data);
   }
   ///\brief
   /// Clears an image to a fixed color value
@@ -234,8 +234,7 @@ public:
   /// \param descriptor_sets
   /// \param dynamic_offsets
   /// \return
-  void bind(VkPipelineBindPoint pipeline_bind_point,
-            PipelineLayout *layout,
+  void bind(VkPipelineBindPoint pipeline_bind_point, PipelineLayout *layout,
             uint32_t first_set,
             const std::vector<VkDescriptorSet> &descriptor_sets,
             const std::vector<uint32_t> &dynamic_offsets = {});
@@ -309,18 +308,31 @@ public:
   ///\param instance_count **[in]**
   ///\param first_vertex **[in]**
   ///\param first_instance **[in]**
-  [[maybe_unused]] void draw(uint32_t vertex_count,
-            uint32_t instance_count = 1,
-            uint32_t first_vertex = 0,
-            uint32_t first_instance = 0) const;
-  void drawIndexed(uint32_t index_count,
-                   uint32_t instance_count = 1,
-                   uint32_t first_index = 0,
-                   int32_t vertex_offset = 0,
+  [[maybe_unused]] void draw(uint32_t vertex_count, uint32_t instance_count = 1,
+                             uint32_t first_vertex = 0,
+                             uint32_t first_instance = 0) const;
+  void drawIndexed(uint32_t index_count, uint32_t instance_count = 1,
+                   uint32_t first_index = 0, int32_t vertex_offset = 0,
                    uint32_t first_instance = 0) const;
+  ///\brief
+  ///
+  ///\param barrier **[in]**
+  ///\param src_stages **[in]**
+  ///\param dst_stages **[in]**
   void transitionImageLayout(const ImageMemoryBarrier &barrier,
                              VkPipelineStageFlags src_stages,
                              VkPipelineStageFlags dst_stages) const;
+  ///\brief
+  ///
+  ///\param src_image **[in]**
+  ///\param src_image_layout **[in]**
+  ///\param dst_image **[in]**
+  ///\param dst_image_layout **[in]**
+  ///\param regions **[in]**
+  ///\param filter **[in]**
+  void blit(const Image &src_image, VkImageLayout src_image_layout,
+            const Image &dst_image, VkImageLayout dst_image_layout,
+            const std::vector<VkImageBlit> &regions, VkFilter filter) const;
 
 private:
   VkCommandBuffer vk_command_buffer_ = VK_NULL_HANDLE;
@@ -356,16 +368,15 @@ public:
   [[nodiscard]] bool reset(VkCommandPoolResetFlags flags) const;
   ///
   /// \param record_callback
-  static void submitCommandBuffer(const LogicalDevice *logical_device,
-                                  uint32_t family_index,
-                                  VkQueue queue,
-                                  const std::function<void(CommandBuffer &)> &record_callback);
+  static void submitCommandBuffer(
+      const LogicalDevice *logical_device, uint32_t family_index, VkQueue queue,
+      const std::function<void(CommandBuffer &)> &record_callback);
 
 private:
   const LogicalDevice *logical_device_ = nullptr;
   VkCommandPool vk_command_pool_ = VK_NULL_HANDLE;
 };
 
-} // namespace circe
+} // namespace circe::vk
 
 #endif

@@ -82,7 +82,8 @@ public:
   /// will be created)
   /// \param type **[in]** number of dimensions of the image
   /// \param format **[in]** number of components and number of bits of a
-  /// texel in the image \param size **[in]** image's dimensions (in texels)
+  /// texel in the image
+  /// \param size **[in]** image's dimensions (in texels)
   /// \param num_mipmaps **[in]** number of mipmap levels
   /// \param num_layers **[in]** number of layers
   /// \param samples **[in]** number of samples
@@ -124,13 +125,22 @@ public:
   ///\param memory_requirements **[out]**
   ///\return bool true if success
   bool memoryRequirements(VkMemoryRequirements &memory_requirements) const;
+  ///\return uint32_t number of mipmap levels
+  uint32_t mipLevels() const;
+  ///\return VkExtent3D image dimensions (in texels)
+  VkExtent3D size() const;
+  ///\return VkFormat
+  VkFormat format() const;
 
 private:
   const LogicalDevice *logical_device_ = nullptr;
   VkImage vk_image_ = VK_NULL_HANDLE;
+  VkFormat format_{};
+  VkExtent3D size_{};
+  uint32_t mip_levels_{1};
   bool do_not_destroy_ = false;
 };
 
-} // namespace circe
+} // namespace circe::vk
 
 #endif

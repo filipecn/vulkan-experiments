@@ -3,6 +3,9 @@
 #include <chrono>
 #include <iostream>
 #include <ponos/ponos.h>
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tiny_obj_loader.h>
+#include <unordered_map>
 
 struct UniformBufferObject {
   alignas(16) ponos::mat4 model;
@@ -10,30 +13,73 @@ struct UniformBufferObject {
   alignas(16) ponos::mat4 proj;
 };
 
-struct vec2 {
-  float x, y;
-};
-struct vec3 {
-  float x, y, z;
-};
+// struct vec2 {
+//   float x, y;
+// };
+// struct vec3 {
+//   float x, y, z;
+// };
 
 struct Vertex {
-  vec3 pos;
-  vec3 color;
-  vec2 tex_coord;
+  ponos::vec3 pos;
+  ponos::vec3 color;
+  ponos::vec2 tex_coord;
+
+  bool operator==(const Vertex &other) const {
+    return pos == other.pos && color == other.color &&
+           tex_coord == other.tex_coord;
+  }
 };
 
-const std::vector<Vertex> vertices = {
-    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-    {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}, //
-    {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-    {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}};
-const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0, //
-                                       4, 5, 6, 6, 7, 4};
+namespace std {
+template <> struct hash<Vertex> {
+  size_t operator()(Vertex const &vertex) const {
+    return ((hash<ponos::vec3>()(vertex.pos) ^
+             (hash<ponos::vec3>()(vertex.color) << 1)) >>
+            1) ^
+           (hash<ponos::vec2>()(vertex.tex_coord) << 1);
+  }
+};
+} // namespace std
+
+std::vector<Vertex> vertices;
+std::vector<uint32_t> indices;
+void loadObj(const std::string &filename) {
+  tinyobj::attrib_t attrib;
+  std::vector<tinyobj::shape_t> shapes;
+  std::vector<tinyobj::material_t> materials;
+  std::string warn, err;
+  if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err,
+                        filename.c_str()))
+    throw std::runtime_error(warn + err);
+
+  std::unordered_map<Vertex, uint32_t> unique_vertices = {};
+  for (const auto &shape : shapes) {
+    for (const auto &index : shape.mesh.indices) {
+      Vertex vertex = {};
+
+      vertex.pos = {attrib.vertices[3 * index.vertex_index + 0],
+                    attrib.vertices[3 * index.vertex_index + 1],
+                    attrib.vertices[3 * index.vertex_index + 2]};
+
+      vertex.tex_coord = {attrib.texcoords[2 * index.texcoord_index + 0],
+                          1.0f -
+                              attrib.texcoords[2 * index.texcoord_index + 1]};
+
+      vertex.color = {1.0f, 1.0f, 1.0f};
+
+      if (unique_vertices.count(vertex) == 0) {
+        unique_vertices[vertex] = static_cast<uint32_t>(vertices.size());
+        vertices.push_back(vertex);
+      }
+
+      indices.push_back(unique_vertices[vertex]);
+
+      // vertices.push_back(vertex);
+      // indices.push_back(indices.size());
+    }
+  }
+}
 
 int main(int argc, char const *argv[]) {
 #ifndef GLFW_INCLUDE_VULKAN
@@ -104,19 +150,23 @@ int main(int argc, char const *argv[]) {
   uint32_t graphics_family_index =
       app.queueFamilies().family("graphics").family_index.value();
   VkQueue graphics_queue = app.queueFamilies().family("graphics").vk_queues[0];
+  // load model
+  std::string model_path(MODELS_PATH);
+  loadObj(model_path + "/chalet.obj");
   // load texture
   std::string texture_path(TEXTURES_PATH);
-  circe::vk::Texture texture(app.logicalDevice(), texture_path + "/texture.jpg",
+  circe::vk::Texture texture(app.logicalDevice(), texture_path + "/chalet.jpg",
                              graphics_family_index, graphics_queue);
   circe::vk::Image::View texture_view(texture.image(), VK_IMAGE_VIEW_TYPE_2D,
-                                      VK_FORMAT_R8G8B8A8_UNORM,
+                                      VK_FORMAT_R8G8B8A8_SRGB,
                                       VK_IMAGE_ASPECT_COLOR_BIT);
   circe::vk::Sampler texture_sampler(
       app.logicalDevice(), VK_FILTER_LINEAR, VK_FILTER_LINEAR,
       VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT,
       VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, 0.f,
-      VK_TRUE, 16, VK_FALSE, VK_COMPARE_OP_ALWAYS, 0.f, 0.f,
-      VK_BORDER_COLOR_INT_OPAQUE_BLACK, VK_FALSE);
+      VK_TRUE, 16, VK_FALSE, VK_COMPARE_OP_ALWAYS,
+      texture.image()->mipLevels() / 2.f, 0.f, VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+      VK_FALSE);
 
   app.render_engine.uniform_buffer_size_callback = []() -> uint32_t {
     return sizeof(UniformBufferObject);
@@ -269,7 +319,7 @@ int main(int argc, char const *argv[]) {
         std::vector<VkBuffer> vertex_buffers = {mesh.vertexBuffer()->handle()};
         std::vector<VkDeviceSize> offsets = {0};
         cb.bindVertexBuffers(0, vertex_buffers, offsets);
-        cb.bindIndexBuffer(*mesh.indexBuffer(), 0, VK_INDEX_TYPE_UINT16);
+        cb.bindIndexBuffer(*mesh.indexBuffer(), 0, VK_INDEX_TYPE_UINT32);
         cb.bind(VK_PIPELINE_BIND_POINT_GRAPHICS,
                 app.render_engine.pipelineLayout(), 0, {ds});
         cb.drawIndexed(indices.size());
