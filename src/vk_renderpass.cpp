@@ -109,18 +109,17 @@ void RenderPass::destroy() {
   }
 }
 
-void RenderPass::addAttachment(VkFormat format, VkSampleCountFlagBits samples,
-                               VkAttachmentLoadOp load_op,
-                               VkAttachmentStoreOp store_op,
-                               VkAttachmentLoadOp stencil_load_op,
-                               VkAttachmentStoreOp stencil_store_op,
-                               VkImageLayout initial_layout,
-                               VkImageLayout final_layout) {
+uint32_t RenderPass::addAttachment(
+    VkFormat format, VkSampleCountFlagBits samples, VkAttachmentLoadOp load_op,
+    VkAttachmentStoreOp store_op, VkAttachmentLoadOp stencil_load_op,
+    VkAttachmentStoreOp stencil_store_op, VkImageLayout initial_layout,
+    VkImageLayout final_layout) {
   VkAttachmentDescription d = {
-      0, format, samples, load_op,
-      store_op, stencil_load_op, stencil_store_op, initial_layout,
+      0,           format,          samples,          load_op,
+      store_op,    stencil_load_op, stencil_store_op, initial_layout,
       final_layout};
   vk_attachments_.emplace_back(d);
+  return vk_attachments_.size() - 1;
 }
 
 void RenderPass::addSubpassDependency(uint32_t src_subpass,
@@ -159,25 +158,26 @@ VkRenderPass RenderPass::handle() {
           static_cast<uint32_t>(sd.colorAttachmentRefs().size()),
           (sd.colorAttachmentRefs().size() ? sd.colorAttachmentRefs().data()
                                            : nullptr),
-          (sd.colorAttachmentRefs().size() ? sd.resolveAttachmentRefs().data()
-                                           : nullptr),
+          (sd.resolveAttachmentRefs().size() ? sd.resolveAttachmentRefs().data()
+                                             : nullptr),
           (sd.hasDepthStencilAttachmentRef() ? &sd.depthStencilAttachmentRef()
                                              : nullptr),
           static_cast<uint32_t>(sd.preserveAttachmentRefs().size()),
           (sd.preserveAttachmentRefs().size()
-           ? sd.preserveAttachmentRefs().data()
-           : nullptr)};
+               ? sd.preserveAttachmentRefs().data()
+               : nullptr)};
       subpass_descriptions.emplace_back(info);
     }
-    VkRenderPassCreateInfo info = {VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-                                   nullptr,
-                                   0,
-                                   static_cast<uint32_t>(vk_attachments_.size()),
-                                   vk_attachments_.data(),
-                                   static_cast<uint32_t>(subpass_descriptions.size()),
-                                   subpass_descriptions.data(),
-                                   static_cast<uint32_t>(vk_subpass_dependencies_.size()),
-                                   vk_subpass_dependencies_.data()};
+    VkRenderPassCreateInfo info = {
+        VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        nullptr,
+        0,
+        static_cast<uint32_t>(vk_attachments_.size()),
+        vk_attachments_.data(),
+        static_cast<uint32_t>(subpass_descriptions.size()),
+        subpass_descriptions.data(),
+        static_cast<uint32_t>(vk_subpass_dependencies_.size()),
+        vk_subpass_dependencies_.data()};
     VkResult result = vkCreateRenderPass(logical_device_->handle(), &info,
                                          nullptr, &vk_renderpass_);
     CHECK_VULKAN(result);

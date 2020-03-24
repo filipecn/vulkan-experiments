@@ -122,11 +122,14 @@ public:
   ///\param initial_layout **[in]** what layout to expect the image to be in
   /// when the renderpass begins
   ///\param final_layout **[in]** what layout to leave when the renderpass ends
-  void addAttachment(VkFormat format, VkSampleCountFlagBits samples,
-                     VkAttachmentLoadOp load_op, VkAttachmentStoreOp store_op,
-                     VkAttachmentLoadOp stencil_load_op,
-                     VkAttachmentStoreOp stencil_store_op,
-                     VkImageLayout initial_layout, VkImageLayout final_layout);
+  ///\return uint32_t attachment index
+  uint32_t addAttachment(VkFormat format, VkSampleCountFlagBits samples,
+                         VkAttachmentLoadOp load_op,
+                         VkAttachmentStoreOp store_op,
+                         VkAttachmentLoadOp stencil_load_op,
+                         VkAttachmentStoreOp stencil_store_op,
+                         VkImageLayout initial_layout,
+                         VkImageLayout final_layout);
   ///\brief Defines a dependency between subpasses.
   ///\param src_subpass **[in]** source index in the subpass array
   ///\param dst_subpass **[in]** destination index in the subpass array

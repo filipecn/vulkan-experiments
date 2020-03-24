@@ -280,6 +280,27 @@ const VkPhysicalDeviceFeatures &PhysicalDevice::features() const {
   return vk_features_;
 }
 
+VkSampleCountFlagBits
+PhysicalDevice::maxUsableSampleCount(bool include_depth_buffer) const {
+  VkSampleCountFlags counts =
+      vk_properties_.limits.framebufferColorSampleCounts &
+      (include_depth_buffer ? vk_properties_.limits.framebufferDepthSampleCounts
+                            : 0);
+  if (counts & VK_SAMPLE_COUNT_64_BIT)
+    return VK_SAMPLE_COUNT_64_BIT;
+  if (counts & VK_SAMPLE_COUNT_32_BIT)
+    return VK_SAMPLE_COUNT_32_BIT;
+  if (counts & VK_SAMPLE_COUNT_16_BIT)
+    return VK_SAMPLE_COUNT_16_BIT;
+  if (counts & VK_SAMPLE_COUNT_8_BIT)
+    return VK_SAMPLE_COUNT_8_BIT;
+  if (counts & VK_SAMPLE_COUNT_4_BIT)
+    return VK_SAMPLE_COUNT_4_BIT;
+  if (counts & VK_SAMPLE_COUNT_2_BIT)
+    return VK_SAMPLE_COUNT_2_BIT;
+  return VK_SAMPLE_COUNT_1_BIT;
+}
+
 std::ostream &operator<<(std::ostream &os, VkPhysicalDeviceType e) {
 #define PRINT_IF_ENUM(E)                                                       \
   if (e == E)                                                                  \

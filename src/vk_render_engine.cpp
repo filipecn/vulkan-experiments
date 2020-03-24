@@ -71,14 +71,18 @@ void RenderEngine::destroySwapchain() {
   // swapchain with new parameters. For that, we need to destroy the old
   // swapchain and the objects related to the swapchain, to recreate them later
   // We must destroy the objects in the following order:
-  // 1. depth buffer
-  // 2. framebuffers
-  // 3. command buffers
-  // 4. graphics pipeline
-  // 5. pipeline layout
-  // 6. renderpass
-  // 7. swapchain image views
-  // 8. swapchain
+  // 1. color image (anti-aliasing resources)
+  // 2. depth buffer
+  // 3. framebuffers
+  // 4. command buffers
+  // 5. graphics pipeline
+  // 6. pipeline layout
+  // 7. renderpass
+  // 8. swapchain image views
+  // 9. swapchain
+  color_image_view_.reset();
+  color_image_.reset();
+  color_image_memory_.reset();
   depth_image_view_.reset();
   depth_image_.reset();
   depth_image_memory_.reset();
@@ -134,6 +138,8 @@ void RenderEngine::setDeviceInfo(const PhysicalDevice *physical_device,
     image_available_semaphores_.emplace_back(logical_device_);
     render_finished_semaphores_.emplace_back(logical_device_);
   }
+  // setup anti-aliasing
+  msaa_samples_ = physical_device_->maxUsableSampleCount();
 }
 
 bool RenderEngine::setupSwapChain(VkFormat desired_format,
@@ -190,6 +196,20 @@ bool RenderEngine::setupSwapChain(VkFormat desired_format,
     swapchain_image_views_.emplace_back(&swap_chain_image,
                                         VK_IMAGE_VIEW_TYPE_2D, image_format,
                                         VK_IMAGE_ASPECT_COLOR_BIT);
+  // COLOR RESOURCES (anti-aliasing)
+  color_image_.reset(new Image(
+      logical_device_, VK_IMAGE_TYPE_2D, image_format,
+      {swapchain_->imageSize().width, swapchain_->imageSize().height, 1}, 1, 1,
+      msaa_samples_,
+      VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
+          VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+      false));
+  color_image_memory_ = std::make_unique<DeviceMemory>(
+      logical_device_, *color_image_, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  color_image_memory_->bind(*color_image_);
+  color_image_view_.reset(new Image::View(color_image_.get(),
+                                          VK_IMAGE_VIEW_TYPE_2D, image_format,
+                                          VK_IMAGE_ASPECT_COLOR_BIT));
   // DEPTH BUFFER
   physical_device_->findSupportedFormat(
       {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT,
@@ -199,8 +219,7 @@ bool RenderEngine::setupSwapChain(VkFormat desired_format,
   depth_image_.reset(new Image(
       logical_device_, VK_IMAGE_TYPE_2D, depth_format_,
       {swapchain_->imageSize().width, swapchain_->imageSize().height, 1}, 1, 1,
-      VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-      false));
+      msaa_samples_, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, false));
   depth_image_memory_ = std::make_unique<DeviceMemory>(
       logical_device_, *depth_image_, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   depth_image_memory_->bind(*depth_image_);
@@ -212,8 +231,10 @@ bool RenderEngine::setupSwapChain(VkFormat desired_format,
     circe::vk::Framebuffer framebuffer(logical_device_, renderpass(),
                                        swapchain_->imageSize().width,
                                        swapchain_->imageSize().height, 1);
-    framebuffer.addAttachment(image_view);
+    // this order must be the same as the renderpass attachments
+    framebuffer.addAttachment(*color_image_view_);
     framebuffer.addAttachment(*depth_image_view_);
+    framebuffer.addAttachment(image_view);
     framebuffers_.emplace_back(framebuffer);
   }
   // setup uniform buffers (if any)
@@ -320,6 +341,10 @@ std::vector<Framebuffer> &RenderEngine::framebuffers() {
 VkFormat RenderEngine::depthFormat() {
   swapchain();
   return depth_format_;
+}
+
+VkSampleCountFlagBits RenderEngine::msaaSamples() const {
+  return msaa_samples_;
 }
 
 void RenderEngine::init() {

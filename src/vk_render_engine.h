@@ -76,6 +76,7 @@ public:
   std::vector<CommandBuffer> &commandBuffers();
   std::vector<Framebuffer> &framebuffers();
   VkFormat depthFormat();
+  VkSampleCountFlagBits msaaSamples() const;
   void init();
   void draw(VkQueue graphics_queue, VkQueue presentation_queue);
 
@@ -123,6 +124,11 @@ private:
   std::vector<DeviceMemory> uniform_buffer_memories_;
   std::unique_ptr<DescriptorPool> descriptor_pool_;
   std::vector<VkDescriptorSet> descriptor_sets_;
+  // Anti-Aliasing
+  VkSampleCountFlagBits msaa_samples_{VK_SAMPLE_COUNT_1_BIT};
+  std::unique_ptr<Image> color_image_;
+  std::unique_ptr<Image::View> color_image_view_;
+  std::unique_ptr<DeviceMemory> color_image_memory_;
   // depth buffer information
   VkFormat depth_format_;
   std::unique_ptr<Image> depth_image_;

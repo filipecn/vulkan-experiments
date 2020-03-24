@@ -164,9 +164,8 @@ int main(int argc, char const *argv[]) {
       app.logicalDevice(), VK_FILTER_LINEAR, VK_FILTER_LINEAR,
       VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT,
       VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, 0.f,
-      VK_TRUE, 16, VK_FALSE, VK_COMPARE_OP_ALWAYS,
-      texture.image()->mipLevels() / 2.f, 0.f, VK_BORDER_COLOR_INT_OPAQUE_BLACK,
-      VK_FALSE);
+      VK_TRUE, 16, VK_FALSE, VK_COMPARE_OP_ALWAYS, 0.f, 0.f,
+      VK_BORDER_COLOR_INT_OPAQUE_BLACK, VK_FALSE);
 
   app.render_engine.uniform_buffer_size_callback = []() -> uint32_t {
     return sizeof(UniformBufferObject);
@@ -242,27 +241,40 @@ int main(int argc, char const *argv[]) {
   { // COLOR ATTACHMENT
     renderpass->addAttachment(
         app.render_engine.swapchain()->surfaceFormat().format,
-        VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_CLEAR,
+        app.render_engine.msaaSamples(), VK_ATTACHMENT_LOAD_OP_CLEAR,
         VK_ATTACHMENT_STORE_OP_STORE, VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         VK_ATTACHMENT_STORE_OP_DONT_CARE, VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+        // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     subpass_desc.addColorAttachmentRef(
         0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     renderpass->addSubpassDependency(
         VK_SUBPASS_EXTERNAL, 0, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
-        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
-            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+        // VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
   }
   { // DEPTH ATTACHMENT
     renderpass->addAttachment(
-        app.render_engine.depthFormat(), VK_SAMPLE_COUNT_1_BIT,
+        app.render_engine.depthFormat(), app.render_engine.msaaSamples(),
         VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE,
         VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     subpass_desc.setDepthStencilAttachmentRef(
         1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+  }
+  // since we are using multisampling, the first color attachment is cannot be
+  // presented directly, first we need to resolve it into a proper image
+  { // COLOR RESOLVE ATTACHMENT RESOLVE
+    renderpass->addAttachment(
+        app.render_engine.swapchain()->surfaceFormat().format,
+        VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        VK_ATTACHMENT_STORE_OP_STORE, VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        VK_ATTACHMENT_STORE_OP_DONT_CARE, VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    subpass_desc.addResolveAttachmentRef(
+        2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
   }
   auto &pipeline = *app.render_engine.graphicsPipeline();
   // Vertex data
@@ -282,7 +294,7 @@ int main(int argc, char const *argv[]) {
   pipeline.setRasterizationState(
       VK_FALSE, VK_FALSE, VK_POLYGON_MODE_FILL, VK_CULL_MODE_FRONT_BIT,
       VK_FRONT_FACE_COUNTER_CLOCKWISE, VK_FALSE, 0.f, 0.f, 0.f, 1.0f);
-  pipeline.setMultisampleState(VK_SAMPLE_COUNT_1_BIT, VK_FALSE, 1.f,
+  pipeline.setMultisampleState(app.render_engine.msaaSamples(), VK_FALSE, 1.f,
                                std::vector<VkSampleMask>(), VK_FALSE, VK_FALSE);
   pipeline.color_blend_state.addAttachmentState(
       VK_FALSE, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD,

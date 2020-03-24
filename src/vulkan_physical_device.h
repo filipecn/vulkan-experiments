@@ -147,6 +147,13 @@ public:
                       VkSurfaceCapabilitiesKHR &surface_capabilities) const;
   [[nodiscard]] const VkPhysicalDeviceProperties &properties() const;
   [[nodiscard]] const VkPhysicalDeviceFeatures &features() const;
+  ///\return VkSampleCountFlagBits the highest sample count supported by the
+  /// color buffer
+  ///\param include_depth_buffer **[in | default = true]** if true, computes the
+  /// highest sample count supported by both the color and depth buffers
+  ///\return VkSampleCountFlagBits
+  VkSampleCountFlagBits
+  maxUsableSampleCount(bool include_depth_buffer = true) const;
 
 private:
   /// Retrieve available queue families exposed by a physical device
