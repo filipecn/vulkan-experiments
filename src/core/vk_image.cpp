@@ -70,6 +70,7 @@ Image::View::View(Image::View &&other) noexcept : image_(other.image_) {
 Image::View::~View() {
   if (image_ && VK_NULL_HANDLE != vk_image_view_)
     vkDestroyImageView(image_->device()->handle(), vk_image_view_, nullptr);
+  vk_image_view_ = VK_NULL_HANDLE;
 }
 
 VkImageView Image::View::handle() const { return vk_image_view_; }

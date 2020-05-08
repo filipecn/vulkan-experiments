@@ -91,6 +91,7 @@ public:
                            VkPhysicalDeviceFeatures *desired_features = {});
   const Instance *instance();
   const LogicalDevice *logicalDevice();
+  const PhysicalDevice* physicalDevice();
   QueueFamilies &queueFamilies();
   GraphicsDisplay *graphicsDisplay();
 

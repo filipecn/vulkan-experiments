@@ -161,7 +161,7 @@ const Image *Texture::image() const { return image_.get(); }
 void Texture::generateMipmaps(VkQueue queue, uint32_t queue_family_index) {
   // check first if we have support for the blit command:
   VkFormatProperties format_properties;
-  logical_device_->physicalDevice().formatProperties(image_->format(),
+  logical_device_->physicalDevice()->formatProperties(image_->format(),
                                                      format_properties);
   if (!(format_properties.optimalTilingFeatures &
         VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {

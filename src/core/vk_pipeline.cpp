@@ -154,9 +154,9 @@ void DescriptorPool::setPoolSize(VkDescriptorType type,
 VkDescriptorPool DescriptorPool::handle() {
   if (vk_descriptor_pool_ == VK_NULL_HANDLE) {
     VkDescriptorPoolCreateInfo info = {
-        VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,     nullptr,
+        VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, nullptr,
         VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT, sets_count_,
-        static_cast<uint32_t>(pool_sizes_.size()),         pool_sizes_.data()};
+        static_cast<uint32_t>(pool_sizes_.size()), pool_sizes_.data()};
     VkResult result = vkCreateDescriptorPool(logical_device_->handle(), &info,
                                              nullptr, &vk_descriptor_pool_);
     CHECK_VULKAN(result);
@@ -199,12 +199,28 @@ bool DescriptorPool::reset() {
   return true;
 }
 
+PipelineShaderStage::PipelineShaderStage() = default;
+
 PipelineShaderStage::PipelineShaderStage(VkShaderStageFlagBits stage,
                                          const ShaderModule &module,
                                          std::string name,
                                          const void *specialization_info_data,
                                          size_t specialization_info_data_size)
     : stage_(stage), module_(module.handle()), name_(std::move(name)) {
+  specialization_info_.pData = specialization_info_data;
+  specialization_info_.dataSize = specialization_info_data_size;
+  specialization_info_.mapEntryCount = 0;
+  specialization_info_.pMapEntries = nullptr;
+}
+
+void PipelineShaderStage::set(VkShaderStageFlagBits stage,
+                              const ShaderModule &module,
+                              std::string name,
+                              const void *specialization_info_data,
+                              size_t specialization_info_data_size) {
+  stage_ = stage;
+  module_ = module.handle();
+  name_ = std::move(name);
   specialization_info_.pData = specialization_info_data;
   specialization_info_.dataSize = specialization_info_data_size;
   specialization_info_.mapEntryCount = 0;
@@ -260,7 +276,7 @@ bool Pipeline::saveCache(const std::string &path) {
       if (result == VK_SUCCESS) {
         std::ofstream ofile(path, std::ios::binary);
         if (ofile.good()) {
-          ofile.write((char *)&data, cache_data_size);
+          ofile.write((char *) &data, cache_data_size);
           ofile.close();
         }
       }
@@ -397,7 +413,7 @@ void GraphicsPipeline::ColorBlendState::addAttachmentState(
     VkBlendFactor src_alpha_blend_factor, VkBlendFactor dst_alpha_blend_factor,
     VkBlendOp alpha_blend_op, VkColorComponentFlags color_write_mask) {
   VkPipelineColorBlendAttachmentState as = {
-      blend_enable,   src_color_blend_factor, dst_color_blend_factor,
+      blend_enable, src_color_blend_factor, dst_color_blend_factor,
       color_blend_op, src_alpha_blend_factor, dst_alpha_blend_factor,
       alpha_blend_op, color_write_mask};
   attachments_.emplace_back(as);

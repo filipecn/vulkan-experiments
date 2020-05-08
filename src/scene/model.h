@@ -76,6 +76,7 @@ public:
       VK_FORMAT_R32_SFLOAT, /// VERTEX_COMPONENT_DUMMY_FLOAT = 0x6,
       VK_FORMAT_R32G32B32A32_SFLOAT, /// VERTEX_COMPONENT_DUMMY_VEC4 = 0x7
   };
+  VertexLayout() = default;
   ///
   /// \param components
   /// \param formats
@@ -85,8 +86,12 @@ public:
     this->formats = std::move(formats);
     if (!this->components.empty() && this->formats.empty())
       // if not formats are provided, fill with default ones
-      for (auto &component : this->components)
-        this->formats.emplace_back(default_formats[component]);
+      fillWithDefaultFormats();
+  }
+  void fillWithDefaultFormats() {
+    this->formats.clear();
+    for (auto &component : this->components)
+      this->formats.emplace_back(default_formats[component]);
   }
   VertexComponent operator[](u32 i) const { return components[i]; };
   VkFormat componentFormat(VertexComponent component) {
@@ -142,8 +147,8 @@ public:
   ///\return bool
   bool loadFromData(const std::vector<float> &vertices,
                     const std::vector<u32> &indices);
-  const Buffer& vertices() const;
-  const Buffer& indices() const;
+  const Buffer &vertices() const;
+  const Buffer &indices() const;
 
 private:
   const LogicalDevice *device_{nullptr};

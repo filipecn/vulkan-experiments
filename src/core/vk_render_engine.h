@@ -38,20 +38,21 @@
 
 namespace circe::vk {
 
+/// The render engine holds and controls the set of resources regarding the
+/// presentation of the render image on the screen. It includes the swapchain
+/// and takes care of the image submission for display.
 class RenderEngine {
 public:
   RenderEngine();
   /// \param logical_device
   /// \param queue_family_index
-  explicit RenderEngine(const PhysicalDevice *physical_device,
-                        const LogicalDevice *logical_device,
+  explicit RenderEngine(const LogicalDevice *logical_device,
                         uint32_t queue_family_index);
   ~RenderEngine();
   ///
-  /// \param physical_device
   /// \param logical_device
-  void setDeviceInfo(const PhysicalDevice *physical_device,
-                     const LogicalDevice *logical_device,
+  /// \param queue_family_index
+  void setDeviceInfo(const LogicalDevice *logical_device,
                      uint32_t queue_family_index);
   ///
   /// \param surface
@@ -68,26 +69,18 @@ public:
       VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
   void resize(uint32_t width, uint32_t height);
   void destroy();
-  GraphicsPipeline *graphicsPipeline();
-  PipelineLayout *pipelineLayout();
-  RenderPass *renderpass();
   Swapchain *swapchain();
-  DescriptorPool *descriptorPool();
+  [[nodiscard]] VkSurfaceFormatKHR swapchainSurfaceFormat() const;
   const std::vector<Image::View> &swapchainImageViews();
   std::vector<CommandBuffer> &commandBuffers();
-  std::vector<Framebuffer> &framebuffers();
-  VkFormat depthFormat();
-  [[nodiscard]] VkSampleCountFlagBits msaaSamples() const;
   void init();
   void draw(VkQueue graphics_queue, VkQueue presentation_queue);
 
   std::function<void(uint32_t width, uint32_t height)> resize_callback;
-  std::function<void(CommandBuffer &, Framebuffer &, VkDescriptorSet)>
-      record_command_buffer_callback;
-  std::function<uint32_t()> uniform_buffer_size_callback;
-  std::function<void(DeviceMemory &)> update_uniform_buffer_callback;
-  std::function<void(DescriptorSetLayout &)> descriptor_set_layout_callback;
-  std::function<void(VkDescriptorSet, VkBuffer)> update_descriptor_set_callback;
+  std::function<void(CommandBuffer &, uint32_t)> record_command_buffer_callback;
+  std::function<void()> destroy_swapchain_callback;
+  std::function<void()> create_swapchain_callback;
+  std::function<void(uint32_t)> prepare_frame_callback;
 
 private:
   // auxiliary methods for swapchain creation
@@ -113,28 +106,12 @@ private:
   const size_t max_frames_in_flight = 2;
   VkSurfaceKHR vk_surface_ = VK_NULL_HANDLE;
   // swapchain information
+  VkSurfaceFormatKHR surface_format_{};
   std::unique_ptr<Swapchain> swapchain_;
   std::vector<Image::View> swapchain_image_views_;
-  std::unique_ptr<RenderPass> renderpass_;
-  std::unique_ptr<PipelineLayout> pipeline_layout_;
-  std::unique_ptr<GraphicsPipeline> pipeline_;
-  std::unique_ptr<CommandPool> command_pool_;
-  std::vector<CommandBuffer> command_buffers_;
-  std::vector<Framebuffer> framebuffers_;
-  std::vector<Buffer> uniform_buffers_;
-  std::vector<DeviceMemory> uniform_buffer_memories_;
-  std::unique_ptr<DescriptorPool> descriptor_pool_;
-  std::vector<VkDescriptorSet> descriptor_sets_;
-  // Anti-Aliasing
-  VkSampleCountFlagBits msaa_samples_{VK_SAMPLE_COUNT_1_BIT};
-  std::unique_ptr<Image> color_image_;
-  std::unique_ptr<Image::View> color_image_view_;
-  std::unique_ptr<DeviceMemory> color_image_memory_;
-  // depth buffer information
-  VkFormat depth_format_;
-  std::unique_ptr<Image> depth_image_;
-  std::unique_ptr<Image::View> depth_image_view_;
-  std::unique_ptr<DeviceMemory> depth_image_memory_;
+  // command buffers
+  std::unique_ptr<CommandPool> draw_command_pool_; //!< command pool used for draw command buffers
+  std::vector<CommandBuffer> draw_command_buffers_; //!< command buffers used for rendering
   // synchronization
   std::vector<Semaphore> render_finished_semaphores_;
   std::vector<Semaphore> image_available_semaphores_;
