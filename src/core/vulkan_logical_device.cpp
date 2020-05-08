@@ -34,13 +34,13 @@ namespace circe {
 namespace vk {
 
 LogicalDevice::LogicalDevice(
-    const PhysicalDevice &physical_device,
+    const PhysicalDevice *physical_device,
     std::vector<char const *> const &desired_extensions,
     VkPhysicalDeviceFeatures *desired_features, QueueFamilies &queue_infos,
     const std::vector<const char *> &validation_layers)
     : physical_device_(physical_device) {
   for (auto &extension : desired_extensions)
-    if (!physical_device.isExtensionSupported(extension)) {
+    if (!physical_device->isExtensionSupported(extension)) {
       INFO(concat("Extension named '", extension,
                   "' is not supported by a physical device.\n"));
       return;
@@ -75,7 +75,7 @@ LogicalDevice::LogicalDevice(
           .data(), // const char * const             * ppEnabledExtensionNames
       desired_features // const VkPhysicalDeviceFeatures * pEnabledFeatures
   };
-  CHECK_VULKAN(vkCreateDevice(physical_device.handle(), &device_create_info,
+  CHECK_VULKAN(vkCreateDevice(physical_device->handle(), &device_create_info,
                               nullptr, &vk_device_));
   if (vk_device_ == VK_NULL_HANDLE)
     INFO("Could not create logical device.");
@@ -97,7 +97,7 @@ LogicalDevice::~LogicalDevice() {
 
 VkDevice LogicalDevice::handle() const { return vk_device_; }
 
-const PhysicalDevice &LogicalDevice::physicalDevice() const {
+const PhysicalDevice *LogicalDevice::physicalDevice() const {
   return physical_device_;
 }
 
@@ -107,7 +107,7 @@ uint32_t
 LogicalDevice::chooseMemoryType(const VkMemoryRequirements &memory_requirements,
                                 VkMemoryPropertyFlags required_flags,
                                 VkMemoryPropertyFlags preferred_flags) const {
-  return physical_device_.chooseMemoryType(memory_requirements, required_flags,
+  return physical_device_->chooseMemoryType(memory_requirements, required_flags,
                                            preferred_flags);
 }
 

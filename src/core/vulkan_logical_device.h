@@ -91,23 +91,23 @@ public:
   /// \param desired_extensions **[in]** desired extensions
   /// \param desired_features **[in]** desired features
   /// \param queue_infos **[in]** queues description
-  LogicalDevice(const PhysicalDevice &physical_device,
+  LogicalDevice(const PhysicalDevice *physical_device,
                 std::vector<char const *> const &desired_extensions,
                 VkPhysicalDeviceFeatures *desired_features,
                 QueueFamilies &queue_infos,
                 const std::vector<const char *> &validation_layers =
-                    std::vector<const char *>());
+                std::vector<const char *>());
   ///\brief Default destructor
   ~LogicalDevice();
   ///\brief
   ///
   ///\return VkDevice
-  VkDevice handle() const;
+  [[nodiscard]] VkDevice handle() const;
   ///\return const PhysicalDevice&
-  const PhysicalDevice &physicalDevice() const;
-  /// Checks with physical device object construction succeded
+  [[nodiscard]] const PhysicalDevice *physicalDevice() const;
+  /// Checks physical device object construction success
   ///\return bool true if this can be used
-  bool good() const;
+  [[nodiscard]] bool good() const;
   ///\brief Selects the index of memory type trying to satisfy the preferred
   /// requirements.
   ///\param memory_requirements **[in]** memory requirements for a particular
@@ -121,8 +121,8 @@ public:
   bool waitIdle() const;
 
 private:
-  const PhysicalDevice &physical_device_;
-  VkDevice vk_device_ = VK_NULL_HANDLE;
+  const PhysicalDevice *physical_device_{nullptr};
+  VkDevice vk_device_{VK_NULL_HANDLE};
 };
 
 } // namespace vk

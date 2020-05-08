@@ -39,7 +39,7 @@ bool readFile(const std::string &filename, std::vector<char> &buffer) {
   if (!file.is_open())
     return false;
 
-  size_t fileSize = (size_t)file.tellg();
+  size_t fileSize = (size_t) file.tellg();
   buffer.resize(fileSize);
 
   file.seekg(0);
@@ -48,6 +48,8 @@ bool readFile(const std::string &filename, std::vector<char> &buffer) {
   file.close();
   return true;
 }
+
+ShaderModule::ShaderModule() = default;
 
 ShaderModule::ShaderModule(const LogicalDevice *logical_device,
                            const std::string &filename)
@@ -90,6 +92,31 @@ ShaderModule::~ShaderModule() {
   if (VK_NULL_HANDLE != vk_shader_module_)
     vkDestroyShaderModule(logical_device_->handle(), vk_shader_module_,
                           nullptr);
+}
+
+void ShaderModule::setDevice(const LogicalDevice *logical_device) {
+  logical_device_ = logical_device;
+}
+
+bool ShaderModule::load(const std::string &filename) {
+  if (!logical_device_)
+    return false;
+  std::vector<char> source_code;
+  if (!readFile(filename, source_code)) {
+    std::cerr << "Could not read shader file:" << filename << std::endl;
+    return false;
+  }
+  VkShaderModuleCreateInfo shader_module_create_info = {
+      VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, // VkStructureType sType
+      nullptr,            // const void                 * pNext
+      0,                  // VkShaderModuleCreateFlags    flags
+      source_code.size(), // size_t                       codeSize
+      reinterpret_cast<uint32_t const *>(
+          source_code.data()) // const uint32_t             * pCode
+  };
+  CHECK_VULKAN(vkCreateShaderModule(logical_device_->handle(),
+                                    &shader_module_create_info, nullptr,
+                                    &vk_shader_module_));
 }
 
 VkShaderModule ShaderModule::handle() const { return vk_shader_module_; }

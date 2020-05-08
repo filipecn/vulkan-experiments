@@ -126,11 +126,10 @@ bool App::createLogicalDevice(
   auto extensions = desired_extensions;
   extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
   logical_device_ =
-      std::make_unique<LogicalDevice>(*physical_device_, extensions, &features,
+      std::make_unique<LogicalDevice>(physical_device_.get(), extensions, &features,
                                       queue_families_, validation_layer_names_);
-  render_engine.setDeviceInfo(
-      physical_device_.get(), logical_device_.get(),
-      queue_families_.family("graphics").family_index.value());
+  render_engine.setDeviceInfo(logical_device_.get(),
+                              queue_families_.family("graphics").family_index.value());
   return logical_device_->good();
 }
 
@@ -146,7 +145,17 @@ const LogicalDevice *App::logicalDevice() {
   return logical_device_.get();
 }
 
-QueueFamilies &App::queueFamilies() { return queue_families_; }
+const PhysicalDevice *App::physicalDevice() {
+  if (!physical_device_)
+    createLogicalDevice();
+  return physical_device_.get();
+}
+
+QueueFamilies &App::queueFamilies() {
+  if (!logical_device_)
+    createLogicalDevice();
+  return queue_families_;
+}
 
 GraphicsDisplay *App::graphicsDisplay() { return graphics_display_.get(); }
 

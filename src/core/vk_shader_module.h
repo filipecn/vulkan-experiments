@@ -51,11 +51,14 @@ private:
 // stages.
 class ShaderModule {
 public:
+  ShaderModule();
   ShaderModule(const LogicalDevice *logical_device,
                const std::string &filename);
   ShaderModule(const LogicalDevice *logical_device,
                std::vector<char> const &source_code);
   ~ShaderModule();
+  void setDevice(const LogicalDevice* logical_device);
+  bool load(const std::string& filename);
   VkShaderModule handle() const;
 
 private:

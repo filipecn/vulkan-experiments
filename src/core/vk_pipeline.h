@@ -162,6 +162,7 @@ private:
 /// Holds information about a shader
 class PipelineShaderStage {
 public:
+  PipelineShaderStage();
   ///\param stage **[in]**
   ///\param module **[in]**
   ///\param name **[in]** entry point in the shader module
@@ -170,6 +171,14 @@ public:
   PipelineShaderStage(VkShaderStageFlagBits stage, const ShaderModule &module,
                       std::string name, const void *specialization_info_data,
                       size_t specialization_info_data_size);
+  ///\param stage **[in]**
+  ///\param module **[in]**
+  ///\param name **[in]** entry point in the shader module
+  ///\param specialization_info_data **[in]**
+  ///\param specialization_info_data_size **[in]**
+  void set(VkShaderStageFlagBits stage, const ShaderModule &module,
+           std::string name, const void *specialization_info_data,
+           size_t specialization_info_data_size);
   ///\param constant_id **[in]** match the constant ID used in the shader module
   ///(see constant_id layout qualifier in GLSL)
   ///\param offset **[in]** offset of the raw data (passed in constructor)
