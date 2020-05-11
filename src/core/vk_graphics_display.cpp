@@ -33,12 +33,49 @@ namespace circe {
 
 namespace vk {
 
+// CALLBACKS
 static void framebufferResizeCallback(GLFWwindow *window, int width,
                                       int height) {
   auto gd =
       reinterpret_cast<GraphicsDisplay *>(glfwGetWindowUserPointer(window));
   if (gd->resize_callback)
     gd->resize_callback(width, height);
+}
+static void charCallback(GLFWwindow *window, unsigned int code_point) {
+  auto gd =
+      reinterpret_cast<GraphicsDisplay *>(glfwGetWindowUserPointer(window));
+  if (gd->char_callback)
+    gd->char_callback(code_point);
+}
+static void dropCallback(GLFWwindow *window, int count, const char **filenames) {
+  auto gd =
+      reinterpret_cast<GraphicsDisplay *>(glfwGetWindowUserPointer(window));
+  if (gd->drop_callback)
+    gd->drop_callback(count, filenames);
+}
+static void buttonCallback(GLFWwindow *window, int button, int action, int mods) {
+  auto gd =
+      reinterpret_cast<GraphicsDisplay *>(glfwGetWindowUserPointer(window));
+  if (gd->button_callback)
+    gd->button_callback(button, action, mods);
+}
+static void keyCallback(GLFWwindow *window, int key, int scancode, int action, int modifiers) {
+  auto gd =
+      reinterpret_cast<GraphicsDisplay *>(glfwGetWindowUserPointer(window));
+  if (gd->key_callback)
+    gd->key_callback(key, scancode, action, modifiers);
+}
+static void mouseCallback(GLFWwindow *window, double x, double y) {
+  auto gd =
+      reinterpret_cast<GraphicsDisplay *>(glfwGetWindowUserPointer(window));
+  if (gd->mouse_callback)
+    gd->mouse_callback(x, y);
+}
+static void scrollCallback(GLFWwindow *window, double x, double y) {
+  auto gd =
+      reinterpret_cast<GraphicsDisplay *>(glfwGetWindowUserPointer(window));
+  if (gd->scroll_callback)
+    gd->scroll_callback(x, y);
 }
 
 GraphicsDisplay::GraphicsDisplay(uint32_t w, uint32_t h,
@@ -50,6 +87,12 @@ GraphicsDisplay::GraphicsDisplay(uint32_t w, uint32_t h,
   window_ = glfwCreateWindow(w, h, title.c_str(), nullptr, nullptr);
   glfwSetWindowUserPointer(window_, this);
   glfwSetFramebufferSizeCallback(window_, framebufferResizeCallback);
+  glfwSetCharCallback(window_, charCallback);
+  glfwSetDropCallback(window_, dropCallback);
+  glfwSetKeyCallback(window_, keyCallback);
+  glfwSetMouseButtonCallback(window_, buttonCallback);
+  glfwSetCursorPosCallback(window_, mouseCallback);
+  glfwSetScrollCallback(window_, scrollCallback);
 }
 
 GraphicsDisplay::~GraphicsDisplay() {
@@ -103,6 +146,19 @@ void GraphicsDisplay::waitForValidWindowSize() {
 }
 
 GLFWwindow *GraphicsDisplay::handle() { return window_; }
+
+ponos::point2 GraphicsDisplay::getMousePos() {
+  double x, y;
+  glfwGetCursorPos(this->window_, &x, &y);
+  return ponos::point2(x, this->height_ - y);
+}
+
+ponos::point2 GraphicsDisplay::getMouseNPos() {
+  uint32_t viewport[] = {0, 0, width_, height_};
+  ponos::point2 mp = getMousePos();
+  return ponos::point2((mp.x - viewport[0]) / viewport[2] * 2.0 - 1.0,
+                       (mp.y - viewport[1]) / viewport[3] * 2.0 - 1.0);
+}
 
 } // namespace vk
 

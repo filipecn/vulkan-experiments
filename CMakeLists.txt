@@ -1,11 +1,11 @@
 project(VULKAN_EXPERIMENTS)
 cmake_minimum_required(VERSION 3.7.2)
 
-if( MSVC )
-        list(APPEND args --target INSTALL)
-        else( MSVC )
-        list(APPEND args --target install)
-        endif( MSVC )
+if (MSVC)
+    list(APPEND args --target INSTALL)
+else (MSVC)
+    list(APPEND args --target install)
+endif (MSVC)
 
 
 set(CMAKE_CXX_STANDARD 17)
@@ -73,6 +73,7 @@ set(SOURCES
         src/core/vulkan_library.cpp
         src/core/vulkan_logical_device.cpp
         src/core/vulkan_physical_device.cpp
+        src/scene/camera.cpp
         src/scene/model.cpp
         )
 set(HEADERS
@@ -97,6 +98,7 @@ set(HEADERS
         src/core/vulkan_library.h
         src/core/vulkan_logical_device.h
         src/core/vulkan_physical_device.h
+        src/scene/camera.h
         src/scene/model.h
         )
 
@@ -106,12 +108,12 @@ set_target_properties(vk PROPERTIES
         OUTPUT_NAME "vk"
         FOLDER "VK")
 target_include_directories(vk PUBLIC
-${STB_INCLUDES}
-${GLFW_INCLUDES} 
-${VULKAN_INCLUDES} 
-${PONOS_INCLUDE_DIR}
-${VK_INCLUDES}
-)
+        ${STB_INCLUDES}
+        ${GLFW_INCLUDES}
+        ${VULKAN_INCLUDES}
+        ${PONOS_INCLUDES}
+        ${VK_INCLUDES}
+        )
 target_link_libraries(vk
         # Vulkan::Vulkan
         # ${GLFW_LIBRARIES}

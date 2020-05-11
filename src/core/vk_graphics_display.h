@@ -29,6 +29,7 @@
 #define CIRCE_VK_GRAPHICS_DISPLAY_H
 
 #include "vulkan_instance.h"
+#include <ponos/geometry/point.h>
 #include <functional>
 // #define GLFW_INCLUDE_VULKAN
 // #include <GLFW/glfw3.h>
@@ -70,7 +71,17 @@ public:
   bool createWindowSurface(const Instance *instance, VkSurfaceKHR &surface);
   void waitForValidWindowSize();
   GLFWwindow *handle();
+  ponos::point2 getMousePos();
+  ponos::point2 getMouseNPos();
+
+  // Callbacks
   std::function<void(int, int)> resize_callback;
+  std::function<void(unsigned int)> char_callback;
+  std::function<void(int, const char **)> drop_callback;
+  std::function<void(int, int, int)> button_callback;
+  std::function<void(int, int, int, int)> key_callback;
+  std::function<void(double, double)> mouse_callback;
+  std::function<void(double, double)> scroll_callback;
 
 private:
   uint32_t width_;

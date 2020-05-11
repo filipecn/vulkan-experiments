@@ -3,6 +3,7 @@
 #include <core/vk.h>
 #include <iostream>
 #include <ponos/ponos.h>
+#include <circe/ui/ui_camera.h>
 #include <scene/model.h>
 
 #include <example_base.h>
@@ -18,13 +19,27 @@ public:
   };
 
   HelloVulkan() : ExampleBase(800, 800) {
+    app_->graphicsDisplay()->mouse_callback = [&](double x, double y) {
+      auto p = app_->graphicsDisplay()->getMouseNPos();
+      camera.mouseMove(p);
+    };
+    app_->graphicsDisplay()->button_callback = [&](int button, int action, int mods) {
+      auto p = app_->graphicsDisplay()->getMouseNPos();
+      camera.mouseButton(action, button, p);
+    };
+    app_->graphicsDisplay()->scroll_callback = [&](double x, double y) {
+      auto p = app_->graphicsDisplay()->getMouseNPos();
+      camera.mouseScroll(p, ponos::vec2(x, y));
+    };
     app_->render_engine.resize_callback = [&](uint32_t w, uint32_t h) {
+      // TODO update graphics display width, height
       auto &vp = pipeline->viewport_state.viewport(0);
       vp.width = static_cast<float>(w);
       vp.height = static_cast<float>(h);
       auto s = pipeline->viewport_state.scissor(0);
       s.extent.width = w;
       s.extent.height = h;
+      camera.resize(w, h);
     };
     app_->render_engine.record_command_buffer_callback =
         [&](CommandBuffer &cb, uint32_t i) {
@@ -47,6 +62,13 @@ public:
           cb.endRenderPass();
           cb.end();
         };
+    // setup camera
+    camera.setHandedness(false);
+    camera.setPosition(ponos::point3(2.0f, 0.0f, 0.0f));
+    camera.setTarget(ponos::point3(0.0f, 0.0f, 0.0f));
+    camera.setUp(ponos::vec3(0.0f, 1.0f, 0.0f));
+    circe::TrackballInterface::createDefault3D(
+        camera.trackball);
   }
   ~HelloVulkan() override = default;
 
@@ -209,30 +231,19 @@ public:
     static auto start_time = std::chrono::high_resolution_clock::now();
     auto current_time = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration<float, std::chrono::seconds::period>(
-        current_time - start_time)
-        .count();
+        current_time - start_time).count();
     UniformBufferObject ubo; // = {};
-    ubo.model =
-        // ponos::Transform().matrix();
-        ponos::transpose(
-            ponos::rotateZ(ponos::DEGREES(time * ponos::RADIANS(90.0f)))
-                .matrix());
-    ubo.view = ponos::transpose(ponos::Transform::lookAtRH(ponos::point3(2.0f, 0.0f, 0.0f),
-                                                           ponos::point3(0.0f, 0.0f, 0.0f),
-                                                           ponos::vec3(0.0f, 1.0f, 0.0f))
-                                    .matrix());
-    ubo.proj =
-        // ponos::transpose(
-        // ponos::mat4({1.0f, 0.0f, 0.0f, 0.0f,  //
-        //              0.0f, -1.0f, 0.0f, 0.0f, //
-        //              0.0f, 0.0f, 0.5f, 0.0f,  //
-        //              0.0f, 0.0f, 0.5f, 1.0f}) *
-        ponos::Transform::perspectiveRH(45.0f, 1.f, 0.1f, 10.0f).matrix();
-    // ubo.proj.m[1][1] *= -1;
-    // );
+    ubo.model = ponos::transpose(camera.getModelTransform().matrix());
+//        ponos::transpose(
+//            ponos::rotateZ(ponos::DEGREES(time * ponos::RADIANS(90.0f)))
+//                .matrix());
+    ubo.view = camera.getViewTransform().matrix();
+    ubo.proj = camera.getProjectionTransform().matrix();
     ubm.copy(&ubo, sizeof(UniformBufferObject));
   }
 
+  // scene
+  circe::UserCamera3D camera;
   // model
   VertexLayout model_vertex_layout;
   ShaderModule frag_shader_module;
