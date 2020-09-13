@@ -29,6 +29,7 @@
 #define CIRCE_VK_MESH_BUFFER_DATA_H
 
 #include "vk_device_memory.h"
+#include <memory>
 
 namespace circe::vk {
 

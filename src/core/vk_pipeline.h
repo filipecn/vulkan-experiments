@@ -31,6 +31,8 @@
 #include "vk_renderpass.h"
 #include "vk_shader_module.h"
 
+#include <memory>
+
 namespace circe {
 
 namespace vk {

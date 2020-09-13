@@ -31,6 +31,7 @@
 #include "vk_device_memory.h"
 #include "vk_image.h"
 #include <string>
+#include <memory>
 
 namespace circe::vk {
 

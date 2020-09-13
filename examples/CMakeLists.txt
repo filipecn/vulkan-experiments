@@ -30,7 +30,7 @@ function(buildExample EXAMPLE_NAME)
     target_link_libraries(${EXAMPLE_NAME}
             vk
             ${VULKAN_LIBRARIES}
-            ${GLFW_LIBRARIES}
+#            ${GLFW_LIBRARIES}
             )
     target_include_directories(${EXAMPLE_NAME} PUBLIC
             ${STB_INCLUDES}
